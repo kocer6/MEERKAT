@@ -5,13 +5,33 @@ export const defaultRules: Rules = {
   quoteMaxAgeMs: 3000, takeProfitBps: 3000, stopLossBps: 2000, trailingBps: 1500, maxHoldMs: 45 * 60000,
 };
 
+/**
+ * Entry filter reasons, kept deliberately granular so a rejection can be
+  * shown to the user or journal as an explainable, specific cause instead of
+   * a generic "rejected". Each check is independent: every applicable reason
+    * is returned rather than stopping at the first failure, so a caller can see
+     * the full picture of why a launch did not qualify.
+      *
+       * Three outcome classes fall out of this:
+        *   - matched:    reasons is empty.
+         *   - rejected:   known data fails a threshold (score too low, tax too high, ...).
+          *   - unreadable: the underlying data could not be read at all (score is not
+           *     a finite number, or openingTaxBps is null because the RPC read failed).
+            *     Unreadable data must block entry exactly like a failing filter, it
+             *     must never be treated as if it passed or defaulted to a safe value.
+              *     This is the fix for audit finding A1: a failed tax read must not be
+               *     silently substituted with 0 and allowed through.
+                */
 export function entryReasons(e: Entry, r: Rules): string[] {
   const reasons: string[] = [];
   if (!/^0x[0-9a-f]{40}$/i.test(e.token)) reasons.push('invalid token address');
   if (e.amountWei <= 0n) reasons.push('amount must be positive');
-  if (!Number.isFinite(e.score) || e.score < r.minScore || e.score > 100) reasons.push('score below threshold or invalid');
+  if (!Number.isFinite(e.score)) reasons.push('score is unreadable');
+  else if (e.score > 100) reasons.push('score exceeds the maximum of 100');
+  else if (e.score < r.minScore) reasons.push('score below minimum threshold');
   if (e.openingTaxBps === null) reasons.push('opening tax unknown');
-  else if (!Number.isInteger(e.openingTaxBps) || e.openingTaxBps < 0 || e.openingTaxBps > r.maxTaxBps) reasons.push('opening tax exceeds limit or invalid');
+  else if (!Number.isInteger(e.openingTaxBps) || e.openingTaxBps < 0) reasons.push('opening tax reading is invalid');
+  else if (e.openingTaxBps > r.maxTaxBps) reasons.push('opening tax exceeds limit');
   if (e.source !== 'synthetic' && e.source !== 'chain') reasons.push('invalid source');
   return reasons;
 }
