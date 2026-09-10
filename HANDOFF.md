@@ -34,10 +34,21 @@ Unknown tax blocks entry; unknown reserve never means zero. Paper has no signer 
 
 ## Next concrete work
 
-1. Repository selected: kocer6/MEERKAT. Read AGENTS.md and docs/MVP-2-DAY.md.
-2. Bootstrap documentation, evidence and ignore rules are prepared in this checkpoint. Add upstream LICENSE notices when importing code.
-3. Implement one vertical paper cycle with durable state and regression coverage for the audited failure cases, then connect real launch/quote reads.
-4. Add the interface and journal; validate install, demo and recovery; push after each coherent checkpoint.
+**Next task: M1.1 in PLAN.md. No implementation task is currently in progress.**
+
+1. Read AGENTS.md, PLAN.md and docs/MVP-2-DAY.md; inspect the checkout and git status.
+2. Create the minimal Node 24/TypeScript application and real build/typecheck/test/demo scripts. Add a meaningful startup smoke test. There is currently no package.json or src directory.
+3. Run clean install and the newly created commands. Record their actual outputs here; then mark M1.1 complete only if they pass.
+4. Continue M1.2 and onward in PLAN.md. Preserve upstream notices when importing code. Push coherent checkpoints with both status documents updated.
+
+## Latest checkpoint record
+
+- Completed: M0.1–M0.5; shared PLAN.md, CLAUDE.md, continuation prompt and linked README/AGENTS/HANDOFF. Product code remains unimplemented.
+- Changed files in this checkpoint: PLAN.md, CLAUDE.md, docs/CONTINUE-IN-CLAUDE.md, README.md, AGENTS.md, HANDOFF.md.
+- Prior verified remote: a9be2c0e975da19b1bfca1363d1d3cce4ec6b445 on main. The commit containing this record is identifiable with git log; it cannot include its own SHA without creating another commit.
+- Verification for this documentation checkpoint: git diff --check, local Markdown link validation and checklist consistency. No application tests exist or ran. Any failed verification must be recorded before publication.
+- Known blocker: none for local implementation. Git CLI authentication was not established in the prior session; the connected GitHub API successfully published the prior checkpoint. Use available authorized credentials and verify remote updates.
+- Recovery: if the session ends, start at M1.1 unless newer commits/checklist entries prove further progress. No unfinished code needs recovery at this checkpoint.
 
 ## Checkpoint convention
 

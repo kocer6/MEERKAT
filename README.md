@@ -6,6 +6,8 @@ An explainable Pons V2 trading companion for Robinhood Chain.
 
 ## Continue development
 
+Start with the [shared plan and progress checklist](PLAN.md). To transfer work to Claude, use the [ready-to-copy continuation prompt](docs/CONTINUE-IN-CLAUDE.md).
+
 1. Read [HANDOFF.md](HANDOFF.md) for the current state and next action.
 2. Follow [AGENTS.md](AGENTS.md) for checkpoint and verification rules.
 3. Build the [two-day MVP](docs/MVP-2-DAY.md), which takes priority over the [broader V1 specification](docs/V1-SPEC.md).

@@ -1,8 +1,8 @@
 # MEERKAT continuation instructions
 
-Read HANDOFF.md first, then docs/MVP-2-DAY.md. The two-day paper MVP takes priority over the broader docs/V1-SPEC.md.
+Read PLAN.md and HANDOFF.md first, then docs/MVP-2-DAY.md. PLAN.md is the shared task checklist; HANDOFF.md is the exact resumption state. The two-day paper MVP takes priority over the broader docs/V1-SPEC.md.
 
-The user authorizes incremental commits and pushes to this repository after coherent work checkpoints. Update HANDOFF.md with actual implementation status, exact verification commands/outcomes, blockers and the next action before each push. Verify the remote commit after pushing. Never claim unverified functionality works.
+The user authorizes incremental commits and pushes to this repository after coherent work checkpoints. Update PLAN.md checkboxes with completion evidence and HANDOFF.md with actual implementation status, exact verification commands/outcomes, blockers and the next task ID before each push. Verify the remote commit after pushing. Never claim unverified functionality works.
 
 Keep commits focused. Do not overwrite other contributors' work or force-push. Never commit credentials, private keys, runtime wallet/position data, databases, node_modules or generated build files. Keep main usable; document unfinished work on a WIP branch if necessary.
 
