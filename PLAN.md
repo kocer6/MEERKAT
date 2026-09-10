@@ -2,7 +2,7 @@
 
 Обновлено: 2026-09-10. Это основной трекер работ для пользователя, Codex и Claude.
 
-**Текущая точка: offline paper-ядро и synthetic demo работают. Следующие задачи: M1.2 validation, M1.3/M3 adapters, M4 UI.**
+**Текущая точка: offline paper-ядро, synthetic demo и runtime-валидация Rules работают. Следующие задачи: M1.3/M3 adapters, M2.2 richer scoring, M4 UI.**
 
 Приоритет — работающий paper MVP в двухдневном окне пользователя. Полный V1 из docs/V1-SPEC.md шире этого релиза. Не переносить отложенные функции в MVP автоматически. Время ниже — порядок этапов, а не гарантированный срок.
 
@@ -23,7 +23,7 @@ PLAN.md хранит общий прогресс. HANDOFF.md — точное м
 ## M1 — минимальный запускаемый проект (первым)
 
 - [x] M1.1 Создать Node 24 + TypeScript проект, lockfile, команды build/typecheck/test/demo, минимальный smoke test. Готово: чистая установка и команды реально проходят.
-- [ ] M1.2 Ввести минимальные типы launch/quote/rules/position/journal, bigint-суммы, quality unknown и явный paper mode. Готово: тесты границ данных, нет signer в paper dependency graph.
+- [x] M1.2 Ввести минимальные типы launch/quote/rules/position/journal, bigint-суммы, quality unknown и явный paper mode. Готово: `validateRules`/`assertRules` в src/rules.ts проверяют Rules при построении PaperEngine (minScore/maxTaxBps/maxPositions/maxGasWei/quoteMaxAgeMs/takeProfitBps/stopLossBps/trailingBps/maxHoldMs); типы сами по себе не проверяли рантайм-вход. Доказательство: test/paper.test.ts — «constructing PaperEngine rejects malformed rules...» (14 негативных случаев), «default rules pass runtime validation», границы maxPositions/budget/balance, Ledger отклоняет отрицательный initial/budget. `npm test` 15/15. Нет signer нигде в paper dependency graph (без изменений — уже было верно).
 - [ ] M1.3 Перенести только необходимые upstream-модули с LICENSE/THIRD_PARTY_NOTICES и pinned provenance. Готово: импорты собираются, права сохранены; чужие токены/реферальные ссылки/бренд не попадают в наш интерфейс.
 
 Checkpoint: воспроизводимый запуск каркаса и точная инструкция установки.
@@ -94,3 +94,7 @@ Copy trading, AI trading и многопользовательский SaaS не
 ### Evidence — offline core checkpoint, 2026-09-10
 
 M1.1/M2.1/M2.3/M2.4/M2.5: `npm ci`, `npm run typecheck`, `npm run build`, `npm test` (9/9), `npm run demo`. Tests cover reservations, refunds/gas, idempotency, concurrent exits, restart and exact demo amounts. Fills are journal events rather than a separate table. Demo starts from an explicit synthetic fixture; real launch discovery is not implemented. No GUI controls yet. M1.2/M2.2 stay open pending runtime validation and richer scoring.
+
+### Evidence — M1.2 runtime rules validation, 2026-09-10
+
+`npm ci` (Node 22.22.2 in this sandbox; package.json pins `>=24 <25`, node:sqlite ran fine on 22.22.2 here but has not been re-verified on Node 24 in this session — treat as a gap, not a pass, for the pinned engine). `npm run typecheck`, `npm run build`, `npm test` (15/15), `npm run demo` all exit 0. New: `validateRules`/`assertRules` in src/rules.ts; `PaperEngine` constructor now calls `assertRules` so a malformed Rules object (bad minScore/maxTaxBps/maxPositions/maxGasWei/quoteMaxAgeMs/takeProfitBps/stopLossBps/trailingBps/maxHoldMs — wrong type, out of range, non-integer, zero where positive is required) throws at construction instead of silently reaching budget/exit logic. Added tests: 14-case malformed-rules matrix, default-rules-pass check, maxPositions boundary (limit vs limit+1), budget boundary (exact vs +1 wei), balance boundary (exact vs +1 wei), Ledger negative-initial/negative-budget rejection. M2.2 (entry filters + score reasons, richer than current entryReasons) stays open — not touched this checkpoint.
