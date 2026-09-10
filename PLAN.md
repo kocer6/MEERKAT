@@ -2,7 +2,7 @@
 
 Обновлено: 2026-09-10. Это основной трекер работ для пользователя, Codex и Claude.
 
-**Текущая точка: подготовка завершена, код приложения ещё не написан. Следующая задача: M1.1.**
+**Текущая точка: offline paper-ядро и synthetic demo работают. Следующие задачи: M1.2 validation, M1.3/M3 adapters, M4 UI.**
 
 Приоритет — работающий paper MVP в двухдневном окне пользователя. Полный V1 из docs/V1-SPEC.md шире этого релиза. Не переносить отложенные функции в MVP автоматически. Время ниже — порядок этапов, а не гарантированный срок.
 
@@ -22,7 +22,7 @@ PLAN.md хранит общий прогресс. HANDOFF.md — точное м
 
 ## M1 — минимальный запускаемый проект (первым)
 
-- [ ] M1.1 Создать Node 24 + TypeScript проект, lockfile, команды build/typecheck/test/demo, минимальный smoke test. Готово: чистая установка и команды реально проходят.
+- [x] M1.1 Создать Node 24 + TypeScript проект, lockfile, команды build/typecheck/test/demo, минимальный smoke test. Готово: чистая установка и команды реально проходят.
 - [ ] M1.2 Ввести минимальные типы launch/quote/rules/position/journal, bigint-суммы, quality unknown и явный paper mode. Готово: тесты границ данных, нет signer в paper dependency graph.
 - [ ] M1.3 Перенести только необходимые upstream-модули с LICENSE/THIRD_PARTY_NOTICES и pinned provenance. Готово: импорты собираются, права сохранены; чужие токены/реферальные ссылки/бренд не попадают в наш интерфейс.
 
@@ -32,11 +32,11 @@ Checkpoint: воспроизводимый запуск каркаса и точ
 
 Зависит от M1. До работы с реальной сетью получить один проверяемый цикл.
 
-- [ ] M2.1 SQLite: позиции, orders, fills, виртуальный баланс, журнал; транзакционные изменения. Готово: сохранение/перезапуск и корректные bigint round trips.
+- [x] M2.1 SQLite: позиции, orders, fills, виртуальный баланс, журнал; транзакционные изменения. Готово: сохранение/перезапуск и корректные bigint round trips.
 - [ ] M2.2 Entry filters + score reasons; unknown tax блокирует вход. Готово: matched/rejected/unreadable сценарии, регрессия A1.
-- [ ] M2.3 Paper buy: резерв бюджета, проверка баланса/лимита позиций, fees и refund. Готово: конкурентные входы не превышают лимит; paper не отправляет транзакций.
-- [ ] M2.4 Quote-based monitoring, TP/SL/trailing и ручной полный выход. Готово: один exit на позицию при конкурентных триггерах, корректный PnL и расходы.
-- [ ] M2.5 Полный synthetic demo: launch → entry → watch → exit → journal. Готово: один запуск команды без ключей, ожидаемые итоговые суммы и причины.
+- [x] M2.3 Paper buy: резерв бюджета, проверка баланса/лимита позиций, fees и refund. Готово: конкурентные входы не превышают лимит; paper не отправляет транзакций.
+- [x] M2.4 Quote-based monitoring, TP/SL/trailing и ручной полный выход. Готово: один exit на позицию при конкурентных триггерах, корректный PnL и расходы.
+- [x] M2.5 Полный synthetic demo: launch → entry → watch → exit → journal. Готово: один запуск команды без ключей, ожидаемые итоговые суммы и причины.
 
 Checkpoint: рабочее ядро с детерминированной демонстрацией; не объявлять данные реальными.
 
@@ -90,3 +90,7 @@ Copy trading, AI trading и многопользовательский SaaS не
 3. Закоммитить код и документы вместе. Проверенный checkpoint отправить в main; незавершённый код — в явно названную WIP ветку с описанием поломок.
 4. Проверить remote SHA. При недоступной отправке сообщить об этом и сохранить локальный checkpoint.
 5. Не ждать «последнего токена»: контрольные точки нужны во время работы. Незаписанные изменения при внезапном обрыве сессии не гарантированно доступны следующему ИИ.
+
+### Evidence — offline core checkpoint, 2026-09-10
+
+M1.1/M2.1/M2.3/M2.4/M2.5: `npm ci`, `npm run typecheck`, `npm run build`, `npm test` (9/9), `npm run demo`. Tests cover reservations, refunds/gas, idempotency, concurrent exits, restart and exact demo amounts. Fills are journal events rather than a separate table. Demo starts from an explicit synthetic fixture; real launch discovery is not implemented. No GUI controls yet. M1.2/M2.2 stay open pending runtime validation and richer scoring.

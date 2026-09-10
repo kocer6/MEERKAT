@@ -2,7 +2,7 @@
 
 An explainable Pons V2 trading companion for Robinhood Chain.
 
-**Status: pre-implementation.** This checkpoint contains the technical audit and implementation handoff. There is no runnable application yet. The first milestone is paper trading; live execution is deferred.
+**Status: offline paper core implemented.** SQLite accounting, budget reservations, exits and a synthetic demo work. No web UI or real market data yet. No real-money execution.
 
 ## Continue development
 
@@ -32,3 +32,9 @@ node --import ./work/bodkin/node_modules/tsx/dist/loader.mjs scripts/audit-repro
 ```
 
 These checks confirm existing upstream defects using mocked clients; they do not send transactions and are not tests of a completed MEERKAT application. The archived audit report refers to its original local output layout; use the commands above for this repository.
+
+## Run the offline core
+
+Requires Node 24.x. Run `npm ci`, `npm run typecheck`, `npm test`, `npm run build`, then `npm run demo`.
+
+The demo prints JSON for a synthetic entry and take-profit exit: 1 ETH initial balance, 0.1 ETH buy, 0.14 ETH sell, 1.04 ETH final balance, zero synthetic gas. This is an accounting fixture, not a performance forecast. No key or network is required. The CLI uses an in-memory SQLite database; persistence/restart behavior is tested separately.

@@ -1,58 +1,32 @@
-# Start here — Pons companion
+# MEERKAT — exact continuation state
 
-Updated: 2026-09-10. This file is the continuation entry point for any coding assistant.
+Updated 2026-09-10. Read AGENTS.md and PLAN.md. User authorizes incremental GitHub checkpoints; target kocer6/MEERKAT main. Two-day PAPER MVP takes priority over full V1.
 
-## User mandate
+## Implemented
 
-The assistant writes the code. The user has only two days for the first useful release. Push incremental checkpoints to the user-designated GitHub repository, with this handoff updated each time. Target repository: https://github.com/kocer6/MEERKAT, branch main. Initial remote baseline: 0f5c98fc9d9adf555f9840a5a007f38336e9200f. This bootstrap checkpoint contains documentation and evidence only; verify its commit with git log.
+Node 24 / TypeScript project with no runtime npm dependencies. Built-in node:sqlite ledger stores account, orders, positions and journal; fills are journal events. State changes are transactional. Amounts serialize as decimal strings. Reservations prevent concurrent budget overspend. Duplicate order keys do not buy twice. Exit locks prevent concurrent closes. Recovery releases interrupted paper reservations and reopens interrupted exits; call recover only at single-process startup.
 
-## Actual state
+PaperEngine supports entry filters, quotes, TP/SL/trailing/max hold, manual full close and valuations. Unknown opening tax blocks entry; unknown reserve remains null. Demo is synthetic and offline: 1 ETH -> 0.1 buy -> 0.14 sell -> 1.04 balance, zero synthetic gas. No wallet, signing or real market data.
 
-Technical audit and full V1 specification exist. Product implementation has NOT started. No working product, deployment or live trading has been verified. Do not describe upstream passing tests as tests of our product.
+Files: src/types.ts, rules.ts, ledger.ts, paper.ts, demo.ts, cli.ts; test/paper.test.ts and smoke.test.ts. Original implementation; upstream code is not imported yet. Add upstream MIT notices when importing.
 
-Read docs/audit/TECHNICAL-AUDIT.md for evidence and docs/V1-SPEC.md for the broader design. The two-day milestone takes priority over the full V1 feature list:
+## Verification
 
-- Real Pons V2 launches and explainable scoring.
-- Automated paper entry, position monitoring and TP/SL/trailing exits.
-- Persistent journal, results and reasons.
-- One local web interface and synthetic demonstration; public project page/docs when ready.
-- Defer live execution, partial exits, Telegram, token gating, copy trading and AI decision making.
+Test-first: smoke/core tests initially failed for missing modules. npm test: 9/9 pass; covers unknown tax, concurrent reservations, failed quotes, refund/gas, idempotency, concurrent exits, stale/future quotes, restart, exit rules, CLI demo. npm run typecheck/build: exit 0. npm ci and npm run demo verified for this checkpoint. Previous confirmed remote: f8836ed283dcc517ee931900aa0798f76e9d8f23. Use git log for this checkpoint SHA.
 
-This reduced scope was proposed by the assistant after the user's two-day constraint. The user's latest instruction is to preserve all progress on GitHub so another AI can continue.
+## Exact next work
 
-## Upstream
+Next task: M1.2 runtime validation, then M1.3/M3 adapters and M4 interface.
 
-- https://github.com/Phosphenq/bodkin at 27b801ad5358061fc10f151cc1e305974df89178, MIT, preserve phosphenq notice.
-- https://github.com/Gipppp121/canary at 376714b5a3134218020cf0f0e664ce5fa895578d, MIT, preserve GIPP notice.
-- Use selected adapters and pure rules, not two independent execution engines.
+1. Validate Rules at construction; add balance/limit/config edge tests. Types alone do not enforce runtime inputs. M1.2 stays open.
+2. Import required Bodkin protocol/score modules with license/provenance, not unsafe snipe orchestration. M2.2 stays open until richer score/filter reasons are integrated.
+3. Real Pons V2 read-only discovery/quotes: chain/deployment checks, fresh tax in quote path, quality and open-position pins. No signer. Keep fixtures visibly synthetic.
+4. Local authenticated control API/UI backed by ledger. No server exists yet.
 
-Audit verified on Windows / Node 24.20.0: Bodkin 23 tests, Canary 46 tests; both build/typecheck pass. npm audit reported zero known vulnerabilities. Two extra mocked-RPC probes confirmed tax failure treated as zero and Canary reserve failure producing a false alert without fallback. See docs/audit/evidence/audit-reproductions.txt. Upstream code was not changed.
+## Known limits
 
-## Mandatory engineering constraints
+Single-user/single-process paper core, not a live or multi-wallet ledger. No schema migration/version gate yet. Rules are supplied in code. Quote callbacks are internal adapters; external API requires runtime validation. Paper fills do not modify chain liquidity. A1/A5 are handled at our boundary, not upstream source changes or full RPC adapter tests. No UI, chain adapter, real quote validation, alerts, hosting or gating. MVP is NOT complete.
 
-Unknown tax blocks entry; unknown reserve never means zero. Paper has no signer dependency. Persist orders/positions/journal transactionally, reserve budget before concurrent entries, serialize position exits, recover incomplete operations on restart. All prices and fills must be labeled real observations versus simulations. Do not turn Canary LEAVE into automatic selling. Pin every open position for monitoring. Keep secrets, wallet state, databases and node_modules out of Git.
+## Checkpoints
 
-## Next concrete work
-
-**Next task: M1.1 in PLAN.md. No implementation task is currently in progress.**
-
-1. Read AGENTS.md, PLAN.md and docs/MVP-2-DAY.md; inspect the checkout and git status.
-2. Create the minimal Node 24/TypeScript application and real build/typecheck/test/demo scripts. Add a meaningful startup smoke test. There is currently no package.json or src directory.
-3. Run clean install and the newly created commands. Record their actual outputs here; then mark M1.1 complete only if they pass.
-4. Continue M1.2 and onward in PLAN.md. Preserve upstream notices when importing code. Push coherent checkpoints with both status documents updated.
-
-## Latest checkpoint record
-
-- Completed: M0.1–M0.5; shared PLAN.md, CLAUDE.md, continuation prompt and linked README/AGENTS/HANDOFF. Product code remains unimplemented.
-- Changed files in this checkpoint: PLAN.md, CLAUDE.md, docs/CONTINUE-IN-CLAUDE.md, README.md, AGENTS.md, HANDOFF.md.
-- Prior verified remote: a9be2c0e975da19b1bfca1363d1d3cce4ec6b445 on main. The commit containing this record is identifiable with git log; it cannot include its own SHA without creating another commit.
-- Verification for this documentation checkpoint: git diff --check, local Markdown link validation and checklist consistency. No application tests exist or ran. Any failed verification must be recorded before publication.
-- Known blocker: none for local implementation. Git CLI authentication was not established in the prior session; the connected GitHub API successfully published the prior checkpoint. Use available authorized credentials and verify remote updates.
-- Recovery: if the session ends, start at M1.1 unless newer commits/checklist entries prove further progress. No unfinished code needs recovery at this checkpoint.
-
-## Checkpoint convention
-
-Each checkpoint updates: completed functionality, exact commands and outcomes, known failures, next action, and any changed scope. Record the previous verified remote SHA here or in a status file; report the new pushed SHA in chat. Never claim a push until remote verification succeeds. If an intermediate state fails tests, push only to a clearly identified WIP branch and document the failure; keep the working default branch usable.
-
-No application start command exists yet. Do not invent one. The audit reproduction command in TECHNICAL-AUDIT.md refers to local audit checkouts, not the future application.
-
+Update PLAN and this file with code changes, commands/outcomes, errors and exact next ID every checkpoint. Git CLI auth was unavailable; connected GitHub API writes work. Use current parent, never force update, verify ls-remote. Keep a local backup branch before aligning with API-created commit if SHAs differ. If interrupted, continue from current source and checklist rather than rerunning the audit.
