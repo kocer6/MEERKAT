@@ -1,0 +1,43 @@
+{
+  "source": "chain",
+  "status": "connected",
+  "chainId": 4663,
+  "factory": "0x7eD598BcEf8bd9Edd8C97A195C6d13f40801EC7e",
+  "blockNumber": "59541655",
+  "fromBlock": "59539656",
+  "observedAt": 1789057265611,
+  "checkedFactoryRecord": true,
+  "error": null,
+  "launches": [
+    {
+      "token": "0x5e5Be21Dd222Cf2001CF4594E758eB0FD45caE17",
+      "curve": "0x8d1e54e56d4F508D3089ab9D278B8a6DE19276AE",
+      "deployer": "0x32ea2F76fdc57bE4523E874f78604f75097A9164",
+      "pairToken": "0xd0601CE157Db5bdC3162BbaC2a2C8aF5320D9EEC",
+      "blockNumber": "59541613",
+      "blockHash": "0xc11d788815640ce36ac9e83d969a880d2f479323f977eab3bb5eeffc257b5130",
+      "txHash": "0x03ec723296b1d6c0488cfde892688df5fc99a095d0472707b14bc88924f11063",
+      "logIndex": 103
+    },
+    {
+      "token": "0x924e7fcffe57578CF0bc509613fc24A5b6B51052",
+      "curve": "0x809fDc2457Fe7Cd1be88DCCC472Af273Ff7A33B3",
+      "deployer": "0xaDF3672e396aff6B8cD2Bc2cda259ccfD7aa9FD5",
+      "pairToken": "0xe93237C50D904957Cf27E7B1133b510C669c2e74",
+      "blockNumber": "59541581",
+      "blockHash": "0x267492cf95d7e1093103a92277b4addda07c256412f39993a70cc947a1c51a88",
+      "txHash": "0xebca6502b4b98c92501f70ae3d9caf41fd966a80b8c696e99b0e59ca7cc02da2",
+      "logIndex": 10
+    },
+    {
+      "token": "0x0c5037e809BF1d4a9d6CdF6E21e972f3582989E0",
+      "curve": "0xD0E28AECd0C01Be7632318ebF0eEC3C72eE0847D",
+      "deployer": "0xdd8C97434Aa1592F9AD1cB872Eaf68dAEe06259E",
+      "pairToken": "0x0000000000000000000000000000000000000000",
+      "blockNumber": "59541527",
+      "blockHash": "0x93e6835fba81af6f98b29b26c26a1a933c9bcbb27638a3ef15b23f1575681218",
+      "txHash": "0x94076237b01eba477df4dad7b0cbec239f86ebca19a02821942951288766fd86",
+      "logIndex": 75
+    }
+  ]
+}

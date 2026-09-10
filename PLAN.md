@@ -2,7 +2,7 @@
 
 Обновлено: 2026-09-10. Это основной трекер работ для пользователя, Codex и Claude.
 
-**Текущая точка: offline paper-ядро, synthetic demo, runtime-валидация Rules и explainable entry filters (M2.2) работают. Следующие задачи: M1.3/M3 adapters, M4 UI.**
+**Текущая точка: изменения Claude сохранены; paper-ядро, локальный UI и реальная read-only лента Pons работают. Следующая задача: M3.2 — обогащение и рыночные котировки. Сделки в UI пока synthetic.**
 Приоритет — работающий paper MVP в двухдневном окне пользователя. Полный V1 из docs/V1-SPEC.md шире этого релиза. Не переносить отложенные функции в MVP автоматически. Время ниже — порядок этапов, а не гарантированный срок.
 
 ## Как читать и обновлять
@@ -43,7 +43,7 @@ Checkpoint: рабочее ядро с детерминированной дем
 
 Зависит от M2; все сделки остаются симулированными.
 
-- [ ] M3.1 Проверить chainId/deployment/ABI read-only и подключить feed. Готово: записаны реальные block/tx/token примеры и источник; synthetic fallback не маскируется под live.
+- [x] M3.1 Проверить chainId/deployment/ABI read-only и подключить feed. Готово: записаны реальные block/tx/token примеры и источник; synthetic fallback не маскируется под live.
 - [ ] M3.2 Обогащение, актуальные curve/pool quotes, фазы graduation и ограничения ETH pairs. Готово: поддерживаемые случаи читаются, неподдерживаемые явно отклоняются.
 - [ ] M3.3 Canary watch rules с quality полей. Готово: reserve RPC failure не становится нулём/ложным alert, регрессия A5; LEAVE не продаёт.
 - [ ] M3.4 Pin открытых позиций, bounded polling без перекрытия, reconnect/backfill/dedup, stale status. Готово: outage и повторные события не дают повторных входов или потери учёта.
@@ -57,7 +57,7 @@ Checkpoint: реальные наблюдения + paper fills, с понятн
 - [ ] M4.1 Локальный сервер/API и web UI: launches, positions, journal, settings/health. Готово: запуск из README и проверка в браузере.
 - [ ] M4.2 Start/pause entries, ручной paper-вход/выход, параметры стратегии, постоянные labels режима/источника. Готово: UI controls реально меняют нужное состояние, ограничения видны.
 - [ ] M4.3 Timeline сделки, причины входа/выхода, realized/unrealized и экспорт. Готово: данные UI/экспорта совпадают с ledger.
-- [ ] M4.4 Краткая стартовая страница MEERKAT с описанием, demo и GitHub. Готово: выглядит завершённо на desktop/mobile; нет обещаний live исполнения.
+- [x] M4.4 Краткая стартовая страница MEERKAT с описанием, demo и GitHub. Готово: выглядит завершённо на desktop/mobile; нет обещаний live исполнения.
 
 Checkpoint: пользователь может самостоятельно пройти демонстрацию через интерфейс.
 
@@ -102,3 +102,9 @@ M1.1/M2.1/M2.3/M2.4/M2.5: `npm ci`, `npm run typecheck`, `npm run build`, `npm t
 ### Evidence — M2.2 explainable entry filters, 2026-09-10
 
 npm ci, npm run typecheck, npm run build, npm test (26/26 = 15 prior + 11 new), npm run demo all exit 0. entryReasons in src/rules.ts now returns granular, independent reasons instead of combined generic ones: score is split into "score is unreadable" (non-finite - NaN/Infinity), "score exceeds the maximum of 100", and "score below minimum threshold"; opening tax is split into "opening tax unknown" (A1 fix, unchanged wording so the existing PaperEngine-level regression test in test/paper.test.ts keeps passing), "opening tax reading is invalid" (non-integer/negative), and "opening tax exceeds limit". New test/rules.test.ts tests entryReasons directly (not only through PaperEngine): matched (empty reasons for a fully valid entry), one test per rejected filter, unreadable-data cases (non-finite score, null tax) kept distinct from threshold rejections, and one test asserting all independent failures are reported together rather than stopping at the first. M1.3/M3/M4 remain open and untouched this checkpoint.
+
+### Evidence — M3.1 and local dashboard, 2026-09-10
+
+Claude main through 9bf67b9 integrated without overwriting rules/tests. Node v24.20.0: 33/33 tests, typecheck and build pass. Added immutable validated rules, local authenticated dashboard, persistent synthetic scenario/positions/journal/export, read-only Pons discovery with bounded single-flight polling and start/pause. M3.1 real evidence: docs/evidence/market-read-2026-09-10.json; chain 4663, factory bytecode and latest event/record ABI match, block 59541655. Browser displayed newer real launches and completed a synthetic scenario; desktop and 390x844 mobile inspected, console clean. M4.4 local starter/dashboard with description, demo and GitHub is verified; not publicly hosted.
+
+M1.3 partial: selected ABI/constants with MIT notices only. M4.1 partial: server, launches, positions, journal and rules summary exist; editable settings/complete health remain. M4.3 partial: journal/realized PnL/export exist; position-specific timeline and unrealized PnL remain. M3.4 partial: bounded single-flight polling/dedup/error age exist, durable backfill and pinned positions do not. All these partial IDs remain unchecked. Next: M3.2.

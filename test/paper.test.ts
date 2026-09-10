@@ -14,6 +14,13 @@ const buyQuote = () => Promise.resolve({ tokensOut: 1000n, spentWei: 100n, gasWe
 const rules = { minScore: 60, maxTaxBps: 300, maxPositions: 3, maxGasWei: 0n, quoteMaxAgeMs: 3000, takeProfitBps: 3000, stopLossBps: 2000, trailingBps: 1500, maxHoldMs: 60000 };
 const setup = () => { const ledger = new Ledger(':memory:', 1000n, 150n); return { ledger, engine: new PaperEngine(ledger, rules, () => now) }; };
 
+test('validated rules cannot be changed through the caller reference after construction', () => {
+  const ledger = new Ledger(':memory:', 1000n, 1000n); const config = { ...rules };
+  const engine = new PaperEngine(ledger, config); config.minScore = 0;
+  assert.equal(engine.rules.minScore, 60);
+  assert.throws(() => { engine.rules.maxGasWei = -1n; }); ledger.close();
+});
+
 test('unknown tax is rejected before any quote or budget reservation', async () => {
   const { ledger, engine } = setup(); let calls = 0;
   await assert.rejects(engine.buy({ ...input, openingTaxBps: null }, 'unknown', async () => { calls++; return buyQuote(); }), /tax.*unknown/i);

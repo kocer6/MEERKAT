@@ -1,0 +1,75 @@
+const $ = id => document.getElementById(id);
+const control = document.querySelector('meta[name="control-token"]').content;
+const eth = value => { const n = BigInt(value); const sign = n < 0n ? '−' : ''; const a = n < 0n ? -n : n; return sign + (a / 10n ** 18n).toString() + '.' + (a % 10n ** 18n).toString().padStart(18, '0').slice(0, 4); };
+const el = (tag, text, className) => { const node = document.createElement(tag); node.textContent = text; if (className) node.className = className; return node; };
+async function refresh() {
+  const response = await fetch('/api/state'); if (!response.ok) throw new Error('Local engine unavailable');
+  const data = await response.json();
+  $('balance').textContent = eth(data.account.balanceWei) + ' ETH';
+  const pnl = data.positions.reduce((sum, p) => sum + BigInt(p.realizedPnlWei), 0n);
+  $('pnl').textContent = (pnl > 0n ? '+' : '') + eth(pnl) + ' ETH'; $('pnl').className = pnl >= 0n ? 'green' : '';
+  const open = data.positions.filter(p => p.status !== 'closed').length;
+  $('open').textContent = String(open).padStart(2, '0'); $('position-count').textContent = String(open);
+  $('budget').textContent = eth(BigInt(data.account.spentWei) + BigInt(data.account.reservedWei)) + ' ETH';
+  $('empty-positions').hidden = data.positions.length > 0;
+  $('position-rows').replaceChildren();
+  for (const p of [...data.positions].reverse()) {
+    const tr = document.createElement('tr'); const asset = el('td', p.symbol); asset.append(el('small', 'SYNTHETIC · PAPER')); tr.append(asset);
+    for (const text of [p.status.toUpperCase(), eth(p.costWei) + ' ETH', eth(p.lastValueWei) + ' ETH', (BigInt(p.realizedPnlWei) > 0n ? '+' : '') + eth(p.realizedPnlWei) + ' ETH', p.exitReason || '—']) tr.append(el('td', text));
+    $('position-rows').append(tr);
+  }
+  $('events').replaceChildren();
+  if (!data.events.length) $('events').append(el('p', 'No events yet. Your decisions will appear here.', 'muted'));
+  for (const event of [...data.events].reverse().slice(0, 60)) {
+    const row = el('div', '', 'event'); row.append(el('time', new Date(event.at).toLocaleTimeString()), el('span', '', 'dot'));
+    const content = document.createElement('div'); content.append(el('strong', event.kind.replaceAll('-', ' ')));
+    const d = event.detail; let detail = d.reason || d.error || 'Synthetic paper event';
+    if (d.quote) detail += d.quote.tokensOut ? ' · input ' + eth(d.quote.spentWei) + ' ETH' : ' · output ' + eth(d.quote.ethOut) + ' ETH';
+    if (d.reserveWei) detail = 'Reserved ' + eth(d.reserveWei) + ' ETH before obtaining a quote';
+    if (d.valueWei) detail = 'Net position value ' + eth(d.valueWei) + ' ETH';
+    content.append(el('small', detail)); row.append(content); $('events').append(row);
+  }
+  $('health').textContent = 'LOCAL ENGINE CONNECTED · SYNTHETIC DATA';
+  renderMarket(data);
+}
+$('run-demo').addEventListener('click', async () => {
+  const button = $('run-demo'); button.disabled = true; $('message').textContent = 'Running the paper scenario…';
+  try {
+    const response = await fetch('/api/demo', { method: 'POST', headers: { 'x-control-token': control } }); const result = await response.json();
+    if (!response.ok) throw new Error(result.error || 'Scenario failed');
+    await refresh(); $('message').textContent = 'Scenario complete. Open the decision trail to inspect every step.';
+  } catch (error) { $('message').textContent = error.message; }
+  finally { button.disabled = false; }
+});
+refresh().catch(error => { $('health').textContent = error.message; });
+
+let marketActive = false;
+function renderMarket(data) {
+  marketActive = data.marketActive;
+  $('market-toggle').textContent = marketActive ? 'Pause chain reads' : 'Connect chain feed ↗';
+  const market = data.market;
+  const age = market.observedAt ? Math.max(0, Math.floor((Date.now() - market.observedAt) / 1000)) : null;
+  $('market-status').textContent = market.status === 'error'
+    ? 'RPC error — displayed observations may be stale. ' + market.error
+    : market.observedAt ? `${marketActive ? 'Polling every 30s' : 'Paused'} · block ${market.blockNumber} · observed ${age}s ago · ${market.checkedFactoryRecord ? 'factory ABI checked' : 'no event available for ABI check'}`
+    : 'Not connected. This reads public launch events; it does not place orders.';
+  $('launch-rows').replaceChildren();
+  for (const launch of market.launches.slice(0, 15)) {
+    const row = document.createElement('tr');
+    const token = document.createElement('td'); const link = el('a', launch.token.slice(0, 8) + '…' + launch.token.slice(-6) + ' ↗');
+    link.href = 'https://robinhoodchain.blockscout.com/token/' + launch.token; link.target = '_blank'; link.rel = 'noreferrer'; token.append(link); row.append(token);
+    row.append(el('td', launch.pairToken === '0x0000000000000000000000000000000000000000' ? 'ETH' : 'Other pair'), el('td', launch.blockNumber), el('td', launch.deployer.slice(0, 8) + '…' + launch.deployer.slice(-6)));
+    const tx = document.createElement('td'); const txLink = el('a', 'View transaction ↗'); txLink.href = 'https://robinhoodchain.blockscout.com/tx/' + launch.txHash; txLink.target = '_blank'; txLink.rel = 'noreferrer'; tx.append(txLink); row.append(tx); $('launch-rows').append(row);
+  }
+  $('market-empty').hidden = market.launches.length > 0;
+}
+$('market-toggle').addEventListener('click', async () => {
+  $('market-toggle').disabled = true;
+  $('market-status').textContent = marketActive ? 'Pausing…' : 'Checking chain, factory and launch records…';
+  try {
+    const result = await fetch('/api/market/' + (marketActive ? 'stop' : 'start'), { method: 'POST', headers: { 'x-control-token': control } });
+    if (!result.ok) throw new Error('Market control failed'); await refresh();
+  } catch (error) { $('market-status').textContent = error.message; }
+  finally { $('market-toggle').disabled = false; }
+});
+setInterval(() => { refresh().catch(error => { $('health').textContent = error.message; }); }, 5000);

@@ -4,9 +4,10 @@ import type { Entry, Rules, BuyQuote, SellQuote, Position } from './types.js';
 
 /** This module has no wallet, private-key or network-send dependency. */
 export class PaperEngine {
-  constructor(readonly ledger: Ledger, readonly rules: Rules, private now = Date.now) {
-        assertRules(rules);
-      
+  readonly rules: Rules;
+  constructor(readonly ledger: Ledger, rules: Rules, private now = Date.now) {
+    assertRules(rules);
+    this.rules = Object.freeze({ ...rules });
   }
   private fresh(q: { observedAt: number }): void {
     const age = this.now() - q.observedAt;

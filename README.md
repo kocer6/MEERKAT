@@ -2,7 +2,7 @@
 
 An explainable Pons V2 trading companion for Robinhood Chain.
 
-**Status: offline paper core implemented.** SQLite accounting, budget reservations, exits and a synthetic demo work. No web UI or real market data yet. No real-money execution.
+**Status: paper core, local dashboard and real read-only launch discovery implemented.** The dashboard demo still uses synthetic prices; real launch events are displayed separately. Market quotes and real-source paper entries are the next milestone. No real-money execution.
 
 ## Continue development
 
@@ -38,3 +38,13 @@ These checks confirm existing upstream defects using mocked clients; they do not
 Requires Node 24.x. Run `npm ci`, `npm run typecheck`, `npm test`, `npm run build`, then `npm run demo`.
 
 The demo prints JSON for a synthetic entry and take-profit exit: 1 ETH initial balance, 0.1 ETH buy, 0.14 ETH sell, 1.04 ETH final balance, zero synthetic gas. This is an accounting fixture, not a performance forecast. No key or network is required. The CLI uses an in-memory SQLite database; persistence/restart behavior is tested separately.
+
+## Run the dashboard
+
+After npm ci, run npm start and open http://127.0.0.1:4664. The paper scenario button runs the accounting fixture; positions, balance and journal persist in data/paper.sqlite. Export JSON downloads the current state. The initial virtual balance is 1 ETH and the cumulative entry budget is 0.5 ETH; repeated scenarios eventually reach that budget. Optional environment variables: PORT (default 4664), MEERKAT_DB (a different path starts a separate workspace).
+
+Click **Connect chain feed** to read actual Pons V2 launches on chain 4663. It checks the factory deployment and latest event against its factory record, polls every 30 seconds after the previous read, and shows observation age and transaction links. Pause stops further polling. The feed is a snapshot of the last 2,000 blocks (up to 50 events, 15 displayed), not complete history. It does not create paper trades or provide scores/quotes yet. Failed reads remain explicitly marked; synthetic records never replace real observations.
+
+For a one-shot JSON network check, run `node --import tsx src/cli.ts market`. Optional MEERKAT_RPC_URL overrides the public default https://rpc.mainnet.chain.robinhood.com. No wallet or key is needed. The standalone offline demo never contacts RPC.
+
+To run compiled output: `npm run build`, then `npm run start:built`. Keep the control server on loopback; it is designed for one local process. No public hosting or live-money executor is included. See THIRD_PARTY_NOTICES.md for the selected upstream ABI attribution.
