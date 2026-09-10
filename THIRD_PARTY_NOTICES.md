@@ -18,3 +18,5 @@ Reviewed at 376714b5a3134218020cf0f0e664ce5fa895578d. No Canary source is includ
 
 ## Press Start 2P
 Locally hosted font from https://github.com/google/fonts/tree/main/ofl/pressstart2p, by CodeMan38. Licensed under SIL Open Font License 1.1; full notice in licenses/press-start-2p-OFL.txt.
+
+Additional adapted Bodkin MIT code in src/chain/quotes.ts: integer curve buy/sell fee and clamp/refund arithmetic from src/pons/curve.ts at the previously pinned revision. Additional selected read-only ABI in src/chain/market.ts. Full attribution above and licenses/bodkin-MIT.txt apply. Validation, RPC quality checks and UI are MEERKAT changes.

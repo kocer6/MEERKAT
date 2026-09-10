@@ -6,8 +6,10 @@ import { PaperEngine } from './paper.js';
 import { defaultRules } from './rules.js';
 import { encode } from './types.js';
 import { PonsDiscovery, rpcReader } from './chain/discovery.js';
+import { inspectToken, marketReader, type MarketReader } from './chain/market.js';
+import { parseEther } from 'viem';
 
-export async function startServer(options: { port: number; database: string; discovery?: PonsDiscovery }) {
+export async function startServer(options: { port: number; database: string; discovery?: PonsDiscovery; market?: MarketReader }) {
   if (!Number.isInteger(options.port) || options.port < 0 || options.port > 65535) throw new Error('invalid port');
   const ledger = new Ledger(options.database, 1000000000000000000n, 500000000000000000n);
   ledger.recover(Date.now()); const engine = new PaperEngine(ledger, defaultRules);
@@ -20,6 +22,7 @@ export async function startServer(options: { port: number; database: string; dis
     ['/assets/press-start-2p.ttf', { type: 'font/ttf', body: readFileSync(new URL('../public/assets/press-start-2p.ttf', import.meta.url)) }],
   ]);
   const discovery = options.discovery ?? new PonsDiscovery(rpcReader());
+  const market = options.market ?? marketReader(); let inspectionBusy = false;
   let url = ''; let scenarioBusy = false; let marketActive = false; let marketRun = 0; let marketTimer: NodeJS.Timeout | undefined;
   const pollMarket = async (run: number) => {
     await discovery.refresh();
@@ -42,6 +45,17 @@ export async function startServer(options: { port: number; database: string; dis
       if (req.method === 'POST') {
         const supplied = req.headers['x-control-token'];
         if (typeof supplied !== 'string' || Buffer.byteLength(supplied) !== Buffer.byteLength(controlToken) || !timingSafeEqual(Buffer.from(supplied), Buffer.from(controlToken))) { send(res, 403, { error: 'control token required' }); return; }
+        if (path === '/api/inspect') {
+          if (inspectionBusy) { send(res, 409, { error: 'An inspection is already running' }); return; }
+          const params = new URL(req.url!, url).searchParams;
+          const amount = params.get('amount') ?? '';
+          if (!/^(?:0|1)(?:\.\d{1,18})?$/.test(amount)) throw new Error('Enter an ETH amount between 0 and 1, with at most 18 decimals');
+          inspectionBusy = true;
+          try { send(res, 200, await inspectToken(market, params.get('token') ?? '', parseEther(amount))); }
+          catch { send(res, 400, { error: 'Inspection failed: invalid input, stale block or unreadable contract. No quote was substituted. Try refreshing or another token.' }); }
+          finally { inspectionBusy = false; }
+          return;
+        }
         if (path === '/api/market/start') {
           if (!marketActive) { marketActive = true; await pollMarket(++marketRun); }
           send(res, 200, discovery.snapshot()); return;

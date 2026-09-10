@@ -46,3 +46,23 @@ test('chain controls require authorization, start once and stop without creating
     assert.equal(state.account.balanceWei, '1000000000000000000');
   } finally { await app.close(); }
 });
+
+test('inspection API authenticates, validates input and returns read-only quotes', async () => {
+  const market = {
+    chainId: async () => 4663, block: async () => ({ number: 42n, timestamp: BigInt(Math.floor(Date.now()/1000)) }),
+    record: async () => ({ exists: true, curve: '0x2222222222222222222222222222222222222222', pairToken: '0x0000000000000000000000000000000000000000', phase: 0 }),
+    metadata: async () => ({ symbol: 'TEST', decimals: 18 }),
+    curve: async () => ({ quoteReserve: 10n ** 18n, tokenReserve: 10n ** 24n, realQuoteReserve: 10n ** 18n, sellableTokens: 8n * 10n ** 23n, feeBps: 100n, creatorTaxBps: 0n, openingTaxBps: 0n, graduated: false, readyToGraduate: false }),
+  };
+  const app = await startServer({ port: 0, database: ':memory:', market });
+  try {
+    const html = await (await fetch(app.url)).text(); const token = /name="control-token" content="([a-f0-9]+)"/.exec(html)![1]!;
+    const path = '/api/inspect?token=0x1111111111111111111111111111111111111111&amount=';
+    assert.equal((await fetch(app.url + path + '0.01', { method: 'POST' })).status, 403);
+    const post = (amount: string) => fetch(app.url + path + amount, { method: 'POST', headers: { 'x-control-token': token } });
+    for (const invalid of ['0', '-1', '2', 'NaN', '1e-2', '0.0000000000000000001']) assert.equal((await post(invalid)).status, 400);
+    const response = await post('0.01'); assert.equal(response.status, 200);
+    const result = await response.json(); assert.equal(result.source, 'chain'); assert.ok(BigInt(result.buy.tokensOut) > 0n);
+    const state = await (await fetch(app.url + '/api/state')).json(); assert.deepEqual(state.positions, []);
+  } finally { await app.close(); }
+});

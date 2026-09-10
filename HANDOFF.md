@@ -1,5 +1,16 @@
 # MEERKAT — exact continuation state
 
+## Current checkpoint: real curve inspection (supersedes older next-work notes)
+
+2026-09-10. User paused design work and prioritized product functionality. M3.2 is PARTIAL: real block-pinned native-ETH curve quotes and inspection UI now work. No market-based paper entry yet. Next: implement evidence-backed entry scoring/quality and explicit paper gas-cost model, then connect fresh quotes to manual PaperEngine buy/close and durable position monitoring. Do not fake a passing score to enable buy. Pool/graduated phases remain explicitly unsupported.
+
+New src/chain/quotes.ts adapts pinned Bodkin integer fee/refund math with strict checks for unknown opening tax, invalid fees, closed curves and insufficient real reserve. src/chain/market.ts checks network 4663 and block age <=30s before/after all block-pinned reads; gets factory record, symbol/decimals, curve reserves, fees and tax. Tax failure stays null. Native ETH phase 0 only. Recipient for tax simulation is 0xdead; no wallet is connected. Quotes are independent snapshot estimates, include protocol fees/taxes, exclude gas and do not mutate reserves. They are not simulated on-chain transactions or execution guarantees.
+
+POST /api/inspect?token=...&amount=0.01 requires the control token, validates 0<amount<=1 ETH and <=18 decimals, bounds concurrent inspections to one, and does not change the ledger. UI has token/amount form and per-launch Inspect buttons. Input edits invalidate prior displayed results; late responses cannot overwrite edited inputs. Form failures do not fabricate a quote.
+
+Verification: Node24, npm test 40/40; npm run typecheck, npm run build, node --check public/app.js pass. Real evidence docs/evidence/curve-quote-2026-09-10.json: token RAJPUTIN at block59740859 with curve quote for 0.01 ETH. Browser form independently returned block59741003 and showed changing real reserves/quotes. Earlier font/readability CSS changes were already local when user paused design; preserved in this checkpoint, no further visual redesign. Unknown fee/reserve, wrong chain, stale block, invalid HTTP amount and auth cases covered. Tests use mocks; real network check is separate.
+
+
 Updated 2026-09-10: M3.1 + local UI checkpoint. Read AGENTS.md and PLAN.md. Target: kocer6/MEERKAT main. User authorizes incremental GitHub checkpoints. The two-day PAPER MVP takes priority over full V1.
 
 ## Integration of Claude's work

@@ -57,7 +57,7 @@ function renderMarket(data) {
   for (const launch of market.launches.slice(0, 15)) {
     const row = document.createElement('tr');
     const token = document.createElement('td'); const link = el('a', launch.token.slice(0, 8) + '…' + launch.token.slice(-6) + ' ↗');
-    link.href = 'https://robinhoodchain.blockscout.com/token/' + launch.token; link.target = '_blank'; link.rel = 'noreferrer'; token.append(link); row.append(token);
+    link.href = 'https://robinhoodchain.blockscout.com/token/' + launch.token; link.target = '_blank'; link.rel = 'noreferrer'; token.append(link); const inspect = el('button', 'Inspect', 'inspect-launch'); inspect.addEventListener('click', () => { inspectionVersion++; $('inspect-token').value = launch.token; $('inspect-result').replaceChildren(); $('inspect-status').textContent = 'Set an amount, then inspect for a current quote.'; $('inspection').scrollIntoView({ behavior: 'smooth' }); }); token.append(inspect); row.append(token);
     row.append(el('td', launch.pairToken === '0x0000000000000000000000000000000000000000' ? 'ETH' : 'Other pair'), el('td', launch.blockNumber), el('td', launch.deployer.slice(0, 8) + '…' + launch.deployer.slice(-6)));
     const tx = document.createElement('td'); const txLink = el('a', 'View transaction ↗'); txLink.href = 'https://robinhoodchain.blockscout.com/tx/' + launch.txHash; txLink.target = '_blank'; txLink.rel = 'noreferrer'; tx.append(txLink); row.append(tx); $('launch-rows').append(row);
   }
@@ -73,3 +73,30 @@ $('market-toggle').addEventListener('click', async () => {
   finally { $('market-toggle').disabled = false; }
 });
 setInterval(() => { refresh().catch(error => { $('health').textContent = error.message; }); }, 5000);
+
+let inspectionVersion = 0;
+$('inspect-form').addEventListener('input', () => { inspectionVersion++; $('inspect-result').replaceChildren(); $('inspect-status').textContent = 'Inputs changed. Inspect again for a current quote.'; });
+$('inspect-form').addEventListener('submit', async event => {
+  event.preventDefault(); const version = ++inspectionVersion;
+  $('inspect-submit').disabled = true; $('inspect-result').replaceChildren(); $('inspect-status').textContent = 'Reading a single chain block and checking the curve…';
+  try {
+    const query = new URLSearchParams({ token: $('inspect-token').value.trim(), amount: $('inspect-amount').value.trim() });
+    const response = await fetch('/api/inspect?' + query, { method: 'POST', headers: { 'x-control-token': control } });
+    const result = await response.json(); if (version !== inspectionVersion) return;
+    if (!response.ok) throw new Error(result.error);
+    $('inspect-status').textContent = `${result.symbol} · block ${result.blockNumber} · ${new Date(result.observedAt).toLocaleTimeString()} · ${result.reasons.length ? result.reasons.join('; ') : 'Curve quotes available'}`;
+    const amount = (value, decimals) => { const n = BigInt(value); const unit = 10n ** BigInt(decimals); return (n / unit).toString() + (decimals ? '.' + (n % unit).toString().padStart(decimals, '0').slice(0, 6) : ''); };
+    const rows = [
+      ['Token', result.token], ['Phase', ['Curve', 'Swept', 'Pool', 'Rescued'][result.phase] || 'Unknown'],
+      ['Opening tax', result.openingTaxBps === null ? 'Unknown — buy quote blocked' : result.openingTaxBps / 100 + '%'],
+      ['Protocol / creator fee', result.feeBps === null ? 'Unavailable' : result.feeBps / 100 + '% / ' + result.creatorTaxBps / 100 + '%'],
+      ['Real ETH reserve', result.realQuoteReserveWei === null ? 'Unknown' : eth(result.realQuoteReserveWei) + ' ETH'],
+      ['Quoted tokens', result.buy ? amount(result.buy.tokensOut, result.decimals) + ' ' + result.symbol : 'Unavailable'],
+      ['Quoted spend / refund', result.buy ? amount(result.buy.spentWei, 18) + ' / ' + amount(result.buy.refundWei, 18) + ' ETH' : 'Unavailable'],
+      ['Sell estimate at same block', result.sellBackWei === null ? 'Unavailable' : amount(result.sellBackWei, 18) + ' ETH'],
+    ];
+    for (const [label, value] of rows) { const row = document.createElement('div'); row.append(el('dt', label), el('dd', value)); $('inspect-result').append(row); }
+    $('inspect-result').append(el('p', result.quoteModel, 'muted'));
+  } catch (error) { if (version === inspectionVersion) $('inspect-status').textContent = error.message; }
+  finally { $('inspect-submit').disabled = false; }
+});

@@ -111,3 +111,6 @@ M1.3 partial: selected ABI/constants with MIT notices only. M4.1 partial: server
 
 ### Evidence — brandkit redesign, 2026-09-10
 - [x] B1 Apply supplied MEERKAT brandkit to local dashboard: generated pixel-art hero, sand/amber palette, local pixel font with OFL license, five-step route, responsive navigation. Desktop and 390x844 mobile checked; paper scenario completed. 33 tests plus build/typecheck pass. Details: docs/BRAND.md. M3.2 remains the next engineering task.
+
+### Evidence — real curve inspection, 2026-09-10
+M3.2 partial: native-ETH pre-graduation curve inspection, taxes, fee-aware buy/refund and independent sell estimates at one verified block. Authenticated API and input form integrated, no ledger mutations. Real evidence: docs/evidence/curve-quote-2026-09-10.json. 40 tests, typecheck/build and JS syntax check pass; browser form checked on a real token. M3.2 remains unchecked: pool quotes, full enrichment/score and trade integration still pending. Next: scoring/quality + paper gas model, then manual market-based paper entry/exit. Design work paused by user.

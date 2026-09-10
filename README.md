@@ -48,3 +48,6 @@ Click **Connect chain feed** to read actual Pons V2 launches on chain 4663. It c
 For a one-shot JSON network check, run `node --import tsx src/cli.ts market`. Optional MEERKAT_RPC_URL overrides the public default https://rpc.mainnet.chain.robinhood.com. No wallet or key is needed. The standalone offline demo never contacts RPC.
 
 To run compiled output: `npm run build`, then `npm run start:built`. Keep the control server on loopback; it is designed for one local process. No public hosting or live-money executor is included. See THIRD_PARTY_NOTICES.md for the selected upstream ABI attribution.
+
+## Inspect real curve quotes
+Use Inspect beside a scanner token, or paste a token address into Inspect a token. Enter an amount greater than zero and at most 1 ETH, then Inspect & quote. The panel shows symbol, phase, opening tax, protocol/creator fees, real ETH reserve, buy quantity/spend/refund, and an independent sell estimate at the same block. Only native ETH curves before graduation are supported. Quotes include fees/taxes but exclude gas; they are snapshot estimates, not execution guarantees. Scoring and market-based paper entry remain pending. Unknown critical fields or stale RPC blocks block quoting.
