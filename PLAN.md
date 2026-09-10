@@ -2,8 +2,7 @@
 
 Обновлено: 2026-09-10. Это основной трекер работ для пользователя, Codex и Claude.
 
-**Текущая точка: offline paper-ядро, synthetic demo и runtime-валидация Rules работают. Следующие задачи: M1.3/M3 adapters, M2.2 richer scoring, M4 UI.**
-
+**Текущая точка: offline paper-ядро, synthetic demo, runtime-валидация Rules и explainable entry filters (M2.2) работают. Следующие задачи: M1.3/M3 adapters, M4 UI.**
 Приоритет — работающий paper MVP в двухдневном окне пользователя. Полный V1 из docs/V1-SPEC.md шире этого релиза. Не переносить отложенные функции в MVP автоматически. Время ниже — порядок этапов, а не гарантированный срок.
 
 ## Как читать и обновлять
@@ -33,7 +32,7 @@ Checkpoint: воспроизводимый запуск каркаса и точ
 Зависит от M1. До работы с реальной сетью получить один проверяемый цикл.
 
 - [x] M2.1 SQLite: позиции, orders, fills, виртуальный баланс, журнал; транзакционные изменения. Готово: сохранение/перезапуск и корректные bigint round trips.
-- [ ] M2.2 Entry filters + score reasons; unknown tax блокирует вход. Готово: matched/rejected/unreadable сценарии, регрессия A1.
+- [x] M2.2 Entry filters + score reasons; unknown tax блокирует вход. Готово: entryReasons в src/rules.ts разбит на явные, независимые причины (score unreadable/exceeds-100/below-threshold; tax unknown/invalid-reading/exceeds-limit; token/amount/source), каждая причина возвращается независимо, а не только первая. Доказательство: test/rules.test.ts - 11 тестов: matched (пустой список причин), rejected (по каждому фильтру отдельно), unreadable (score NaN/Infinity, opening tax null), множественные одновременные причины и явная регрессия A1. npm test 26/26 (было 15, +11 новых).
 - [x] M2.3 Paper buy: резерв бюджета, проверка баланса/лимита позиций, fees и refund. Готово: конкурентные входы не превышают лимит; paper не отправляет транзакций.
 - [x] M2.4 Quote-based monitoring, TP/SL/trailing и ручной полный выход. Готово: один exit на позицию при конкурентных триггерах, корректный PnL и расходы.
 - [x] M2.5 Полный synthetic demo: launch → entry → watch → exit → journal. Готово: один запуск команды без ключей, ожидаемые итоговые суммы и причины.
@@ -98,3 +97,8 @@ M1.1/M2.1/M2.3/M2.4/M2.5: `npm ci`, `npm run typecheck`, `npm run build`, `npm t
 ### Evidence — M1.2 runtime rules validation, 2026-09-10
 
 `npm ci` (Node 22.22.2 in this sandbox; package.json pins `>=24 <25`, node:sqlite ran fine on 22.22.2 here but has not been re-verified on Node 24 in this session — treat as a gap, not a pass, for the pinned engine). `npm run typecheck`, `npm run build`, `npm test` (15/15), `npm run demo` all exit 0. New: `validateRules`/`assertRules` in src/rules.ts; `PaperEngine` constructor now calls `assertRules` so a malformed Rules object (bad minScore/maxTaxBps/maxPositions/maxGasWei/quoteMaxAgeMs/takeProfitBps/stopLossBps/trailingBps/maxHoldMs — wrong type, out of range, non-integer, zero where positive is required) throws at construction instead of silently reaching budget/exit logic. Added tests: 14-case malformed-rules matrix, default-rules-pass check, maxPositions boundary (limit vs limit+1), budget boundary (exact vs +1 wei), balance boundary (exact vs +1 wei), Ledger negative-initial/negative-budget rejection. M2.2 (entry filters + score reasons, richer than current entryReasons) stays open — not touched this checkpoint.
+
+
+### Evidence — M2.2 explainable entry filters, 2026-09-10
+
+npm ci, npm run typecheck, npm run build, npm test (26/26 = 15 prior + 11 new), npm run demo all exit 0. entryReasons in src/rules.ts now returns granular, independent reasons instead of combined generic ones: score is split into "score is unreadable" (non-finite - NaN/Infinity), "score exceeds the maximum of 100", and "score below minimum threshold"; opening tax is split into "opening tax unknown" (A1 fix, unchanged wording so the existing PaperEngine-level regression test in test/paper.test.ts keeps passing), "opening tax reading is invalid" (non-integer/negative), and "opening tax exceeds limit". New test/rules.test.ts tests entryReasons directly (not only through PaperEngine): matched (empty reasons for a fully valid entry), one test per rejected filter, unreadable-data cases (non-finite score, null tax) kept distinct from threshold rejections, and one test asserting all independent failures are reported together rather than stopping at the first. M1.3/M3/M4 remain open and untouched this checkpoint.
