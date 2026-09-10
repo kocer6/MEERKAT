@@ -37,3 +37,6 @@ Single-user/single-process ledger; no schema migration gate. Server recovers int
 ## Checkpoint method
 
 Update PLAN.md and this file before each commit. Git CLI push credentials are unavailable here; the connected GitHub API supports create_tree -> create_commit -> non-force update_ref. Base the tree/parent on the current remote main, preserve other contributors, then fetch and compare the local files with remote and verify ls-remote SHA. Do not assume the same connector is available in another AI environment; use its authorized GitHub method. Never commit databases, credentials, node_modules or build output.
+
+## Latest checkpoint: brandkit design, 2026-09-10
+Replaced the temporary green identity with the user's sand/amber pixel-art brand. New generated desert/meerkat hero, CSS avatar, locally hosted OFL pixel font, responsive five-step route and Scanner navigation. See docs/BRAND.md for palette, asset provenance and generation prompt. Assets are explicitly whitelisted by the local server and copied by the existing build. Desktop/mobile inspected; redesigned synthetic scenario completed. 33 tests, typecheck and build passed. Next engineering ID remains M3.2; this visual checkpoint does not complete additional trading features.

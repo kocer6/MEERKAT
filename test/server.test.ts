@@ -7,6 +7,11 @@ test('UI boots, rejects unauthenticated/cross-origin controls and persists a dem
   const app = await startServer({ port: 0, database: ':memory:' });
   try {
     const html = await (await fetch(app.url)).text(); assert.match(html, /MEERKAT/);
+    for (const [path, type] of [['/assets/meerkat-desert.png', 'image/png'], ['/assets/press-start-2p.ttf', 'font/ttf']]) {
+      const asset = await fetch(app.url + path);
+      assert.equal(asset.status, 200); assert.equal(asset.headers.get('content-type'), type);
+      assert.ok((await asset.arrayBuffer()).byteLength > 1000);
+    }
     const token = /name="control-token" content="([a-f0-9]+)"/.exec(html)?.[1]; assert.ok(token);
     const before = await (await fetch(app.url + '/api/state')).json(); assert.equal(before.mode, 'paper');
     assert.equal((await fetch(app.url + '/api/demo', { method: 'POST' })).status, 403);

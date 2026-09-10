@@ -16,6 +16,8 @@ export async function startServer(options: { port: number; database: string; dis
     ['/', { type: 'text/html; charset=utf-8', body: readFileSync(new URL('../public/index.html', import.meta.url), 'utf8').replace('__CONTROL_TOKEN__', controlToken) }],
     ['/app.js', { type: 'text/javascript; charset=utf-8', body: readFileSync(new URL('../public/app.js', import.meta.url), 'utf8') }],
     ['/style.css', { type: 'text/css; charset=utf-8', body: readFileSync(new URL('../public/style.css', import.meta.url), 'utf8') }],
+    ['/assets/meerkat-desert.png', { type: 'image/png', body: readFileSync(new URL('../public/assets/meerkat-desert.png', import.meta.url)) }],
+    ['/assets/press-start-2p.ttf', { type: 'font/ttf', body: readFileSync(new URL('../public/assets/press-start-2p.ttf', import.meta.url)) }],
   ]);
   const discovery = options.discovery ?? new PonsDiscovery(rpcReader());
   let url = ''; let scenarioBusy = false; let marketActive = false; let marketRun = 0; let marketTimer: NodeJS.Timeout | undefined;

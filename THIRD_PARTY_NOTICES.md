@@ -15,3 +15,6 @@ Reviewed at 376714b5a3134218020cf0f0e664ce5fa895578d. No Canary source is includ
 ## Dependencies
 
 `viem` is used for RPC and ABI decoding; exact dependencies are pinned by package-lock.json. Their upstream license files are distributed with their npm packages. No third-party token, referral link or mascot is used in the application UI.
+
+## Press Start 2P
+Locally hosted font from https://github.com/google/fonts/tree/main/ofl/pressstart2p, by CodeMan38. Licensed under SIL Open Font License 1.1; full notice in licenses/press-start-2p-OFL.txt.

@@ -1,0 +1,11 @@
+# MEERKAT visual identity
+
+Applied 2026-09-10 from the user-supplied ChatGPT-generated brandkit preview. The preview is a visual reference, not a product roadmap or evidence of implemented trading features.
+
+Palette: background #10100e, panels #191815, borders #393329, text #f1dfbc, muted #aaa08e, amber #efba69, positive status #b2cf83. Pixel headings use locally hosted Press Start 2P; tables and body use Courier New/monospace. Font license: licenses/press-start-2p-OFL.txt. No external font request is needed.
+
+Hero: public/assets/meerkat-desert.png, 1536x1024 PNG. Generated with the built-in image_gen tool using the user's brandkit as the reference. A new adaptation, not an extracted original. The circular brand mark uses a CSS viewport onto this same image; no second raster asset. Text remains HTML for accessibility and responsive layout.
+
+Generation prompt: Create ONE production website hero illustration based closely on the attached MEERKAT brandkit. Landscape 1536x1024. No text, no letters, no logos, no panels, no UI, no collage. Faithful crisp retro pixel art, limited warm sand/amber/brown palette, nearly black sky #10100e. A cute alert upright meerkat matching the reference character exactly in spirit: large black eyes with dark eye patches, cream chest, sandy fur, small round ears, slender upright body, hands resting on chest. Full body standing on a rocky lookout on RIGHT THIRD, looking toward upper right. Golden pixelated sunset disk behind him, layered rocky desert mountains in lower third. LEFT HALF mostly dark empty sky for HTML headline overlay. Low resolution pixel aesthetic enlarged with sharp square pixels, no smooth vector shapes, no blurry painting. Rich warm atmospheric scene matching top left banner of supplied kit but no text at all. This is a reusable website background.
+
+Browser QA: desktop and 390x844 mobile inspected; no page-level horizontal overflow (375px content width and scroll width), tables retain their own scroll area. Synthetic scenario completed through the redesigned button and journal updated. Asset HTTP routes tested for binary content and correct MIME types. Product functionality remains at the M3.1 checkpoint; next engineering task is M3.2.
