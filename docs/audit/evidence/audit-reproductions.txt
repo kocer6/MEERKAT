@@ -1,0 +1,2 @@
+CONFIRMED Bodkin: failed tax read returns ok=true and taxBps=0. No RPC or transaction sent.
+CONFIRMED Canary: failed reserve read becomes zero, bypasses fallback, and produces curve-reserve-drop. Mocked transport only.

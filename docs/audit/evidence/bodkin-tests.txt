@@ -1,0 +1,35 @@
+
+> bodkin@0.1.0 test
+> node --import tsx --test test/*.test.ts
+
+✔ constant product: 0.0535 ETH on a fresh curve buys about 3.0% of supply (the usual builder buy) (0.9014ms)
+✔ fees come off the input on a buy and off the output on a sell, so a round trip loses more than the fee (0.1745ms)
+✔ opening tax is capped so a buyer always nets at least 1% (0.1335ms)
+✔ a 99% opening tax makes the first-second buy nearly worthless (0.128ms)
+✔ a buy larger than the sellable remainder clamps and refunds (0.2373ms)
+✔ minOut bounds the rate, progress and fdv are sane (0.2371ms)
+✔ the limiter runs at most n jobs at once and drains in order (59.0996ms)
+✔ the deployer index answers from memory: prior launches before the block, graduations counted (0.4949ms)
+✔ a launch farm is three wallets printing the same fingerprint inside half an hour (1.479ms)
+✔ the session budget stops firing before the wallet is drained (0.5611ms)
+✔ an unreadable launch is refused as unreadable, not as a rule failure (0.2181ms)
+✔ a websocket that goes quiet for 45 s hands over to polling, and only once per outage (0.6736ms)
+✔ the feed health snapshot is a copy, not a live reference (5459.5007ms)
+✔ axiom is keyed by the lowercase curve, fomo by the lowercase token (0.7142ms)
+✔ empty handles drop the sign-up links and the sign-up line (0.5078ms)
+✔ a builder-shaped launch scores FIRE even with its declared bundle (1.1785ms)
+✔ a serial deployer with no graduations and no socials is a SKIP (0.1791ms)
+✔ dev share over 10% costs 25 points (0.1839ms)
+✔ the sniper refuses a launch with four exempt wallets by default, because that is a declared bundle (0.5617ms)
+✔ the sniper fires when the bundle rule is relaxed, and stops at the position cap (0.287ms)
+✔ ETH is always currency0 of a pons pool and the id is a keccak of the five key words (3.4398ms)
+✔ a buy carries msg.value, a sell carries none, and both decode as UniversalRouter.execute with one V4_SWAP command (5.6618ms)
+✔ exit rules: take profit, stop loss, trailing from peak, max hold (0.2953ms)
+ℹ tests 23
+ℹ suites 0
+ℹ pass 23
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 6408.7706

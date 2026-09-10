@@ -1,0 +1,4 @@
+
+> canary-chain@0.4.0 build
+> tsc -p tsconfig.json
+

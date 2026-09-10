@@ -1,0 +1,37 @@
+import assert from 'node:assert/strict';
+process.env.RPC_WS_URL = 'off';
+const {fastClient} = await import('../work/bodkin/src/chain.ts');
+const {waitForTax} = await import('../work/bodkin/src/snipe.ts');
+const original = fastClient.readContract;
+fastClient.readContract = async () => { throw new Error('synthetic RPC failure'); };
+const address = '0x1111111111111111111111111111111111111111';
+const result = await waitForTax(address, address, 300, 100);
+assert.equal(result.ok, true);
+assert.equal(result.taxBps, 0);
+console.log('CONFIRMED Bodkin: failed tax read returns ok=true and taxBps=0. No RPC or transaction sent.');
+fastClient.readContract = original;
+const {PonsV2Reader} = await import('../work/canary/src/chain/rpc.ts');
+const {evaluate} = await import('../work/canary/src/watch/signals.ts');
+const {FallbackReader} = await import('../work/canary/src/chain/fallback-reader.ts');
+const reader = new PonsV2Reader({rpcUrl:'http://127.0.0.1:1',indexCachePath:'./work/nonexistent-audit-index.json'});
+reader.launchFor = async () => ({launchBlock:1n});
+reader.refreshIndex = async () => {};
+reader.recentTrades = async () => ({count:1,lastTradeAt:Date.now()});
+reader.client = {readContract: async ({functionName}) => {
+  if (functionName === 'getLaunchedToken') return {exists:true,phase:0,curve:address,deployer:address,pairToken:'0x0000000000000000000000000000000000000000',creatorTaxBps:100};
+  if (functionName === 'symbol') return 'TEST';
+  if (functionName === 'decimals') return 18;
+  if (functionName === 'totalSupply') return 10000n;
+  if (functionName === 'balanceOf') return 100n;
+  if (functionName === 'realQuoteReserve') throw new Error('synthetic partial failure');
+  return 0n;
+}};
+let fallbackCalled = false;
+const fallback = new FallbackReader([reader,{snapshot:async () => {fallbackCalled=true; throw new Error('unexpected');}}]);
+const after = await fallback.snapshot(address);
+const alerts = evaluate({...after,liquidityWei:1000n},after);
+assert.equal(after.liquidityWei,0n);
+assert.equal(fallbackCalled,false);
+assert.ok(alerts.some(x=>x.rule==='curve-reserve-drop'));
+console.log('CONFIRMED Canary: failed reserve read becomes zero, bypasses fallback, and produces curve-reserve-drop. Mocked transport only.');
+

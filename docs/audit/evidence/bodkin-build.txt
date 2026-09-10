@@ -1,0 +1,4 @@
+
+> bodkin@0.1.0 build
+> tsc -p tsconfig.json && node -e "require('fs').mkdirSync('dist/board',{recursive:true});require('fs').copyFileSync('src/board/index.html','dist/board/index.html')"
+

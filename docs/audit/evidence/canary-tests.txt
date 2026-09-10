@@ -1,0 +1,58 @@
+
+> canary-chain@0.4.0 test
+> node --import tsx --test test/*.test.ts
+
+✔ direct localhost control works without a configured key (0.797ms)
+✔ a proxied public request is locked when no control key is configured (0.1541ms)
+✔ a public/proxied request can control only with the configured key (0.1886ms)
+✔ control token comparison is exact (0.1093ms)
+✔ a private key in the environment is refused, not ignored (1.6928ms)
+✔ a seed phrase is refused too (0.1326ms)
+✔ an empty key variable is not a key (0.196ms)
+✔ defaults are sane with an empty environment (0.162ms)
+✔ wallets parse from a comma list (0.7107ms)
+✔ a bad number falls back instead of poisoning the config (0.1227ms)
+✔ address shape is checked (0.1811ms)
+✔ local .env fills missing values but never overrides exported ones (6.9472ms)
+✔ rpcUrlList deduplicates primary and fallback urls (1.2353ms)
+✔ FallbackReader moves to the next reader after an RPC failure (0.3843ms)
+✔ percentages carry their sign (0.7746ms)
+✔ wei renders without floating point drift (0.1505ms)
+✔ addresses shorten, short ones are left alone (0.134ms)
+✔ ago reads like a human wrote it (0.1336ms)
+✔ the bar never overflows its width (0.1333ms)
+✔ generic token units respect decimals (0.1231ms)
+✔ v0.4 flags a material graduated-pool liquidity drop (0.7785ms)
+✔ v0.4 keeps a small graduated-pool liquidity move quiet (0.124ms)
+✔ v0.4 reports large pool price movement as WATCH context (0.1802ms)
+✔ v0.4 notices pending pool token fees moving (0.1406ms)
+✔ v0.4 notices a sudden pool swap burst (0.1711ms)
+✔ v0.4 evaluate keeps worst pool news first (0.4099ms)
+✔ a quiet position wakes nobody (1.2568ms)
+✔ a deployer balance drop is a high-severity signal (0.195ms)
+✔ a deployer buying more is not an alert (0.1235ms)
+✔ a move under the threshold stays quiet (0.1055ms)
+✔ liquidity leaving fires as leave (0.2331ms)
+✔ liquidity growing is not a drop (0.1271ms)
+✔ a curve fee sweep is a warning, not a creator-claim verdict (0.1551ms)
+✔ fees accruing is not a claim (0.1163ms)
+✔ a book nobody trades in gets flagged (0.2219ms)
+✔ a serial deployer is named with its own graduation rate (0.3124ms)
+✔ one launch by a first-time deployer is not suspicious (0.1266ms)
+✔ the worst news is printed first (0.1472ms)
+✔ unknown trade history never becomes a fake volume-dead alert (0.0868ms)
+✔ graduation does not look like a curve reserve collapse (0.0763ms)
+✔ the first sweep of a new token cannot compare, and says nothing about change (0.0721ms)
+✔ the first sweep only records, it does not shout (2.2057ms)
+✔ the second sweep catches a deployer balance drop (2.1915ms)
+✔ an unreadable token is skipped, never guessed at (1.1041ms)
+✔ the same warning is not repeated inside the window (2.5541ms)
+✔ snapshots survive a restart (6.6851ms)
+ℹ tests 46
+ℹ suites 0
+ℹ pass 46
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 610.0637

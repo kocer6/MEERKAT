@@ -1,0 +1,16 @@
+node_modules/
+dist/
+coverage/
+.env
+.env.*
+!.env.example
+data/
+.canary/
+*.sqlite
+*.sqlite-*
+*.db
+*.db-*
+*.log
+work/
+.DS_Store
+Thumbs.db
