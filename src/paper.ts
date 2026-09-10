@@ -1,10 +1,13 @@
 import { Ledger } from './ledger.js';
-import { entryReasons, exitReason } from './rules.js';
+import { assertRules, entryReasons, exitReason } from './rules.js';
 import type { Entry, Rules, BuyQuote, SellQuote, Position } from './types.js';
 
 /** This module has no wallet, private-key or network-send dependency. */
 export class PaperEngine {
-  constructor(readonly ledger: Ledger, readonly rules: Rules, private now = Date.now) {}
+  constructor(readonly ledger: Ledger, readonly rules: Rules, private now = Date.now) {
+        assertRules(rules);
+      
+  }
   private fresh(q: { observedAt: number }): void {
     const age = this.now() - q.observedAt;
     if (!Number.isFinite(q.observedAt) || age < 0 || age > this.rules.quoteMaxAgeMs) throw new Error('stale or invalid quote timestamp');
