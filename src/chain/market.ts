@@ -41,7 +41,7 @@ export function marketReader(): MarketReader {
     },
   };
 }
-export async function inspectToken(reader: MarketReader, token: string, amountWei: bigint) {
+export async function inspectToken(reader: MarketReader, token: string, amountWei: bigint, sellQuantity?: bigint) {
   if (!isAddress(token) || token.toLowerCase() === zero) throw new Error('invalid token address');
   if (amountWei <= 0n || amountWei > 10n ** 18n) throw new Error('inspection amount must be greater than zero and at most 1 ETH');
   if (await reader.chainId() !== 4663) throw new Error('wrong chain; expected 4663');
@@ -58,9 +58,11 @@ export async function inspectToken(reader: MarketReader, token: string, amountWe
   let buy: ReturnType<typeof curveBuy> | null = null; let sellBackWei: bigint | null = null;
   if (!reasons.length) {
     state = await reader.curve(record.curve, block.number);
-    try { buy = curveBuy(state, amountWei); } catch (error) { reasons.push((error as Error).message); }
-    if (buy) {
-      try { sellBackWei = curveSell(state, buy.tokensOut); } catch (error) { reasons.push('Sell quote unavailable: ' + (error as Error).message); }
+    if (sellQuantity === undefined) {
+      try { buy = curveBuy(state, amountWei); } catch (error) { reasons.push((error as Error).message); }
+    }
+    if (buy || sellQuantity !== undefined) {
+      try { sellBackWei = curveSell(state, sellQuantity ?? buy!.tokensOut); } catch (error) { reasons.push('Sell quote unavailable: ' + (error as Error).message); }
     }
   }
   checkAge();

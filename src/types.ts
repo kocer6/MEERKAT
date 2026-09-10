@@ -2,6 +2,7 @@ export type Source = 'synthetic' | 'chain';
 export interface Entry {
   token: string; symbol: string; amountWei: bigint; score: number;
   openingTaxBps: number | null; source: Source;
+  evidence?: Record<string, unknown>;
 }
 export interface BuyQuote { tokensOut: bigint; spentWei: bigint; gasWei: bigint; observedAt: number; source: Source }
 export interface SellQuote { ethOut: bigint; gasWei: bigint; observedAt: number; source: Source }

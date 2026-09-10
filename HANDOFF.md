@@ -1,5 +1,19 @@
 # MEERKAT — exact continuation state
 
+## Latest checkpoint: manual market-based paper trades (2026-09-11)
+
+User priority is product; design remains paused. Inspect now shows five mandatory curve-entry checks: readable ETH curve/two-way quote, opening tax <= configured limit (3%), protocol+creator fees <=5%, requested amount <=1% of real ETH reserve, modeled round-trip loss <=10%. Each observed check contributes 20 to a curve-entry-fit score, but ALL must pass. This is deliberately not Bodkin's social/deployer score and not a contract-safety rating. Do not present 100 as investment confidence. Holder/deployer analysis is still missing.
+
+src/market-trading.ts bridges the reader to PaperEngine. Buy re-reads the market, journals block/assessment evidence in Entry.evidence, and charges fixed modeled gas of 0.0001 ETH per side. It never uses browser-supplied quotes/scores. Sell reads the position's exact quantity and does not depend on a buy opening-tax read. Unsupported phases/errors retain the position rather than inventing a price. Controls: POST /api/paper/buy (token, amount, orderId), /api/paper/observe (id), /api/paper/close (id), all authenticated. Position updates are serialized per ID. Duplicate keys cannot create a second fill; replay may return the original result or fail when fresh evidence differs.
+
+UI flow: Inspect -> Open paper position -> Update quote (valuation and TP/SL/trailing/hold evaluation) or Close paper position. Positions now distinguish CHAIN/SYNTHETIC, show unrealized PnL and valuation timestamp. Journal and export persist modeled fees/evidence. This checkpoint is MANUAL monitoring: no background position loop or automatic entry. The scanner's polling does not monitor positions.
+
+Verification: 45/45 tests, typecheck/build, JS syntax pass. Tests cover quote-backed lifecycle, modeled gas, failed entry with no reserve, phase change/RPC failure preserving open state, take-profit, serialized competing exits, API auth and lifecycle. Real isolated in-memory cycle in docs/evidence/market-paper-cycle-2026-09-11.json: Devin token, entry block59744885 / exit59744893, 0.005 ETH + 0.0001 modeled entry gas, realized -0.000316024689560939 ETH. This is a verification sample, not performance evidence. Browser also verified Inspect -> Open -> Close on the same real token in the persistent demo workspace.
+
+Exact next: M3.4 background bounded monitoring pinned to persisted open positions, per-position error/stale status and restart; M3.3 reserve-change watch rules without false zero on RPC failure. Then pool-phase quotes for graduation. M3.2 and M4.2 remain partial (pool support, richer risk intelligence, settings/start-pause auto-entry absent). Existing observe rejects valuations below modeled exit gas: such positions need manual Close until zero-net valuation monitoring is implemented and tested. No live execution or signer.
+
+
+
 ## Current checkpoint: real curve inspection (supersedes older next-work notes)
 
 2026-09-10. User paused design work and prioritized product functionality. M3.2 is PARTIAL: real block-pinned native-ETH curve quotes and inspection UI now work. No market-based paper entry yet. Next: implement evidence-backed entry scoring/quality and explicit paper gas-cost model, then connect fresh quotes to manual PaperEngine buy/close and durable position monitoring. Do not fake a passing score to enable buy. Pool/graduated phases remain explicitly unsupported.

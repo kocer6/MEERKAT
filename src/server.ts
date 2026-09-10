@@ -8,6 +8,7 @@ import { encode } from './types.js';
 import { PonsDiscovery, rpcReader } from './chain/discovery.js';
 import { inspectToken, marketReader, type MarketReader } from './chain/market.js';
 import { parseEther } from 'viem';
+import { assessEntry, MarketTrading, paperGasWei } from './market-trading.js';
 
 export async function startServer(options: { port: number; database: string; discovery?: PonsDiscovery; market?: MarketReader }) {
   if (!Number.isInteger(options.port) || options.port < 0 || options.port > 65535) throw new Error('invalid port');
@@ -23,13 +24,14 @@ export async function startServer(options: { port: number; database: string; dis
   ]);
   const discovery = options.discovery ?? new PonsDiscovery(rpcReader());
   const market = options.market ?? marketReader(); let inspectionBusy = false;
+  const trading = new MarketTrading(engine, market);
   let url = ''; let scenarioBusy = false; let marketActive = false; let marketRun = 0; let marketTimer: NodeJS.Timeout | undefined;
   const pollMarket = async (run: number) => {
     await discovery.refresh();
     if (marketActive && marketRun === run) marketTimer = setTimeout(() => { void pollMarket(run); }, 30000);
   };
   const send = (res: ServerResponse, status: number, data: unknown) => { res.writeHead(status, { 'content-type': 'application/json' }); res.end(encode(data)); };
-  const snapshot = () => ({ mode: 'paper', source: 'synthetic', marketActive, market: discovery.snapshot(), account: ledger.account(), positions: ledger.positions(), events: ledger.events(), rules: engine.rules, scenarioBusy });
+  const snapshot = () => ({ mode: 'paper', source: 'mixed', paperGasWei, marketActive, market: discovery.snapshot(), account: ledger.account(), positions: ledger.positions(), events: ledger.events(), rules: engine.rules, scenarioBusy });
   const server = createServer(async (req, res) => {
     res.setHeader('Cache-Control', 'no-store'); res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
@@ -45,14 +47,29 @@ export async function startServer(options: { port: number; database: string; dis
       if (req.method === 'POST') {
         const supplied = req.headers['x-control-token'];
         if (typeof supplied !== 'string' || Buffer.byteLength(supplied) !== Buffer.byteLength(controlToken) || !timingSafeEqual(Buffer.from(supplied), Buffer.from(controlToken))) { send(res, 403, { error: 'control token required' }); return; }
-        if (path === '/api/inspect') {
+        if (path === '/api/paper/close' || path === '/api/paper/observe') {
+          const id = new URL(req.url!, url).searchParams.get('id') ?? '';
+          try { send(res, 200, { position: path.endsWith('/close') ? await trading.close(id) : await trading.observe(id) }); }
+          catch (error) { send(res, 400, { error: (error as Error).message.split('\n')[0]!.replace(/https?:\/\/\S+/g, '[RPC endpoint]') }); }
+          return;
+        }
+        if (path === '/api/inspect' || path === '/api/paper/buy') {
           if (inspectionBusy) { send(res, 409, { error: 'An inspection is already running' }); return; }
           const params = new URL(req.url!, url).searchParams;
           const amount = params.get('amount') ?? '';
           if (!/^(?:0|1)(?:\.\d{1,18})?$/.test(amount)) throw new Error('Enter an ETH amount between 0 and 1, with at most 18 decimals');
           inspectionBusy = true;
-          try { send(res, 200, await inspectToken(market, params.get('token') ?? '', parseEther(amount))); }
-          catch { send(res, 400, { error: 'Inspection failed: invalid input, stale block or unreadable contract. No quote was substituted. Try refreshing or another token.' }); }
+          try {
+            if (path === '/api/paper/buy') {
+              const orderId = params.get('orderId') ?? '';
+              if (!/^[a-zA-Z0-9-]{8,80}$/.test(orderId)) throw new Error('valid orderId required');
+              send(res, 200, { position: await trading.buy(params.get('token') ?? '', parseEther(amount), orderId) });
+            } else {
+              const result = await inspectToken(market, params.get('token') ?? '', parseEther(amount));
+              send(res, 200, { ...result, assessment: assessEntry(result, engine.rules) });
+            }
+          }
+          catch (error) { send(res, 400, { error: (error as Error).message.split('\n')[0]!.replace(/https?:\/\/\S+/g, '[RPC endpoint]') }); }
           finally { inspectionBusy = false; }
           return;
         }

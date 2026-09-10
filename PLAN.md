@@ -114,3 +114,6 @@ M1.3 partial: selected ABI/constants with MIT notices only. M4.1 partial: server
 
 ### Evidence — real curve inspection, 2026-09-10
 M3.2 partial: native-ETH pre-graduation curve inspection, taxes, fee-aware buy/refund and independent sell estimates at one verified block. Authenticated API and input form integrated, no ledger mutations. Real evidence: docs/evidence/curve-quote-2026-09-10.json. 40 tests, typecheck/build and JS syntax check pass; browser form checked on a real token. M3.2 remains unchecked: pool quotes, full enrichment/score and trade integration still pending. Next: scoring/quality + paper gas model, then manual market-based paper entry/exit. Design work paused by user.
+
+### Evidence — manual market paper lifecycle, 2026-09-11
+M3.2/M4.2 partial: authenticated market paper buy/update/full close, five mandatory curve liquidity/cost checks, 0.0001 ETH fixed modeled gas per side, persistent entry-block/check evidence, CHAIN labels and unrealized PnL. 45 tests, typecheck/build/JS syntax pass. Real cycle: docs/evidence/market-paper-cycle-2026-09-11.json. Manual position updates only; background monitoring, pool quotes, strategy settings and richer risk analysis remain open. Next M3.4 monitoring + M3.3 watch quality.

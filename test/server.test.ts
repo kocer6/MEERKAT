@@ -64,5 +64,14 @@ test('inspection API authenticates, validates input and returns read-only quotes
     const response = await post('0.01'); assert.equal(response.status, 200);
     const result = await response.json(); assert.equal(result.source, 'chain'); assert.ok(BigInt(result.buy.tokensOut) > 0n);
     const state = await (await fetch(app.url + '/api/state')).json(); assert.deepEqual(state.positions, []);
+    const buyPath='/api/paper/buy?token=0x1111111111111111111111111111111111111111&amount=0.01&orderId=test-order-123';
+    for(const route of [buyPath,'/api/paper/close?id=unknown','/api/paper/observe?id=unknown']) assert.equal((await fetch(app.url+route,{method:'POST'})).status,403);
+    const send=(route:string)=>fetch(app.url+route,{method:'POST',headers:{'x-control-token':token}});
+    const bought=await send(buyPath); assert.equal(bought.status,200); const position=(await bought.json()).position;
+    assert.equal(position.source,'chain'); assert.equal(position.status,'open');
+    const observed=await send('/api/paper/observe?id='+position.id); assert.equal(observed.status,200);
+    const closed=await send('/api/paper/close?id='+position.id); assert.equal(closed.status,200); assert.equal((await closed.json()).position.status,'closed');
+    assert.equal((await send('/api/paper/close?id='+position.id)).status,400);
+
   } finally { await app.close(); }
 });

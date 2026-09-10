@@ -14,22 +14,35 @@ async function refresh() {
   $('empty-positions').hidden = data.positions.length > 0;
   $('position-rows').replaceChildren();
   for (const p of [...data.positions].reverse()) {
-    const tr = document.createElement('tr'); const asset = el('td', p.symbol); asset.append(el('small', 'SYNTHETIC · PAPER')); tr.append(asset);
+    const tr = document.createElement('tr'); const asset = el('td', p.symbol); asset.append(el('small', p.source.toUpperCase() + ' · PAPER')); tr.append(asset);
     for (const text of [p.status.toUpperCase(), eth(p.costWei) + ' ETH', eth(p.lastValueWei) + ' ETH', (BigInt(p.realizedPnlWei) > 0n ? '+' : '') + eth(p.realizedPnlWei) + ' ETH', p.exitReason || '—']) tr.append(el('td', text));
-    $('position-rows').append(tr);
+    const actions=el('td','');
+    if(p.source==='chain' && p.status==='open') {
+      for(const [label,action] of [['Update quote','observe'],['Close paper position','close']]) {
+        const button=el('button',label,'inspect-launch'); button.addEventListener('click',async()=>{
+          button.disabled=true;
+          try { const response=await fetch('/api/paper/'+action+'?id='+encodeURIComponent(p.id),{method:'POST',headers:{'x-control-token':control}}); const result=await response.json();if(!response.ok)throw new Error(result.error);await refresh();$('paper-status').textContent='Position '+result.position.status+'. Quote and journal updated.'; }
+          catch(error){$('paper-status').textContent=error.message;}
+          finally{button.disabled=false;}
+        });actions.append(button);
+      }
+      actions.append(el('small','Last valuation: '+new Date(p.updatedAt).toLocaleTimeString()));
+      actions.append(el('small','Unrealized: '+eth(BigInt(p.lastValueWei)-BigInt(p.costWei))+' ETH'));
+    }
+    tr.append(actions); $('position-rows').append(tr);
   }
   $('events').replaceChildren();
   if (!data.events.length) $('events').append(el('p', 'No events yet. Your decisions will appear here.', 'muted'));
   for (const event of [...data.events].reverse().slice(0, 60)) {
     const row = el('div', '', 'event'); row.append(el('time', new Date(event.at).toLocaleTimeString()), el('span', '', 'dot'));
     const content = document.createElement('div'); content.append(el('strong', event.kind.replaceAll('-', ' ')));
-    const d = event.detail; let detail = d.reason || d.error || 'Synthetic paper event';
+    const d = event.detail; let detail = d.reason || d.error || (d.quote?.source === 'chain' ? 'Chain quote · paper fill' : 'Paper event');
     if (d.quote) detail += d.quote.tokensOut ? ' · input ' + eth(d.quote.spentWei) + ' ETH' : ' · output ' + eth(d.quote.ethOut) + ' ETH';
     if (d.reserveWei) detail = 'Reserved ' + eth(d.reserveWei) + ' ETH before obtaining a quote';
     if (d.valueWei) detail = 'Net position value ' + eth(d.valueWei) + ' ETH';
     content.append(el('small', detail)); row.append(content); $('events').append(row);
   }
-  $('health').textContent = 'LOCAL ENGINE CONNECTED · SYNTHETIC DATA';
+  $('health').textContent = 'LOCAL ENGINE CONNECTED · PAPER EXECUTION';
   renderMarket(data);
 }
 $('run-demo').addEventListener('click', async () => {
@@ -57,7 +70,7 @@ function renderMarket(data) {
   for (const launch of market.launches.slice(0, 15)) {
     const row = document.createElement('tr');
     const token = document.createElement('td'); const link = el('a', launch.token.slice(0, 8) + '…' + launch.token.slice(-6) + ' ↗');
-    link.href = 'https://robinhoodchain.blockscout.com/token/' + launch.token; link.target = '_blank'; link.rel = 'noreferrer'; token.append(link); const inspect = el('button', 'Inspect', 'inspect-launch'); inspect.addEventListener('click', () => { inspectionVersion++; $('inspect-token').value = launch.token; $('inspect-result').replaceChildren(); $('inspect-status').textContent = 'Set an amount, then inspect for a current quote.'; $('inspection').scrollIntoView({ behavior: 'smooth' }); }); token.append(inspect); row.append(token);
+    link.href = 'https://robinhoodchain.blockscout.com/token/' + launch.token; link.target = '_blank'; link.rel = 'noreferrer'; token.append(link); const inspect = el('button', 'Inspect', 'inspect-launch'); inspect.addEventListener('click', () => { inspectionVersion++; inspectedEntry=null; $('paper-buy').disabled=true; $('inspect-token').value = launch.token; $('inspect-result').replaceChildren(); $('inspect-status').textContent = 'Set an amount, then inspect for a current quote.'; $('inspection').scrollIntoView({ behavior: 'smooth' }); }); token.append(inspect); row.append(token);
     row.append(el('td', launch.pairToken === '0x0000000000000000000000000000000000000000' ? 'ETH' : 'Other pair'), el('td', launch.blockNumber), el('td', launch.deployer.slice(0, 8) + '…' + launch.deployer.slice(-6)));
     const tx = document.createElement('td'); const txLink = el('a', 'View transaction ↗'); txLink.href = 'https://robinhoodchain.blockscout.com/tx/' + launch.txHash; txLink.target = '_blank'; txLink.rel = 'noreferrer'; tx.append(txLink); row.append(tx); $('launch-rows').append(row);
   }
@@ -74,10 +87,10 @@ $('market-toggle').addEventListener('click', async () => {
 });
 setInterval(() => { refresh().catch(error => { $('health').textContent = error.message; }); }, 5000);
 
-let inspectionVersion = 0;
-$('inspect-form').addEventListener('input', () => { inspectionVersion++; $('inspect-result').replaceChildren(); $('inspect-status').textContent = 'Inputs changed. Inspect again for a current quote.'; });
+let inspectionVersion = 0; let inspectedEntry = null;
+$('inspect-form').addEventListener('input', () => { inspectionVersion++; inspectedEntry=null; $('paper-buy').disabled=true; $('inspect-result').replaceChildren(); $('inspect-status').textContent = 'Inputs changed. Inspect again for a current quote.'; });
 $('inspect-form').addEventListener('submit', async event => {
-  event.preventDefault(); const version = ++inspectionVersion;
+  event.preventDefault(); inspectedEntry=null; $('paper-buy').disabled=true; const version = ++inspectionVersion;
   $('inspect-submit').disabled = true; $('inspect-result').replaceChildren(); $('inspect-status').textContent = 'Reading a single chain block and checking the curve…';
   try {
     const query = new URLSearchParams({ token: $('inspect-token').value.trim(), amount: $('inspect-amount').value.trim() });
@@ -97,6 +110,18 @@ $('inspect-form').addEventListener('submit', async event => {
     ];
     for (const [label, value] of rows) { const row = document.createElement('div'); row.append(el('dt', label), el('dd', value)); $('inspect-result').append(row); }
     $('inspect-result').append(el('p', result.quoteModel, 'muted'));
+    for(const check of result.assessment.checks) $('inspect-result').append(el('p',(check.pass?'PASS · ':'BLOCK · ')+check.label,'muted'));
+    $('inspect-result').append(el('p',result.assessment.scope,'muted'));
+    inspectedEntry={token:result.token,amount:$('inspect-amount').value.trim(),orderId:crypto.randomUUID()};
+    $('paper-buy').disabled=!result.assessment.eligible;
+    $('paper-status').textContent=result.assessment.eligible?'Entry checks passed. Opening rechecks a fresh quote.':'Entry blocked by the checks above.';
   } catch (error) { if (version === inspectionVersion) $('inspect-status').textContent = error.message; }
   finally { $('inspect-submit').disabled = false; }
+});
+
+$('paper-buy').addEventListener('click',async()=>{
+ if(!inspectedEntry)return; const entry=inspectedEntry; $('paper-buy').disabled=true;
+ try{const response=await fetch('/api/paper/buy?'+new URLSearchParams(entry),{method:'POST',headers:{'x-control-token':control}});const result=await response.json();if(!response.ok)throw new Error(result.error);
+ inspectedEntry=null;await refresh();$('paper-status').textContent='Paper position opened. Use Update quote to value it and evaluate exit rules, or Close paper position for a full exit.';
+ }catch(error){$('paper-status').textContent=error.message+' Inspect again before retrying.';}
 });
