@@ -5,8 +5,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Ledger } from '../src/ledger.js';
 import { PaperEngine } from '../src/paper.js';
-import { exitReason, reserveDrop } from '../src/rules.js';
-
+import { defaultRules, exitReason, reserveDrop, validateRules } from '../src/rules.js';
+import type { Rules } from '../src/types.js';
 const now = 100000;
 const token = '0x1111111111111111111111111111111111111111';
 const input = { token, symbol: 'TEST', amountWei: 100n, score: 80, openingTaxBps: 0, source: 'synthetic' as const };
@@ -86,4 +86,73 @@ test('rules distinguish TP, SL, trailing and hold; unknown reserve is not a coll
   assert.equal(exitReason({ ...p, peakWei: '100', openedAt: 0 }, 100n, rules, now), 'max-hold');
   assert.equal(reserveDrop(100n, null), null);
   assert.equal(reserveDrop(100n, 0n), 10000);
+});
+
+
+test('default rules pass runtime validation', () => {
+  assert.deepEqual(validateRules(defaultRules), []);
+});
+
+test('constructing PaperEngine rejects malformed rules instead of trusting the type system', () => {
+  const bad: [string, Partial<Rules>][] = [
+    ['minScore out of range', { minScore: 150 }],
+    ['minScore non-integer', { minScore: 60.5 }],
+    ['maxTaxBps negative', { maxTaxBps: -1 }],
+    ['maxPositions zero', { maxPositions: 0 }],
+    ['maxPositions non-integer', { maxPositions: 1.5 }],
+    ['maxGasWei negative', { maxGasWei: -1n }],
+    ['maxGasWei wrong type', { maxGasWei: 1 as unknown as bigint }],
+    ['quoteMaxAgeMs zero', { quoteMaxAgeMs: 0 }],
+    ['takeProfitBps zero', { takeProfitBps: 0 }],
+    ['stopLossBps zero', { stopLossBps: 0 }],
+    ['stopLossBps at 10000 (total loss, not a valid stop)', { stopLossBps: 10000 }],
+    ['trailingBps negative', { trailingBps: -1 }],
+    ['maxHoldMs zero', { maxHoldMs: 0 }],
+    ['maxHoldMs NaN', { maxHoldMs: NaN }],
+  ];
+  for (const [label, patch] of bad) {
+    const ledger = new Ledger(':memory:', 1000n, 1000n);
+    assert.throws(() => new PaperEngine(ledger, { ...rules, ...patch }, () => now), /invalid rules config/, label);
+    ledger.close();
+  }
+});
+
+test('Ledger constructor rejects a negative initial balance or budget', () => {
+  assert.throws(() => new Ledger(':memory:', -1n, 100n), /negative initial balance or budget/);
+  assert.throws(() => new Ledger(':memory:', 100n, -1n), /negative initial balance or budget/);
+});
+
+test('maxPositions boundary: entries up to the limit reserve, the next one is rejected', async () => {
+  const ledger = new Ledger(':memory:', 1000n, 1000n);
+  const engine = new PaperEngine(ledger, { ...rules, maxPositions: 1 }, () => now);
+  await engine.buy(input, 'first', buyQuote);
+  await assert.rejects(
+    engine.buy({ ...input, token: '0x2222222222222222222222222222222222222222' }, 'second', async () => { throw new Error('must not quote past the position limit'); }),
+    /position limit/,
+  );
+  assert.equal(ledger.positions().length, 1); ledger.close();
+});
+
+test('budget boundary: a reservation matching the run budget exactly succeeds, one wei more fails', async () => {
+  const exact = new Ledger(':memory:', 1000n, 100n);
+  const exactEngine = new PaperEngine(exact, rules, () => now);
+  await exactEngine.buy(input, 'buy', buyQuote);
+  assert.equal(exact.account().spentWei, '100'); exact.close();
+
+  const short = new Ledger(':memory:', 1000n, 99n);
+  const shortEngine = new PaperEngine(short, rules, () => now);
+  await assert.rejects(shortEngine.buy(input, 'buy', buyQuote), /budget/i);
+  assert.equal(short.account().reservedWei, '0'); short.close();
+});
+
+test('balance boundary: a reservation matching the paper balance exactly succeeds, one wei more fails', async () => {
+  const exact = new Ledger(':memory:', 100n, 1000n);
+  const exactEngine = new PaperEngine(exact, rules, () => now);
+  await exactEngine.buy(input, 'buy', buyQuote);
+  assert.equal(exact.account().balanceWei, '0'); exact.close();
+
+  const short = new Ledger(':memory:', 99n, 1000n);
+  const shortEngine = new PaperEngine(short, rules, () => now);
+  await assert.rejects(shortEngine.buy(input, 'buy', buyQuote), /insufficient paper balance/);
+  short.close();
 });
