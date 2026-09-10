@@ -32,3 +32,29 @@ export function reserveDrop(before: bigint | null, after: bigint | null): number
   if (before === null || after === null || before <= 0n || after < 0n) return null;
   return after >= before ? 0 : Number((before - after) * 10000n / before);
 }
+
+/**
+ * Runtime validation for Rules. Types alone do not enforce that a config
+ * loaded from JSON/env/UI is actually sane, so every construction path must
+ * run this before the value is trusted anywhere else (budgeting, exits).
+ */
+export function validateRules(r: Rules): string[] {
+  const reasons: string[] = [];
+  const intInRange = (v: unknown, lo: number, hi: number): boolean => Number.isInteger(v) && (v as number) >= lo && (v as number) <= hi;
+  if (!intInRange(r.minScore, 0, 100)) reasons.push('minScore must be an integer within 0..100');
+  if (!intInRange(r.maxTaxBps, 0, 10000)) reasons.push('maxTaxBps must be an integer within 0..10000');
+  if (!Number.isInteger(r.maxPositions) || r.maxPositions < 1) reasons.push('maxPositions must be a positive integer');
+  if (typeof r.maxGasWei !== 'bigint' || r.maxGasWei < 0n) reasons.push('maxGasWei must be a non-negative bigint');
+  if (!Number.isFinite(r.quoteMaxAgeMs) || r.quoteMaxAgeMs <= 0) reasons.push('quoteMaxAgeMs must be a positive number of milliseconds');
+  if (!intInRange(r.takeProfitBps, 1, 1000000)) reasons.push('takeProfitBps must be a positive integer');
+  if (!intInRange(r.stopLossBps, 1, 9999)) reasons.push('stopLossBps must be an integer within 1..9999 (exit before total loss)');
+  if (!intInRange(r.trailingBps, 0, 9999)) reasons.push('trailingBps must be an integer within 0..9999');
+  if (!Number.isFinite(r.maxHoldMs) || r.maxHoldMs <= 0) reasons.push('maxHoldMs must be a positive number of milliseconds');
+  return reasons;
+}
+
+export function assertRules(r: Rules): Rules {
+  const reasons = validateRules(r);
+  if (reasons.length) throw new Error(`invalid rules config: ${reasons.join('; ')}`);
+  return r;
+}
