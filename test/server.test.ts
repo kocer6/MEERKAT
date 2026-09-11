@@ -21,6 +21,9 @@ test('UI boots, rejects unauthenticated/cross-origin controls and persists a dem
     const after = await (await fetch(app.url + '/api/state')).json(); assert.equal(after.account.balanceWei, '1040000000000000000');
     assert.equal(after.positions.length, 1); assert.equal(after.events.filter((x: { kind: string }) => x.kind === 'exit-filled').length, 1);
     assert.equal((await fetch(app.url + '/api/export')).status, 200);
+    const history=await (await fetch(app.url+'/api/position-history?id='+result.position.id)).json();
+    assert.equal(history.position.id,result.position.id);assert.equal(history.events[0].kind,'entry-reserved');
+    assert.equal((await fetch(app.url+'/api/position-history?id=missing')).status,404);
   } finally { await app.close(); }
 });
 

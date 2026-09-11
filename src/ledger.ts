@@ -64,6 +64,12 @@ export class Ledger {
   }
   private event(kind: string, at: number, detail: Record<string, unknown>): void { this.db.prepare('INSERT INTO events(kind,at,detail) VALUES (?,?,?)').run(kind, at, encode(detail)); }
   events(): JournalEvent[] { return (this.db.prepare('SELECT * FROM events ORDER BY id').all() as { id: number; kind: string; at: number; detail: string }[]).map(x => ({ ...x, detail: JSON.parse(x.detail) })); }
+  positionHistory(id:string):JournalEvent[]|undefined {
+    if(!this.position(id))return undefined;
+    const events=this.events();
+    const orderId=events.find(e=>e.kind==='entry-filled' && e.detail.positionId===id)?.detail.orderId;
+    return events.filter(e=>e.detail.positionId===id || (orderId!==undefined && e.detail.orderId===orderId));
+  }
 
   reserveWatches(): Record<string,ReserveWatch> {
     return Object.fromEntries((this.db.prepare('SELECT id,value FROM reserve_watch').all() as {id:string;value:string}[]).map(x=>[x.id,JSON.parse(x.value)]));

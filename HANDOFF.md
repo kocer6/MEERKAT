@@ -1,3 +1,10 @@
+## Latest checkpoint: per-position trade history (2026-09-11)
+
+Positions now have a Trade history button. A dedicated panel loads /api/position-history?id=... and shows entry assessment, requested amount, costs, valuations, warnings, exit reason and expandable raw event evidence. Refresh history reloads the panel; switching positions discards stale responses. The ledger links pre-position entry-reserved events through the filled order ID, avoiding cross-trade contamination. Unknown positions return 404.
+
+63 tests, TypeScript build and JS syntax pass. Tests verify entry evidence linkage, separation of two trades and the HTTP endpoint. Local server restarted. Browser inventory was checked, but the old page was not reloaded/interacted with: full UI QA remains pending. No new trades were created for this checkpoint.
+
+Next: verify Trade history in browser after reload; strategy settings and additional risk signals remain open. PLAN header was updated to remove obsolete synthetic-only status. Prior checkpoints below retain implementation details and limitations.
 ## Latest checkpoint: durable scanner/backfill (2026-09-11)
 
 The default server scanner saves launches and cursor together in one SQLite statement, restores them as idle on restart and resumes after Connect. Initial scan covers only the last 2,000 blocks. Subsequent cycles read at most 2,000 blocks, replacing the last 64 scanned blocks, then advance through downtime without skipping to the current head. UI displays scanned/head blocks and saved count; latest 15 rows shown, all saved launches in state/export. Failures retain the previous checkpoint. Shutdown waits for an in-flight scanner read before closing SQLite.

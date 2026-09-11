@@ -129,3 +129,15 @@ test('market order replay returns the original position without RPC or another f
   assert.deepEqual(ledger.account(),account);assert.equal(ledger.events().filter(e=>e.kind==='entry-filled').length,1);
  }finally{ledger.close();}
 });
+
+test('position history links original entry checks and isolates other trades',async()=>{
+ const ledger=new Ledger(':memory:',10n**18n,10n**18n);
+ try{
+  const service=new MarketTrading(new PaperEngine(ledger,defaultRules),reader());const first=await service.buy(token,10n**16n,'history-1');await service.close(first.id);
+  const second=await service.buy(token,10n**16n,'history-2');
+  const history=ledger.positionHistory(first.id);assert.ok(history);
+  assert.deepEqual(history.map(e=>e.kind),['entry-reserved','entry-filled','exit-filled']);
+  assert.ok(JSON.stringify(history[0]?.detail).includes('assessment'));
+  assert.ok(history.every(e=>e.detail.positionId!==second.id));assert.equal(ledger.positionHistory('missing'),undefined);
+ }finally{ledger.close();}
+});

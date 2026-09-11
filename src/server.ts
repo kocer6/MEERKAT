@@ -44,6 +44,12 @@ export async function startServer(options: { port: number; database: string; dis
         const asset = assets.get(path);
         if (asset) { res.writeHead(200, { 'content-type': asset.type }); res.end(asset.body); return; }
         if (path === '/api/state') { send(res, 200, snapshot()); return; }
+        if(path==='/api/position-history'){
+          const id=new URL(req.url!,url).searchParams.get('id')??'';
+          const events=ledger.positionHistory(id);
+          if(!events){send(res,404,{error:'unknown position'});return;}
+          send(res,200,{position:ledger.position(id),events});return;
+        }
         if (path === '/api/export') { res.setHeader('Content-Disposition', 'attachment; filename="meerkat-paper-journal.json"'); send(res, 200, snapshot()); return; }
       }
       if (req.method === 'POST') {

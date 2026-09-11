@@ -1,8 +1,8 @@
 # MEERKAT — общий план и прогресс
 
-Обновлено: 2026-09-10. Это основной трекер работ для пользователя, Codex и Claude.
+Обновлено: 2026-09-11. Это основной трекер работ для пользователя, Codex и Claude.
 
-**Текущая точка: изменения Claude сохранены; paper-ядро, локальный UI и реальная read-only лента Pons работают. Следующая задача: M3.2 — обогащение и рыночные котировки. Сделки в UI пока synthetic.**
+**Текущая точка: работают market paper-входы, мониторинг/выходы на кривой и после graduation, reserve warnings, сохранение истории сканера и отдельная история сделки. 63 теста проходят. Следующее: параметры стратегии и дополнительные risk signals; реальные транзакции не реализованы.**
 Приоритет — работающий paper MVP в двухдневном окне пользователя. Полный V1 из docs/V1-SPEC.md шире этого релиза. Не переносить отложенные функции в MVP автоматически. Время ниже — порядок этапов, а не гарантированный срок.
 
 ## Как читать и обновлять
@@ -132,3 +132,6 @@ Completed market order replay now works without RPC and across restart, using st
 
 ### Durable scanner checkpoint (2026-09-11)
 M3.4 partial: SQLite cursor/history restored on restart, 2,000-block catch-up chunks, 64-block replacement overlap, errors preserve checkpoint, shutdown awaits read. UI scanned/head progress. 62 tests/build/JS pass. Deep reorgs and scalable history storage remain open.
+
+### Position history checkpoint (2026-09-11)
+M4.3: Trade history shows linked entry checks, fills, valuations, alerts and exit evidence for one position. Read-only endpoint tested for correct linkage and 404. 63 tests/build/JS pass. Full UI interaction verification remains pending.

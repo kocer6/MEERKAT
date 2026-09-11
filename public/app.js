@@ -18,6 +18,8 @@ async function refresh() {
     const tr = document.createElement('tr'); const asset = el('td', p.symbol); asset.append(el('small', p.source.toUpperCase() + ' · PAPER')); tr.append(asset);
     for (const text of [p.status.toUpperCase(), eth(p.costWei) + ' ETH', eth(p.lastValueWei) + ' ETH', (BigInt(p.realizedPnlWei) > 0n ? '+' : '') + eth(p.realizedPnlWei) + ' ETH', p.exitReason || '—']) tr.append(el('td', text));
     const actions=el('td','');
+    const history=el('button','Trade history','inspect-launch');
+    history.addEventListener('click',()=>showHistory(p.id));actions.append(history);
     if(p.source==='chain' && p.status==='open') {
       for(const [label,action] of [['Update quote','observe'],['Close paper position','close']]) {
         const button=el('button',label,'inspect-launch'); button.addEventListener('click',async()=>{
@@ -50,6 +52,33 @@ async function refresh() {
   }
   $('health').textContent = 'LOCAL ENGINE CONNECTED · PAPER EXECUTION';
   renderMarket(data);
+}
+let historyRequest=0;
+async function showHistory(id){
+ const version=++historyRequest;
+ let panel=$('trade-history');
+ if(!panel){panel=el('section','','panel');panel.id='trade-history';$('positions').after(panel);}
+ panel.replaceChildren(el('h2','Trade history'),el('p','Loading…'));panel.scrollIntoView({behavior:'smooth'});
+ try{
+  const response=await fetch('/api/position-history?id='+encodeURIComponent(id));const data=await response.json();
+  if(version!==historyRequest)return;if(!response.ok)throw new Error(data.error);
+  const p=data.position;
+  panel.replaceChildren(el('h2',p.symbol+' · '+p.status.toUpperCase()+' · PAPER'),el('p','Position '+p.id),el('p','Entry cost '+eth(p.costWei)+' ETH · '+(p.status==='closed'?'Realized '+eth(p.realizedPnlWei):'Unrealized '+eth(BigInt(p.lastValueWei)-BigInt(p.costWei)))+' ETH'));
+  const reload=el('button','Refresh history','inspect-launch');reload.addEventListener('click',()=>showHistory(id));panel.append(reload);
+  for(const event of data.events){
+   const d=event.detail;const item=el('article','','event');const content=el('div','');
+   content.append(el('strong',event.kind.replaceAll('-',' ')),el('p',new Date(event.at).toLocaleString()));
+   if(d.entry){content.append(el('p','Requested '+eth(d.entry.amountWei)+' ETH · score '+d.entry.score+' · source '+d.entry.source));
+    for(const check of d.entry.evidence?.assessment?.checks||[])content.append(el('p',(check.pass?'PASS · ':'BLOCK · ')+check.label));
+    if(d.entry.evidence?.assessment?.scope)content.append(el('p',d.entry.evidence.assessment.scope));
+   }
+   if(d.quote)content.append(el('p',(d.quote.tokensOut?'Entry spend '+eth(d.quote.spentWei):'Exit proceeds '+eth(d.quote.ethOut))+' ETH · gas '+eth(d.quote.gasWei)+' ETH'));
+   if(d.reason||d.error)content.append(el('p',d.reason||d.error));
+   if(d.valueWei!==undefined)content.append(el('p','Net valuation '+eth(d.valueWei)+' ETH'));
+   if(d.dropBps!==undefined)content.append(el('p','Reserve drop '+(d.dropBps/100).toFixed(2)+'%'));
+   const evidence=el('details','');evidence.append(el('summary','Full event evidence'),el('pre',JSON.stringify(d,null,2)));content.append(evidence);item.append(content);panel.append(item);
+  }
+ }catch(error){if(version===historyRequest)panel.replaceChildren(el('h2','Trade history'),el('p',error.message));}
 }
 $('run-demo').addEventListener('click', async () => {
   const button = $('run-demo'); button.disabled = true; $('message').textContent = 'Running the paper scenario…';
