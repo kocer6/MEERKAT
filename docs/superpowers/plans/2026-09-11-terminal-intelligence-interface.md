@@ -35,7 +35,7 @@
 - Consumes: `TokenProfile`, `TokenEvent[]`, and `options.complete`.
 - Produces: `RelationshipNode` fields `buys`, `sells`, `boughtTokens`, `soldTokens`, `balance`, `shareBps`, `firstBlock`, and `lastBlock`; `RelationshipGraph.summary.holdersComplete`; correctly directed `curve buy`, `curve sell`, and `transfer` edges.
 
-- [ ] **Step 1: Write failing direction and holder-balance tests**
+- [x] **Step 1: Write failing direction and holder-balance tests**
 
 ```ts
 test('trade flow points token to buyer and seller to token',()=>{
@@ -57,13 +57,13 @@ test('holder balances come only from transfer evidence',()=>{
 });
 ```
 
-- [ ] **Step 2: Run the focused tests and verify they fail for the missing fields and old buy direction**
+- [x] **Step 2: Run the focused tests and verify they fail for the missing fields and old buy direction**
 
 Run: `npm test -- --test-name-pattern="trade flow|holder balances"`
 
 Expected: FAIL because the buy edge currently points from buyer to token and nodes do not contain balances.
 
-- [ ] **Step 3: Add the minimal aggregate model**
+- [x] **Step 3: Add the minimal aggregate model**
 
 Implement a per-address accumulator in `buildRelationshipGraph`. Update it from attributed curve trades and valid Transfer sender/recipient pairs. For a buy, add `token → initiator`; for a sell, add `initiator → token`. Compute `shareBps` as `balance * 10000 / totalSupply`, clamp negative reconstructed balances to zero for holder display, and preserve raw signed balance internally only while aggregating.
 
@@ -85,7 +85,7 @@ summary: {
 }
 ```
 
-- [ ] **Step 4: Pass index completeness from token history**
+- [x] **Step 4: Pass index completeness from token history**
 
 Change the graph construction in `TokenHistoryService.result` to:
 
@@ -93,13 +93,13 @@ Change the graph construction in `TokenHistoryService.result` to:
 buildRelationshipGraph(state.profile,events,{complete:state.status==='ready'})
 ```
 
-- [ ] **Step 5: Run focused and full model tests**
+- [x] **Step 5: Run focused and full model tests**
 
 Run: `npm test -- --test-name-pattern="relationship graph|token history result"`
 
 Expected: PASS.
 
-- [ ] **Step 6: Commit the independently working data contract**
+- [x] **Step 6: Commit the independently working data contract**
 
 ```powershell
 git add src/relationship-graph.ts src/token-history.ts test/relationship-graph.test.ts test/token-history.test.ts
@@ -306,3 +306,4 @@ git ls-remote origin refs/heads/main
 ```
 
 Expected: clean status and identical local/remote commit hashes.
+

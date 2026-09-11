@@ -17,12 +17,32 @@ test('relationship graph aggregates evidenced address roles and repeated interac
  assert.ok(graph.nodes.find(node=>node.address===buyer)?.roles.includes('curve participant'));
  assert.ok(graph.nodes.find(node=>node.address===recipient)?.roles.includes('transfer recipient'));
  assert.deepEqual(graph.nodes.find(node=>node.address===poolCaller)?.roles,['pool caller']);
- const buys=graph.edges.find(edge=>edge.from===buyer&&edge.to===token&&edge.kind==='curve buy');
+ const buys=graph.edges.find(edge=>edge.from===token&&edge.to===buyer&&edge.kind==='curve buy');
  assert.equal(buys?.count,2);assert.equal(buys?.firstBlock,'11');assert.equal(buys?.lastBlock,'12');
  assert.equal(graph.edges[0]?.kind,'curve buy');
  assert.equal(graph.edges.find(edge=>edge.from===poolCaller)?.attribution,'pool caller only');
  assert.deepEqual(graph.edges.find(edge=>edge.kind==='launch')?.transactions,[]);
  assert.equal(graph.summary.unattributedPoolCalls,1);
+});
+
+test('trade flow points token to buyer and seller to token',()=>{
+ const graph=buildRelationshipGraph(profile,[event('buy','11'),event('sell','20')]);
+ assert.equal(graph.edges.find(edge=>edge.kind==='curve buy')?.from,token);
+ assert.equal(graph.edges.find(edge=>edge.kind==='curve buy')?.to,buyer);
+ assert.equal(graph.edges.find(edge=>edge.kind==='curve sell')?.from,buyer);
+ assert.equal(graph.edges.find(edge=>edge.kind==='curve sell')?.to,token);
+});
+
+test('holder balances come only from transfer evidence',()=>{
+ const zero='0x0000000000000000000000000000000000000000';
+ const graph=buildRelationshipGraph(profile,[
+  event('Transfer','11',{venue:'token',initiator:null,actor:zero,recipient:buyer,tokens:'100'}),
+  event('Transfer','12',{venue:'token',initiator:null,actor:buyer,recipient,tokens:'40'}),
+ ],{complete:false});
+ assert.equal(graph.nodes.find(node=>node.address===buyer)?.balance,'60');
+ assert.equal(graph.nodes.find(node=>node.address===recipient)?.balance,'40');
+ assert.equal(graph.nodes.find(node=>node.address===buyer)?.shareBps,600);
+ assert.equal(graph.summary.holdersComplete,false);
 });
 
 test('relationship graph keeps transfer direction and does not invent an actor',()=>{

@@ -53,6 +53,8 @@ test('token history result includes a bounded relationship graph from persisted 
  const state:HistoryState={profile,cursor:'20',status:'ready',error:null,updatedAt:1};
  store.chunk(state,10n,20n,[{...trade('buy',0),id:'buy',blockNumber:'11',initiator:buyer,actor:buyer,recipient:buyer}]);
  const history=new TokenHistory(store),result=history.result(token);
- assert.equal(result.relationships?.edges.find(edge=>edge.kind==='curve buy')?.from,buyer);
+ assert.equal(result.relationships?.edges.find(edge=>edge.kind==='curve buy')?.from,token);
+ assert.equal(result.relationships?.edges.find(edge=>edge.kind==='curve buy')?.to,buyer);
+ assert.equal(result.relationships?.summary.holdersComplete,true);
  await history.close();
 });
