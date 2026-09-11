@@ -119,7 +119,7 @@ git commit -m "feat: add evidence-backed graph aggregates"
 - Consumes: existing token history response plus the graph aggregates from Task 1.
 - Produces: `.summary-grid`, `.zone-score`, `.zone-overview`, `.zone-market`, `.tx-buy`, `.tx-sell`, `.tx-transfer`, and `.tx-unattributed` UI semantics.
 
-- [ ] **Step 1: Write a failing terminal contract test**
+- [x] **Step 1: Write a failing terminal contract test**
 
 Add assertions that terminal assets contain the stable zone and transaction hooks:
 
@@ -131,13 +131,13 @@ assert.match(js,/marketSummary/);
 assert.match(js,/transactionClass/);
 ```
 
-- [ ] **Step 2: Run the terminal contract test and verify it fails**
+- [x] **Step 2: Run the terminal contract test and verify it fails**
 
 Run: `npm test -- --test-name-pattern="terminal connects"`
 
 Expected: FAIL because the new hooks and helpers do not exist.
 
-- [ ] **Step 3: Build the summary grid**
+- [x] **Step 3: Build the summary grid**
 
 In `renderToken`, group the score card, token overview, and market activity into one `.summary-grid`. Keep existing score values. Token Overview contains phase, event count, index coverage, creator tax, deployer exposure, and evidence links. Market Activity aggregates only attributed curve trades and shows buy count, sell count, unique participants, observed spent, observed received, and net quote flow.
 
@@ -155,15 +155,15 @@ const marketSummary=(wallets,pairToken)=>({
 });
 ```
 
-- [ ] **Step 4: Apply stable colors to tables and lifecycle evidence**
+- [x] **Step 4: Apply stable colors to tables and lifecycle evidence**
 
 Split `BUYS / SELLS` and `SPENT / RECEIVED` into separate readable cells. Render buy values and badges with `.tx-buy`, sell values with `.tx-sell`, transfers with `.tx-transfer`, and protocol/unattributed events with `.tx-unattributed`.
 
-- [ ] **Step 5: Add the visual zone system and readable typography**
+- [x] **Step 5: Add the visual zone system and readable typography**
 
 Add the palette variables `--buy:#55d889`, `--sell:#ff6b64`, `--transfer:#e7ad50`, `--graph:#8d7aff`, and `--overview:#7395b4`. Use subtle tinted backgrounds, a colored top or left border, larger body text, and responsive stacking. Preserve the existing MEERKAT amber palette and avoid neon glow effects outside small state indicators.
 
-- [ ] **Step 6: Run the terminal contract test and commit**
+- [x] **Step 6: Run the terminal contract test and commit**
 
 Run: `npm test -- --test-name-pattern="terminal connects"`
 
@@ -306,4 +306,3 @@ git ls-remote origin refs/heads/main
 ```
 
 Expected: clean status and identical local/remote commit hashes.
-

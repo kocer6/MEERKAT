@@ -83,6 +83,11 @@ test('terminal connects token and wallet modes to read-only evidence APIs',async
   assert.match(js,/ponsfamily\.com\/launchpad\//);
   assert.match(js,/ponsfamily\.com\/profile\//);
   assert.match(js,/blockscout\.com\/address\//);
+  for(const hook of ['summary-grid','zone-score','zone-overview','zone-market','tx-buy','tx-sell','tx-transfer','tx-unattributed']){
+   assert.match(css,new RegExp(`\\.${hook}`));
+  }
+  assert.match(js,/marketSummary/);
+  assert.match(js,/transactionClass/);
   assert.doesNotMatch(js,/privateKey|sendTransaction|eth_sendTransaction/);
   const invalid=await fetch(app.url+'/api/wallet/dossier?address=bad');
   assert.equal(invalid.status,400);
