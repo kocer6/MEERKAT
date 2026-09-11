@@ -23,6 +23,14 @@ export async function rpcReadWithRetry<T>(read:()=>Promise<T>,pause:(ms:number)=
  for(let attempt=0;attempt<=waits.length;attempt++)try{return await read();}catch(error){const code=(error as {code?:number}).code,message=error instanceof Error?error.message:'';if(attempt===waits.length||(code!==429&&!/Too Many Requests/i.test(message)))throw error;await pause(waits[attempt]!);}
  throw new Error('RPC retry exhausted');
 }
+export async function readLogsAdaptive<T>(from:bigint,to:bigint,read:(from:bigint,to:bigint)=>Promise<T[]>):Promise<T[]>{
+ try{return await read(from,to);}catch(error){
+  const details=String((error as {details?:unknown}).details??''),message=error instanceof Error?error.message:'';
+  if(from===to||!/logs matched by query exceeds limit|more than \d+ results|response size exceeded|log query timed out/i.test(`${details} ${message}`))throw error;
+  const middle=(from+to)/2n;
+  return [...await readLogsAdaptive(from,middle,read),...await readLogsAdaptive(middle+1n,to,read)];
+ }
+}
 export function summarizeWallets(events:TokenEvent[],birthAt:number,birthBlock?:string){
  const wallets=new Map<string,{address:string;buys:number;sells:number;spent:string;received:string;earlyBuyer:boolean;fastExit:boolean;firstBuy:number|null;firstBuyBlock:string|null;lastTrade:number;smartStatus:string;realizedPnl:null}>();
  for(const e of [...events].sort((a,b)=>(a.at??0)-(b.at??0)||Number(BigInt(a.blockNumber)-BigInt(b.blockNumber))||a.logIndex-b.logIndex)){
@@ -59,10 +67,10 @@ export function historyReader(){
  },
  async chunk(p:TokenProfile,from:bigint,to:bigint):Promise<TokenEvent[]>{
   const read=async<T>(fn:()=>Promise<T>)=>{await new Promise(resolve=>setTimeout(resolve,100));return rpcReadWithRetry(fn);};
-  const curve=await read(()=>client.getLogs({address:p.curve as Address,events:curveEvents,fromBlock:from,toBlock:to,strict:true}));
-  const phases=await read(()=>client.getLogs({address:factory,events:phaseEvents,fromBlock:from,toBlock:to,strict:true}));
-  const transfers=await read(()=>client.getLogs({address:p.token as Address,event:transferEvent,fromBlock:from,toBlock:to,strict:true}));
-  const pool=p.poolId?await read(()=>client.getLogs({address:p.poolManager as Address,event:poolEvent,args:{id:p.poolId as Hex},fromBlock:from,toBlock:to,strict:true})):[];
+  const curve=await readLogsAdaptive(from,to,(fromBlock,toBlock)=>read(()=>client.getLogs({address:p.curve as Address,events:curveEvents,fromBlock,toBlock,strict:true})));
+  const phases=await readLogsAdaptive(from,to,(fromBlock,toBlock)=>read(()=>client.getLogs({address:factory,events:phaseEvents,fromBlock,toBlock,strict:true})));
+  const transfers=await readLogsAdaptive(from,to,(fromBlock,toBlock)=>read(()=>client.getLogs({address:p.token as Address,event:transferEvent,fromBlock,toBlock,strict:true})));
+  const pool=p.poolId?await readLogsAdaptive(from,to,(fromBlock,toBlock)=>read(()=>client.getLogs({address:p.poolManager as Address,event:poolEvent,args:{id:p.poolId as Hex},fromBlock,toBlock,strict:true}))):[];
   const logs=[...curve,...phases.filter(l=>l.args.token?.toLowerCase()===p.token),...transfers,...pool].filter(l=>!l.removed);
   const output:TokenEvent[]=[];
   for(const l of logs){if(l.blockNumber===null||!l.blockHash||!l.transactionHash||l.logIndex===null)continue;

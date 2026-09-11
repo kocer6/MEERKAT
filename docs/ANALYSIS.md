@@ -55,8 +55,8 @@ Raw integer quantities are stored as decimal strings to avoid floating-point los
 
 Scores summarize the evidence MEERKAT can show; they are not safety ratings, price predictions, or profitability claims. Every API score contains the 0–100 value, confidence (`low`, `medium`, or `high`), component points, supporting observation, and a caveat.
 
-The **token evidence score** allocates 35 points to launch-to-head index coverage, 25 to attributed curve-participant breadth, 20 to observed event depth, and 20 to current deployer exposure. Lower deployer exposure receives more points, but the UI states that transfers can change this reading and that the score is not an audit.
+The **token signal score** is withheld until launch-to-head indexing reaches `ready`. Index coverage controls readiness and confidence; it never adds points to token quality. Once ready, the score allocates 25 points to current deployer exposure, 20 to creator tax, 25 to attributed curve-participant breadth, 15 to participants with both attributed buys and sells, and 15 to non-protocol transfer-recipient breadth. This prevents a newly launched token from receiving 100 merely because its short history indexed quickly.
 
 The **wallet behavior score** allocates 25 points each to locally matched token scope, early-entry frequency, tokens with both attributed buys and sells, and matched event depth. Confidence remains low below three matched tokens and becomes high only with at least seven matched tokens whose histories are all ready.
 
-Global wallet discovery, normalized opportunity sets, trace-aware attribution, realized outcome methodology, and resistance to address splitting remain future work. Realized PnL therefore stays `null`, and smart status stays `not assessed` even when a numeric behavior score is present.
+Global wallet discovery, normalized opportunity sets, trace-aware attribution, realized outcome methodology, market-cap context and resistance to address splitting remain future work. Market cap is not currently a scoring input. Realized PnL therefore stays `null`, and smart status stays `not assessed` even when a numeric behavior score is present.

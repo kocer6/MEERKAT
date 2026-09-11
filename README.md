@@ -88,11 +88,12 @@ Every label is derived from an explicit rule. For example, an **early entry** is
 
 | Stage | Status | Acceptance gate |
 | --- | --- | --- |
-| Token evidence score | **Live locally** | Deterministic components, confidence and visible caveat |
+| Token signal score | **Live locally** | Withheld until ready; deterministic components and confidence |
 | Local wallet score | **Live locally** | Cross-token local evidence with explicit coverage |
 | Token lifecycle | **Live locally** | Verified launch and resumable event history |
 | Global wallet discovery | **Building** | Bounded discovery with saved cursor |
 | Relationship map | **Live locally** | Bounded actor routes with explicit pool-caller attribution |
+| Holder intelligence / Pons market context | **Next** | Balance conservation and official-source freshness gates |
 | Cases and alerts | **Next** | Saved investigations and local rule notifications |
 | Read-only API and exports | **Planned** | Versioned schema and portable evidence bundle |
 | Hosted terminal / more chains | **Later** | Operational and adapter validation before public claims |
@@ -115,6 +116,7 @@ The detailed [public roadmap](ROADMAP.md) separates shipped behavior from future
 | [Third-party notices](THIRD_PARTY_NOTICES.md) | Imported code and asset provenance |
 
 The full COPY backfill and restart evidence is recorded in the [lifecycle checkpoint](docs/evidence/copy-backfill-relationship-2026-09-11.md).
+Dense-token recovery above the RPC's 10,000-log limit is recorded in the [ZZZ checkpoint](docs/evidence/zzz-dense-index-2026-09-11.md).
 
 ## Development checks
 

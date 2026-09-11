@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {findLaunchBlock,HistoryStore,rpcReadWithRetry,summarizeWallets,TokenHistory,type HistoryState,type TokenEvent} from '../src/token-history.js';
+import {findLaunchBlock,HistoryStore,readLogsAdaptive,rpcReadWithRetry,summarizeWallets,TokenHistory,type HistoryState,type TokenEvent} from '../src/token-history.js';
 const trade=(side:'buy'|'sell',at:number):TokenEvent=>({id:String(at),kind:side,venue:'curve',blockNumber:'1',blockHash:'0xabc',txHash:'0xabc',logIndex:0,at,initiator:'0xalice',actor:'0xrouter',recipient:'0xalice',tokens:'100',quote:'10'});
 test('wallet behavior uses evidenced timing, does not claim smart money or realized PnL',()=>{
  const wallets=summarizeWallets([trade('buy',101000),trade('sell',150000)],100000);
@@ -24,6 +24,12 @@ test('RPC enrichment survives a sustained rate-limit window with bounded backoff
  const value=await rpcReadWithRetry(async()=>{attempts++;if(attempts<6)throw Object.assign(new Error('Too Many Requests'),{code:429});return 'ok';},async ms=>{waits.push(ms);});
  assert.equal(value,'ok');assert.equal(attempts,6);assert.deepEqual(waits,[2000,4000,8000,16000,30000]);
  await assert.rejects(()=>rpcReadWithRetry(async()=>{throw Object.assign(new Error('bad request'),{code:-32602});},async()=>{}),/bad request/);
+});
+test('dense log ranges split recursively instead of failing the entire token index',async()=>{
+ const calls:Array<[bigint,bigint]>=[];
+ const logs=await readLogsAdaptive(0n,7n,async(from,to)=>{calls.push([from,to]);if(to-from>3n)throw Object.assign(new Error('Missing or invalid parameters'),{details:'logs matched by query exceeds limit of 10000'});if(to-from>1n)throw Object.assign(new Error('Missing or invalid parameters'),{details:'log query timed out'});return Array.from({length:Number(to-from+1n)},(_,offset)=>Number(from)+offset);});
+ assert.deepEqual(logs,[0,1,2,3,4,5,6,7]);
+ assert.ok(calls.some(([from,to])=>from===0n&&to===3n));
 });
 test('wallet behavior falls back to exact block distance when event timestamps are unavailable',()=>{
  const buy={...trade('buy',101000),at:null,blockNumber:'11'},sell={...trade('sell',150000),at:null,blockNumber:'20'};

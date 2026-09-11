@@ -23,12 +23,16 @@ MEERKAT scores Pons V2 tokens and locally evidenced wallet behavior, then expose
 - [x] Automated README contract checking required documents and every local Markdown link.
 - [x] Score-first token and wallet API/UI with visible components, confidence and caveats.
 - [x] Wide informative 3:1 repository banner and original landing-page structure with readable type.
+- [x] Withhold unfinished token scores and split dense RPC log ranges above provider limits.
+- [x] Contextual Token ↔ Wallet back navigation plus Pons and Blockscout profile links.
 
 ## Next acceptance gates
 
 - [x] Complete a launch-to-head backfill through the packaged server and record duration, cursor, event count, and restart/resume evidence.
 - [x] Add a relationship graph for deployer, curve buyers/sellers, transfer recipients, and explicitly marked pool callers.
 - [ ] Build global wallet discovery beyond histories already indexed locally, with bounded RPC workload and saved cursor.
+- [ ] Reconstruct token holders and concentration from the transfer ledger with known-contract exclusions.
+- [ ] Add separately timestamped Pons price, market-cap and phase context from an official source.
 - [ ] Add saved cases and configurable local alert rules to Live Scout.
 - [ ] Add lazy per-event block timestamps without blocking the base dossier.
 - [ ] Document the read-only API and export token/wallet evidence bundles.

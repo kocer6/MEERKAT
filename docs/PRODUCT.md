@@ -23,7 +23,7 @@ Token mode first proves that the address belongs to a Pons V2 launch. It reads t
 | Token contract | ERC-20 transfers |
 | Native ETH pool | Pool swaps when the pool identifier can be derived |
 
-The result begins with a token evidence score, confidence and four visible components. It then includes the token profile, indexing cursor, total event count, latest lifecycle events, and attributed curve participants. Exact event fields remain in the local SQLite database even though the browser receives only the latest 500 lifecycle events.
+While indexing runs, the result shows `CALIBRATING`, exact block coverage and any RPC error instead of a partial numeric score. Once the captured launch-to-head range is ready, the result begins with a token signal score, confidence and five visible components. It then includes direct Pons and explorer links, the token profile, indexing cursor, total event count, latest lifecycle events, and attributed curve participants. Exact event fields remain in the local SQLite database even though the browser receives only the latest 500 lifecycle events.
 
 ### Relationship map
 
@@ -31,7 +31,9 @@ Token mode also builds a bounded visual map from the complete persisted history.
 
 ## Wallet mode
 
-Wallet mode compares the address with every Pons token history already stored by the same installation. It begins with a wallet behavior score and confidence, then reports initiated curve buys and sells, incoming and outgoing transfers, first/last indexed activity when timestamps exist, and rule-based early-entry or fast-exit observations.
+Wallet mode compares the address with every Pons token history already stored by the same installation. It begins with a wallet behavior score and confidence, then reports initiated curve buys and sells, incoming and outgoing transfers, first/last indexed activity when timestamps exist, and rule-based early-entry or fast-exit observations. Direct links open the public Blockscout address page and the Pons public profile route.
+
+Internal address links keep a navigation stack. Opening a wallet from a token and then a token from that wallet exposes a contextual back button, so the investigation path can be retraced without retyping an address.
 
 Coverage is explicit. If 12 token histories are indexed, the dossier searches those 12 histories. A zero result means no matching evidence was found in that local set; it does not mean the wallet was inactive across the chain.
 

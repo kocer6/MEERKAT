@@ -18,6 +18,8 @@ Interrupted jobs now reuse the saved verified profile and cursor instead of repe
 
 `src/scoring.ts`: deterministic token evidence and wallet behavior scores. Scores expose their components and confidence and never replace the underlying coverage or caveat.
 
+Token index coverage is now a readiness gate rather than a source of score points. Non-ready token histories return `CALIBRATING` or `INDEXING ERROR` with a withheld value. Ready token scores use deployer exposure, creator tax, participant breadth, two-sided market activity and holder breadth. Dense `eth_getLogs` responses recursively split when the provider reports more than 10,000 matches.
+
 `README.md`: public project homepage using the approved MEERKAT hero, direct product promise, local quickstart, current evidence, architecture flow, roadmap summary, token status and a complete documentation index.
 
 `docs/PRODUCT.md`, `docs/ANALYSIS.md`, `docs/ARCHITECTURE.md`, `docs/LOCAL-SETUP.md`, `ROADMAP.md`, `SECURITY.md`, `docs/TOKEN.md`, and `CONTRIBUTING.md`: public documentation created for users and contributors. `test/docs.test.ts` prevents missing required sections and broken local README links.
@@ -25,13 +27,14 @@ Interrupted jobs now reuse the saved verified profile and cursor instead of repe
 ## Verification
 
 - `npm run typecheck`: pass.
-- `npm test`: 95 tests passed, 0 failed, including scoring, relationship, resume and public documentation contracts.
+- `npm test`: 97 tests passed, 0 failed, including scoring, dense-range splitting, relationship, resume and public documentation contracts.
 - `npm run build`: pass.
 - Browser: the rebuilt `/` and `/terminal` were inspected at desktop and 390x844. The landing has no page-level mobile overflow; the wide hero, embedded actions and score-first sections remain readable. The real COPY dossier rendered a 100/100 token evidence score with high confidence and all four components before the relationship/lifecycle evidence.
 - Real RPC: COPY `0xac79255f6f404eba14f316e8669d76573a2d7b1e` resolved to symbol COPY, launch block `59283454`; chunk `59283454..59288453` returned 3,170 events and 25 attributed curve participants in 5.3 seconds after RPC pacing fixes.
 - Public documentation: required sections exist, every local Markdown link from the README resolves, and the MEERKAT hero reference is present.
 - Full COPY backfill: interrupted at cursor `59293453` with `12,861` events; resumed from the expected 64-block overlap at `59293390`; completed captured head `60319607` with `41,302` events. The 596.249-second wall clock includes the deliberate stop, old-worker failure reproduction, debugging waits and rebuilds, so it is not a throughput benchmark.
 - Relationship API on that database: 48 nodes, 96 routes, 41,299 observed interactions and 11,750 pool-caller-only interactions; large-history truncation was reported. Desktop and 390x844 browser checks passed, including click-through to Wallet mode and no page-level mobile overflow.
+- Dense ZZZ recovery: the original 5,000-block transfer query exceeded the RPC's 10,000-log limit and the next range timed out. Adaptive splitting persisted 36,940 events in the first recovered checkpoint; a later live snapshot reached cursor 54,687,389 with 65,082 events, 29 attributed wallets and 48 bounded graph nodes while the score correctly remained withheld.
 
 ## Immediate next task
 

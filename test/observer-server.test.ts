@@ -47,6 +47,9 @@ test('landing carries the approved brand, roadmap truth and accessible motion co
   assert.match(css,/font-size:\s*18px/);
   assert.doesNotMatch(html,/scan-line|marquee/);
   assert.match(html,/hero-board[\s\S]*OPEN TERMINAL[\s\S]*VIEW SOURCE/);
+  assert.match(html,/class="pons-link"[^>]+https:\/\/www\.ponsfamily\.com\//);
+  assert.match(html,/TOKEN HOLDER INTELLIGENCE/);
+  assert.match(html,/EVIDENCE EXPORT/);
   const banner=await fetch(app.url+'/assets/meerkat-banner-v2.png');
   assert.equal(banner.status,200);
   assert.equal(banner.headers.get('content-type'),'image/png');
@@ -75,6 +78,11 @@ test('terminal connects token and wallet modes to read-only evidence APIs',async
   assert.match(css,/\.relationship-section \.section-heading/);
   assert.match(js,/data\.relationships/);
   assert.match(js,/renderScore/);
+  assert.match(html,/id="history-back"/);
+  assert.match(js,/navigationHistory/);
+  assert.match(js,/ponsfamily\.com\/launchpad\//);
+  assert.match(js,/ponsfamily\.com\/profile\//);
+  assert.match(js,/blockscout\.com\/address\//);
   assert.doesNotMatch(js,/privateKey|sendTransaction|eth_sendTransaction/);
   const invalid=await fetch(app.url+'/api/wallet/dossier?address=bad');
   assert.equal(invalid.status,400);

@@ -6,7 +6,7 @@ This roadmap records product capability, not marketing dates. A feature moves to
 
 ### Transparent scores
 
-- returns a token evidence score from coverage, participant breadth, activity depth and deployer exposure;
+- withholds the token score until indexing completes, then scores deployer exposure, creator tax, participant breadth, two-sided activity and holder breadth;
 - returns a wallet behavior score from local scope, early discovery, two-sided activity and evidence depth;
 - shows every component, observation, caveat and confidence level before the detailed dossier;
 - keeps realized PnL null and smart status unassessed.
@@ -52,6 +52,18 @@ Acceptance gate: clean-install test showing a previously unseen wallet can be in
 
 ## Next
 
+### Token holder intelligence
+
+Reconstruct current balances from the complete transfer ledger, separate known protocol contracts, and show top-holder concentration with exact last-changing transactions. Unknown contract roles must remain marked rather than treated as people.
+
+Acceptance gate: balance conservation fixtures, known-protocol exclusions, a real-token comparison against the Pons holder view, and explicit coverage at the captured head.
+
+### Pons market context
+
+Show current Pons price, market cap, quote asset and market phase beside the on-chain score. Market data remains a separate timestamped input and cannot silently change the deterministic evidence score.
+
+Acceptance gate: documented official source, cache/timeout behavior, stale label, and a real-token comparison against `ponsfamily.com`.
+
 ### Saved cases and alerts
 
 Let users save a token or wallet investigation, attach local notes, and define local rules for new evidence. Alert delivery must preserve the triggering block/transaction and survive restart.
@@ -59,6 +71,12 @@ Let users save a token or wallet investigation, attach local notes, and define l
 ### Evidence export
 
 Export a portable JSON bundle containing the input, chain/deployment identity, coverage, profiles, events, labels, rule versions, and generation time. Add a human-readable report after the schema is stable.
+
+### Index operations
+
+Expose estimated remaining blocks, captured-head age, manual refresh and per-source RPC failures. Dense log ranges must split automatically and interrupted work must resume from the last durable checkpoint.
+
+Acceptance gate: dense-token fixture above the provider log limit, restart proof, and browser status that never presents an incomplete score as final.
 
 ## Planned
 
@@ -69,6 +87,12 @@ Publish schemas for token history, wallet dossier, case and evidence export endp
 ### Hosted public terminal
 
 Package a public read-only deployment with RPC quotas, abuse controls, observability, cache policy, and a clear service status. The local install remains supported.
+
+### Comparative wallet cohorts
+
+After global wallet discovery exists, compare a wallet only with wallets that had similar token opportunity sets and observation windows. Publish cohort size and methodology with every percentile.
+
+Acceptance gate: reproducible cohort fixtures, minimum sample thresholds, address-splitting limitations, and no profitability label without outcome accounting.
 
 ## Later
 
