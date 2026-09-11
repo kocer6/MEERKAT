@@ -2,7 +2,7 @@
 
 Read AGENTS.md, PLAN.md, then HANDOFF.md before doing work. These files are the shared continuation contract for Claude and Codex. PLAN.md is the checklist; HANDOFF.md records the exact stopping point and verification evidence.
 
-Implement the next incomplete task identified in HANDOFF.md. Inspect the actual checkout first: do not restart completed work, repeat the audit unnecessarily, or mistake upstream tests for MEERKAT tests. The two-day paper MVP takes priority over the broader V1 specification.
+Implement the next incomplete task identified in HANDOFF.md. Inspect the actual checkout first: do not restart completed work, repeat the audit unnecessarily, or mistake upstream tests for MEERKAT tests. The current read-only observer contract in PLAN.md supersedes the old paper MVP and V1 specification. Do not restore paper-first product behavior.
 
 Update PLAN.md and HANDOFF.md after each coherent implementation checkpoint, commit them with the code, push to the selected repository and verify the remote revision when credentials allow. The user has authorized incremental updates. If push is unavailable, report it clearly and keep a local checkpoint; do not claim GitHub is current.
 

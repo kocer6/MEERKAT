@@ -1,0 +1,42 @@
+{
+  "checkedAt": "2026-09-11T08:44:13.982Z",
+  "mode": "observe",
+  "watch": {
+    "token": "0x074ee0b9c9c5d15a8e924c770907d066cf921745",
+    "quantity": null,
+    "costWei": null,
+    "active": true,
+    "status": "ok",
+    "error": null,
+    "checkedAt": 1789116253979,
+    "snapshot": {
+      "source": "chain",
+      "chainId": 4663,
+      "token": "0x074ee0b9c9c5d15a8e924c770907d066cf921745",
+      "symbol": "Devin",
+      "decimals": 18,
+      "curve": "0xAfE6151D8eb02775550E91bd6701c6B6217ea25c",
+      "phase": 0,
+      "pairToken": "0x0000000000000000000000000000000000000000",
+      "blockNumber": "60124859",
+      "blockTimestamp": 1789116252000,
+      "observedAt": 1789116253979,
+      "amountWei": "1000000000000000",
+      "openingTaxBps": 0,
+      "feeBps": 100,
+      "creatorTaxBps": 0,
+      "realQuoteReserveWei": "17699309007327157",
+      "buy": {
+        "tokensOut": "576726292417897525554035",
+        "spentWei": "1000000000000000",
+        "refundWei": "0"
+      },
+      "sellBackWei": "978958256384181",
+      "reasons": [],
+      "quoteModel": "Read-only curve estimate; fees included, gas excluded. Independent buy/sell estimates at one block; paper trades do not change chain reserves. Opening tax uses the non-wallet 0xdead recipient. Not a score or an execution guarantee."
+    }
+  },
+  "eventKinds": [
+    "watch-added"
+  ]
+}
