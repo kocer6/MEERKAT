@@ -13,6 +13,7 @@ const phaseEvents=parseAbi(['event LaunchSwept(address indexed token,uint256 quo
 const poolEvent=parseAbi(['event Swap(bytes32 indexed id,address indexed sender,int128 amount0,int128 amount1,uint160 sqrtPriceX96,uint128 liquidity,int24 tick,uint24 fee)'])[0]!;
 const transferEvent=parseAbi(['event Transfer(address indexed from,address indexed to,uint256 value)'])[0]!;
 export interface TokenEvent {id:string;kind:string;venue:string;blockNumber:string;blockHash:string;txHash:string;logIndex:number;at:number|null;initiator:string|null;actor:string|null;recipient:string|null;tokens:string|null;quote:string|null;details?:Record<string,string>}
+export interface DecodedEventLog {blockNumber:bigint|null;blockHash:string|null;transactionHash:string|null;logIndex:number|null;eventName?:string;args?:Record<string,unknown>}
 export interface TokenProfile {token:string;name:string;symbol:string;decimals:number;curve:string;deployer:string;pairToken:string;phase:number;birthBlock:string;birthAt:number;head:string;poolId:string|null;poolManager:string;totalSupply:string;deployerBalance:string;creatorTaxBps:number;metadata:unknown;metadataError:string|null}
 export interface HistoryState {profile:TokenProfile;cursor:string|null;status:'indexing'|'ready'|'error'|'paused';error:string|null;updatedAt:number}
 export async function findLaunchBlock(head:bigint,read:(from:bigint,to:bigint)=>Promise<Array<{blockNumber:bigint|null}>>){
@@ -28,8 +29,19 @@ export async function readLogsAdaptive<T>(from:bigint,to:bigint,read:(from:bigin
   const details=String((error as {details?:unknown}).details??''),message=error instanceof Error?error.message:'';
   if(from===to||!/logs matched by query exceeds limit|more than \d+ results|response size exceeded|log query timed out/i.test(`${details} ${message}`))throw error;
   const middle=(from+to)/2n;
-  return [...await readLogsAdaptive(from,middle,read),...await readLogsAdaptive(middle+1n,to,read)];
+ return [...await readLogsAdaptive(from,middle,read),...await readLogsAdaptive(middle+1n,to,read)];
  }
+}
+export function decodedLogToTokenEvent(l:DecodedEventLog):TokenEvent|null{
+ if(l.blockNumber===null||!l.blockHash||!l.transactionHash||l.logIndex===null||!l.eventName)return null;
+ const block=l.blockNumber.toString(),args=l.args??{},name=l.eventName,trade=name==='CurveBuy'||name==='CurveSell'||name==='Swap';
+ let kind=name,tokens:string|null=null,quote:string|null=null;
+ if(name==='CurveBuy'){kind='buy';tokens=String(args.tokensOut);quote=String(args.quoteIn);}
+ if(name==='CurveSell'){kind='sell';tokens=String(args.tokensIn);quote=String(args.quoteOut);}
+ if(name==='Transfer')tokens=String(args.value);
+ if(name==='Swap'){const a=BigInt(String(args.amount0)),b=BigInt(String(args.amount1));kind=a<0n&&b>0n?'buy':a>0n&&b<0n?'sell':'swap';tokens=(b<0n?-b:b).toString();quote=(a<0n?-a:a).toString();}
+ const actor=String(args.buyer??args.seller??args.sender??args.from??'')||null;
+ return {id:`${l.blockHash}:${l.transactionHash}:${l.logIndex}`,kind,venue:name==='Swap'?'pool':name==='Transfer'?'token':name.startsWith('Curve')?'curve':'factory',blockNumber:block,blockHash:l.blockHash,txHash:l.transactionHash,logIndex:l.logIndex,at:null,initiator:trade&&name!=='Swap'?actor:null,actor,recipient:String(args.recipient??args.to??'')||null,tokens,quote,details:Object.fromEntries(Object.entries(args).map(([key,value])=>[key,String(value)]))};
 }
 export function summarizeWallets(events:TokenEvent[],birthAt:number,birthBlock?:string){
  const wallets=new Map<string,{address:string;buys:number;sells:number;spent:string;received:string;earlyBuyer:boolean;fastExit:boolean;firstBuy:number|null;firstBuyBlock:string|null;lastTrade:number;smartStatus:string;realizedPnl:null}>();
@@ -72,17 +84,7 @@ export function historyReader(){
   const transfers=await readLogsAdaptive(from,to,(fromBlock,toBlock)=>read(()=>client.getLogs({address:p.token as Address,event:transferEvent,fromBlock,toBlock,strict:true})));
   const pool=p.poolId?await readLogsAdaptive(from,to,(fromBlock,toBlock)=>read(()=>client.getLogs({address:p.poolManager as Address,event:poolEvent,args:{id:p.poolId as Hex},fromBlock,toBlock,strict:true}))):[];
   const logs=[...curve,...phases.filter(l=>l.args.token?.toLowerCase()===p.token),...transfers,...pool].filter(l=>!l.removed);
-  const output:TokenEvent[]=[];
-  for(const l of logs){if(l.blockNumber===null||!l.blockHash||!l.transactionHash||l.logIndex===null)continue;
-   const block=l.blockNumber.toString(),args=l.args as Record<string,unknown>,name=l.eventName;const trade=name==='CurveBuy'||name==='CurveSell'||name==='Swap';
-   let kind=name as string,tokens:string|null=null,quote:string|null=null;
-   if(name==='CurveBuy'){kind='buy';tokens=String(args.tokensOut);quote=String(args.quoteIn);}
-   if(name==='CurveSell'){kind='sell';tokens=String(args.tokensIn);quote=String(args.quoteOut);}
-   if(name==='Swap'){const a=BigInt(String(args.amount0)),b=BigInt(String(args.amount1));kind=a<0n&&b>0n?'buy':a>0n&&b<0n?'sell':'swap';tokens=(b<0n?-b:b).toString();quote=(a<0n?-a:a).toString();}
-   const actor=String(args.buyer??args.seller??args.sender??args.from??'')||null;
-   output.push({id:`${l.blockHash}:${l.transactionHash}:${l.logIndex}`,kind,venue:name==='Swap'?'pool':name==='Transfer'?'token':name.startsWith('Curve')?'curve':'factory',blockNumber:block,blockHash:l.blockHash,txHash:l.transactionHash,logIndex:l.logIndex,at:null,initiator:trade&&name!=='Swap'?actor:null,actor,recipient:String(args.recipient??args.to??'')||null,tokens,quote,details:Object.fromEntries(Object.entries(args).map(([k,v])=>[k,String(v)]))});
-  }
-  return output;
+  return logs.map(log=>decodedLogToTokenEvent(log as DecodedEventLog)).filter((event):event is TokenEvent=>event!==null);
  }
  };
 }

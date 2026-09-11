@@ -45,6 +45,14 @@ test('holder balances come only from transfer evidence',()=>{
  assert.equal(graph.summary.holdersComplete,false);
 });
 
+test('holder reconstruction accepts transfer values from existing persisted histories',()=>{
+ const zero='0x0000000000000000000000000000000000000000';
+ const graph=buildRelationshipGraph(profile,[
+  event('Transfer','11',{venue:'token',initiator:null,actor:zero,recipient:buyer,tokens:null,details:{value:'75'}}),
+ ]);
+ assert.equal(graph.nodes.find(node=>node.address===buyer)?.balance,'75');
+});
+
 test('relationship graph keeps transfer direction and does not invent an actor',()=>{
  const graph=buildRelationshipGraph(profile,[event('Transfer','21',{venue:'token',initiator:null,actor:buyer,recipient}),event('Transfer','22',{venue:'token',initiator:null,actor:null,recipient})]);
  const transfer=graph.edges.find(edge=>edge.kind==='transfer');
@@ -56,4 +64,13 @@ test('relationship graph bounds large histories while retaining token and deploy
  const events=Array.from({length:20},(_,index)=>event('buy',String(20+index),{initiator:`0x${(index+10).toString(16).padStart(40,'0')}`,actor:`0x${(index+10).toString(16).padStart(40,'0')}`}));
  const graph=buildRelationshipGraph(profile,events,{maxNodes:6,maxEdges:5});
  assert.equal(graph.nodes.length,6);assert.ok(graph.nodes.some(node=>node.address===token));assert.ok(graph.nodes.some(node=>node.address===deployer));assert.ok(graph.edges.length<=5);assert.equal(graph.summary.truncated,true);
+});
+
+test('bounded graph preserves evidence for every investigation mode',()=>{
+ const transfers=Array.from({length:12},(_,index)=>event('Transfer',String(30+index),{venue:'token',initiator:null,actor:`0x${(index+10).toString(16).padStart(40,'0')}`,recipient:`0x${(index+30).toString(16).padStart(40,'0')}`}));
+ const graph=buildRelationshipGraph(profile,[event('buy','11'),...transfers,event('buy','50',{venue:'pool',initiator:null,actor:poolCaller,recipient:null})],{maxNodes:8,maxEdges:5});
+ assert.ok(graph.nodes.some(node=>node.address===buyer));
+ assert.ok(graph.edges.some(edge=>edge.kind==='curve buy'));
+ assert.ok(graph.edges.some(edge=>edge.kind==='transfer'));
+ assert.ok(graph.edges.some(edge=>edge.kind==='pool call'));
 });

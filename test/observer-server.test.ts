@@ -88,6 +88,15 @@ test('terminal connects token and wallet modes to read-only evidence APIs',async
   }
   assert.match(js,/marketSummary/);
   assert.match(js,/transactionClass/);
+  assert.match(js,/TRADE FLOW/);
+  assert.match(js,/CURRENT HOLDERS/);
+  assert.match(js,/WALLET ROUTES/);
+  assert.match(js,/OPEN WALLET DOSSIER/);
+  assert.match(js,/holdersComplete/);
+  assert.match(js,/relationshipState/);
+  assert.match(css,/\.relationship-inspector/);
+  assert.match(css,/\.graph-mode-tabs/);
+  assert.match(js,/marker-end/);
   assert.doesNotMatch(js,/privateKey|sendTransaction|eth_sendTransaction/);
   const invalid=await fetch(app.url+'/api/wallet/dossier?address=bad');
   assert.equal(invalid.status,400);

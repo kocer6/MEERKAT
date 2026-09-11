@@ -30,15 +30,20 @@ export function buildRelationshipGraph(profile:TokenProfile,events:TokenEvent[],
    if(!event.initiator)continue;const wallet=node(event.initiator,'curve participant'),tokens=BigInt(event.tokens??0);if(kind==='buy'){wallet.buys++;wallet.boughtTokens+=tokens;add(token,event.initiator,'curve buy','event actor',event);}else{wallet.sells++;wallet.soldTokens+=tokens;add(event.initiator,token,'curve sell','event actor',event);}observedInteractions++;continue;
   }
   if(kind==='transfer'&&event.actor&&event.recipient){
-   const sender=node(event.actor,'transfer sender'),recipient=node(event.recipient,'transfer recipient'),tokens=BigInt(event.tokens??0);sender.balance-=tokens;recipient.balance+=tokens;add(event.actor,event.recipient,'transfer','event actor',event);observedInteractions++;
+   const sender=node(event.actor,'transfer sender'),recipient=node(event.recipient,'transfer recipient'),tokens=BigInt(event.tokens??event.details?.value??0);sender.balance-=tokens;recipient.balance+=tokens;add(event.actor,event.recipient,'transfer','event actor',event);observedInteractions++;
   }
  }
- const fixed=new Set([token,deployer]),candidates=[...nodes.values()].filter(value=>!fixed.has(value.address)),holderSlots=Math.min(16,Math.floor((maxNodes-2)/3));
- const holders=candidates.filter(value=>value.balance>0n).sort((a,b)=>a.balance===b.balance?a.address.localeCompare(b.address):a.balance>b.balance?-1:1).slice(0,holderSlots);
- const selected=new Set([token,deployer,...holders.map(value=>value.address)]);
- for(const value of candidates.sort((a,b)=>b.eventCount-a.eventCount||a.address.localeCompare(b.address))){if(selected.size>=maxNodes)break;selected.add(value.address);}
+ const fixed=new Set([token,deployer]),candidates=[...nodes.values()].filter(value=>!fixed.has(value.address)),capacity=maxNodes-2,selected=new Set([token,deployer]);
+ const ranked=(values:NodeAggregate[])=>values.sort((a,b)=>b.eventCount-a.eventCount||a.address.localeCompare(b.address)),select=(values:NodeAggregate[],limit:number)=>{for(const value of values.slice(0,limit)){if(selected.size>=maxNodes)break;selected.add(value.address);}};
+ select(ranked(candidates.filter(value=>value.roles.has('curve participant'))),Math.max(1,Math.ceil(capacity*.45)));
+ select(candidates.filter(value=>value.balance>0n).sort((a,b)=>a.balance===b.balance?a.address.localeCompare(b.address):a.balance>b.balance?-1:1),Math.min(16,Math.max(1,Math.ceil(capacity*.35))));
+ select(ranked(candidates.filter(value=>value.roles.has('pool caller'))),Math.min(4,Math.max(1,Math.ceil(capacity*.1))));
+ select(ranked(candidates),maxNodes);
  const eligible=[...edges.values()].filter(edge=>selected.has(edge.from)&&selected.has(edge.to)).sort((a,b)=>{const count=b.count-a.count;if(count)return count;const firstA=BigInt(a.firstBlock),firstB=BigInt(b.firstBlock);return firstA<firstB?-1:firstA>firstB?1:a.kind.localeCompare(b.kind);});
  const supply=BigInt(profile.totalSupply),outputNodes=[...nodes.values()].filter(value=>selected.has(value.address)).map(value=>{const balance=value.balance>0n?value.balance:0n;return {address:value.address,roles:[...value.roles],eventCount:value.eventCount,buys:value.buys,sells:value.sells,boughtTokens:value.boughtTokens.toString(),soldTokens:value.soldTokens.toString(),balance:balance.toString(),shareBps:supply>0n?Number(balance*10000n/supply):0,firstBlock:value.firstBlock,lastBlock:value.lastBlock};});
- const truncated=nodes.size>outputNodes.length||eligible.length>maxEdges;
- return {nodes:outputNodes,edges:eligible.slice(0,maxEdges),summary:{observedInteractions,unattributedPoolCalls,truncated,holdersComplete:options.complete===true,coverage:'Curve buyer/seller and transfer addresses come from decoded events. Pool nodes are callers only and are not attributed to end users. Trade arrows show token flow; holder balances are reconstructed from indexed transfers.'}};
+ const outputEdges:RelationshipEdge[]=[],added=new Set<RelationshipEdge>(),groups=[eligible.filter(edge=>edge.kind==='curve buy'||edge.kind==='curve sell'),eligible.filter(edge=>edge.kind==='transfer'),eligible.filter(edge=>edge.kind==='pool call'),eligible.filter(edge=>edge.kind==='launch')];
+ const keep=(edge:RelationshipEdge)=>{if(outputEdges.length<maxEdges&&!added.has(edge)){outputEdges.push(edge);added.add(edge);}};for(const group of groups)if(group[0])keep(group[0]);
+ const quotas=[Math.ceil(maxEdges*.42),Math.ceil(maxEdges*.42),Math.ceil(maxEdges*.1),1];for(let index=0;index<groups.length;index++)for(const edge of groups[index]!.slice(1,quotas[index]))keep(edge);for(const edge of eligible)keep(edge);
+ const truncated=nodes.size>outputNodes.length||eligible.length>outputEdges.length;
+ return {nodes:outputNodes,edges:outputEdges,summary:{observedInteractions,unattributedPoolCalls,truncated,holdersComplete:options.complete===true,coverage:'Curve buyer/seller and transfer addresses come from decoded events. Pool nodes are callers only and are not attributed to end users. Trade arrows show token flow; holder balances are reconstructed from indexed transfers.'}};
 }

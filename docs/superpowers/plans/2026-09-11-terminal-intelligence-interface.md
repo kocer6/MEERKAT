@@ -187,7 +187,7 @@ git commit -m "feat: divide terminal into readable intelligence zones"
 - Consumes: graph nodes, graph edges, `summary.holdersComplete`, wallet summaries, and the existing `openAddress` navigation function.
 - Produces: `renderRelationships(graph,token,profile,wallets)`, the modes `trade`, `holders`, `routes`, a selected-wallet inspector, zoom/reset controls, and pointer panning.
 
-- [ ] **Step 1: Extend the failing UI contract test**
+- [x] **Step 1: Extend the failing UI contract test**
 
 ```ts
 assert.match(js,/TRADE FLOW/);
@@ -200,13 +200,13 @@ assert.match(css,/\.graph-mode-tabs/);
 assert.match(css,/marker-end/);
 ```
 
-- [ ] **Step 2: Run the focused test and verify it fails**
+- [x] **Step 2: Run the focused test and verify it fails**
 
 Run: `npm test -- --test-name-pattern="terminal connects"`
 
 Expected: FAIL because the modes and inspector are absent.
 
-- [ ] **Step 3: Implement graph mode state and mode-specific data selection**
+- [x] **Step 3: Implement graph mode state and mode-specific data selection**
 
 Create a relationship workspace whose local state stores `mode`, `selectedAddress`, `scale`, `panX`, and `panY`.
 
@@ -216,11 +216,11 @@ Create a relationship workspace whose local state stores `mode`, `selectedAddres
 
 Show `PARTIAL INDEX` beside Current Holders when `holdersComplete` is false.
 
-- [ ] **Step 4: Render directional SVG and legend**
+- [x] **Step 4: Render directional SVG and legend**
 
 Define separate arrow markers for buy, sell, transfer, and unattributed edges. Apply class names from `transactionClass`, use edge count to set a bounded stroke width, and show count plus first/last block in SVG titles. Keep the token centered in Trade Flow and Current Holders; use a deterministic radial layout for routes.
 
-- [ ] **Step 5: Render and connect the wallet inspector**
+- [x] **Step 5: Render and connect the wallet inspector**
 
 On node selection, show evidenced roles, buys, sells, formatted token quantities, reconstructed balance/share, first/last block, and existing evidence labels. The `OPEN WALLET DOSSIER` button calls:
 
@@ -228,11 +228,11 @@ On node selection, show evidenced roles, buys, sells, formatted token quantities
 void openAddress('wallet',selected.address)
 ```
 
-- [ ] **Step 6: Add graph controls**
+- [x] **Step 6: Add graph controls**
 
 Add `+`, `−`, and `RESET` controls that update the SVG viewport transform. Add pointer drag panning with pointer capture. Apply `role="tablist"`, `role="tab"`, `aria-selected`, keyboard-selectable nodes, and a useful SVG `aria-label`.
 
-- [ ] **Step 7: Run the focused test and commit**
+- [x] **Step 7: Run the focused test and commit**
 
 Run: `npm test -- --test-name-pattern="terminal connects"`
 

@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {findLaunchBlock,HistoryStore,readLogsAdaptive,rpcReadWithRetry,summarizeWallets,TokenHistory,type HistoryState,type TokenEvent} from '../src/token-history.js';
+import {decodedLogToTokenEvent,findLaunchBlock,HistoryStore,readLogsAdaptive,rpcReadWithRetry,summarizeWallets,TokenHistory,type HistoryState,type TokenEvent} from '../src/token-history.js';
 const trade=(side:'buy'|'sell',at:number):TokenEvent=>({id:String(at),kind:side,venue:'curve',blockNumber:'1',blockHash:'0xabc',txHash:'0xabc',logIndex:0,at,initiator:'0xalice',actor:'0xrouter',recipient:'0xalice',tokens:'100',quote:'10'});
 test('wallet behavior uses evidenced timing, does not claim smart money or realized PnL',()=>{
  const wallets=summarizeWallets([trade('buy',101000),trade('sell',150000)],100000);
@@ -8,6 +8,11 @@ test('wallet behavior uses evidenced timing, does not claim smart money or reali
 });
 test('transfers and missing initiators never turn into attributed trades',()=>{
  const event={...trade('buy',101000),initiator:null};assert.equal(summarizeWallets([event],100000).length,0);
+});
+test('decoded transfers retain their token quantity for holder reconstruction',()=>{
+ const from='0x1111111111111111111111111111111111111111',to='0x2222222222222222222222222222222222222222';
+ const result=decodedLogToTokenEvent({blockNumber:12n,blockHash:'0xblock',transactionHash:'0xtx',logIndex:3,eventName:'Transfer',args:{from,to,value:123n}});
+ assert.equal(result?.kind,'Transfer');assert.equal(result?.actor,from);assert.equal(result?.recipient,to);assert.equal(result?.tokens,'123');assert.equal(result?.initiator,null);
 });
 test('launch lookup uses the indexed factory event instead of historical contract state',async()=>{
  const calls:Array<[bigint,bigint]>=[];
