@@ -34,9 +34,11 @@ Paste a Pons V2 token or public wallet address into `/terminal`. MEERKAT returns
 - participant summaries such as early entry and fast exit, with the rule shown;
 - token score components for coverage, participant breadth, activity depth and deployer exposure;
 - wallet score components for local scope, early discovery, two-sided activity and evidence depth;
+- three relationship views: directional trade flow, reconstructed current holders and direct wallet-to-wallet transfer routes;
+- a wallet inspector on every graph node with observed roles, buys, sells, token amounts, current reconstructed balance and supply share;
 - a wallet dossier across every token history stored on the same installation.
 
-Missing evidence lowers the score's confidence and remains visible. A score is a summary of observed evidence, not a safety rating, price prediction, beneficial-ownership claim, realized profit, bot identity, or investment-skill verdict.
+BUY evidence is green, SELL evidence is red, transfers are amber and unattributed activity is gray throughout the terminal. Missing evidence lowers the score's confidence and remains visible. Holder balances are reconstructed from indexed ERC-20 Transfer events; while an index is incomplete, the holder view is explicitly marked partial. A score is a summary of observed evidence, not a safety rating, price prediction, beneficial-ownership claim, realized profit, bot identity, or investment-skill verdict.
 
 ## Run it
 
@@ -55,7 +57,7 @@ Open [http://127.0.0.1:4664/](http://127.0.0.1:4664/), select **Open terminal**,
 
 | Mode | Input | Result | Current boundary |
 | --- | --- | --- | --- |
-| **Token** | Pons V2 token address | Evidence score, confidence, components, profile, actors, relationships and lifecycle | Latest 500 events are rendered; the full indexed history stays in SQLite |
+| **Token** | Pons V2 token address | Evidence score, confidence, components, profile, trade flow, holders, wallet routes and lifecycle | Latest 500 events are rendered; the full indexed history stays in SQLite |
 | **Wallet** | Public EVM address | Behavior score, confidence, cross-token activity and timing labels | Searches locally indexed Pons histories; global wallet discovery is in development |
 
 The landing page, terminal, APIs, indexer, state, and database all run inside one local Node.js process. The browser never receives a signing route because the server has none.
@@ -70,6 +72,8 @@ The current checkpoint was exercised against Robinhood Chain using COPY (`0xac79
 - `25` curve participants were attributed and the bounded relationship API returned `48` nodes and `96` routes.
 
 This is evidence for one real token and captured head, not a claim that every token is fully indexed. Reproduction details and known limits are in the [full backfill note](docs/evidence/copy-backfill-relationship-2026-09-11.md).
+
+The dense ZZZ token (`0x7dbf38976f6d3b9c529e7d9484a71898b409ee6a`) was also opened through the packaged terminal. At the completed captured head, MEERKAT loaded `741,643` persisted events, `29` attributed curve participants, a transparent `93/100` token score, and `16` displayed reconstructed holders. Wallet Routes rendered transfer evidence only. The live head continues to advance, so a refresh can temporarily return the score to `CALIBRATING` while the new tail is indexed.
 
 ## How an address becomes evidence
 
@@ -92,8 +96,9 @@ Every label is derived from an explicit rule. For example, an **early entry** is
 | Local wallet score | **Live locally** | Cross-token local evidence with explicit coverage |
 | Token lifecycle | **Live locally** | Verified launch and resumable event history |
 | Global wallet discovery | **Building** | Bounded discovery with saved cursor |
-| Relationship map | **Live locally** | Bounded actor routes with explicit pool-caller attribution |
-| Holder intelligence / Pons market context | **Next** | Balance conservation and official-source freshness gates |
+| Relationship map | **Live locally** | Trade Flow, Current Holders and Wallet Routes with a selected-wallet inspector |
+| Holder intelligence | **Live locally / improving** | Transfer-ledger balances and explicit partial state; known-contract exclusions remain next |
+| Pons market context | **Next** | Official-source freshness and independent timestamp gates |
 | Cases and alerts | **Next** | Saved investigations and local rule notifications |
 | Read-only API and exports | **Planned** | Versioned schema and portable evidence bundle |
 | Hosted terminal / more chains | **Later** | Operational and adapter validation before public claims |

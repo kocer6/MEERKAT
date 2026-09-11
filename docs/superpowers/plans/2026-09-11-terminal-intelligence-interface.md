@@ -256,11 +256,11 @@ git commit -m "feat: add relationship investigation modes"
 - Consumes: the completed interface and verified behavior.
 - Produces: an accurate handoff checkpoint and reproducible validation record.
 
-- [ ] **Step 1: Update product documentation**
+- [x] **Step 1: Update product documentation**
 
 Document the three relationship modes, global transaction colors, partial-holder limitation, selected-wallet inspector, and the fact that holder balances are reconstructed from indexed Transfer evidence.
 
-- [ ] **Step 2: Run complete automated verification**
+- [x] **Step 2: Run complete automated verification**
 
 ```powershell
 npm test
@@ -272,7 +272,7 @@ git diff --check
 
 Expected: all tests pass, typecheck and build exit zero, JavaScript syntax is valid, and the diff has no whitespace errors.
 
-- [ ] **Step 3: Perform browser QA with ZZZ**
+- [x] **Step 3: Perform browser QA with ZZZ**
 
 Open `http://127.0.0.1:4664/terminal`, analyze `0x7dbf38976f6d3b9c529e7d9484a71898b409ee6a`, and verify:
 
@@ -285,7 +285,7 @@ Open `http://127.0.0.1:4664/terminal`, analyze `0x7dbf38976f6d3b9c529e7d9484a718
 - Open Wallet Dossier and Back return to the correct token;
 - the 760 px responsive layout stacks without clipped controls.
 
-- [ ] **Step 4: Record the verified checkpoint and commit**
+- [x] **Step 4: Record the verified checkpoint and commit**
 
 Update `HANDOFF.md` with the exact test count and browser findings.
 
@@ -295,7 +295,7 @@ git commit -m "docs: record relationship interface checkpoint"
 git push origin main
 ```
 
-- [ ] **Step 5: Verify GitHub received the final commit**
+- [x] **Step 5: Verify GitHub received the final commit**
 
 Run:
 
