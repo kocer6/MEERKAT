@@ -18,6 +18,9 @@ MEERKAT reconstructs Pons V2 token lifecycles and locally evidenced wallet behav
 - [x] Live Scout, watchlist, monitoring, and activity retained as secondary tools.
 - [x] Desktop and 390x844 responsive browser QA; no page-level horizontal overflow.
 - [x] Real COPY evidence: verified launch block 59283454; first 5,000 blocks returned 3,170 events and 25 curve participants.
+- [x] Public GitHub project hub with branded hero, quickstart, verified evidence, navigation, and honest token status.
+- [x] Public product, analysis, architecture, local setup, roadmap, security, token-status, and contribution documents.
+- [x] Automated README contract checking required documents and every local Markdown link.
 
 ## Next acceptance gates
 

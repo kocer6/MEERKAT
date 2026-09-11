@@ -1,8 +1,8 @@
-# MEERKAT handoff — landing + intelligence terminal (2026-09-11)
+# MEERKAT handoff — product terminal + GitHub project hub (2026-09-11)
 
 The active product is a local read-only Pons V2 intelligence terminal. The user approved the split landing/terminal design and public roadmap. Never restore the paper-first UI or add a signer/transaction path.
 
-GitHub checkpoint: `main` at `9e5761a0f2460282f41e935f56f21852a7e922a5` contains the implementation; the following documentation-only commit records its verified publication.
+GitHub checkpoint before the current documentation update: `main` at `8850e0d815ce658d495e0378110b75fcc339f273`. The current update is ready for verification and publication.
 
 ## Implemented checkpoint
 
@@ -14,13 +14,18 @@ GitHub checkpoint: `main` at `9e5761a0f2460282f41e935f56f21852a7e922a5` contains
 
 `src/wallet-dossier.ts`: pure cross-token aggregation over histories stored by this local installation. It reports indexed/ready coverage, event counts, buys/sells/transfers and block-based behavior. Smart status stays `not assessed`; realized PnL stays null.
 
+`README.md`: public project homepage using the approved MEERKAT hero, direct product promise, local quickstart, current evidence, architecture flow, roadmap summary, token status and a complete documentation index.
+
+`docs/PRODUCT.md`, `docs/ANALYSIS.md`, `docs/ARCHITECTURE.md`, `docs/LOCAL-SETUP.md`, `ROADMAP.md`, `SECURITY.md`, `docs/TOKEN.md`, and `CONTRIBUTING.md`: public documentation created for users and contributors. `test/docs.test.ts` prevents missing required sections and broken local README links.
+
 ## Verification
 
 - `npm run typecheck`: pass.
-- `npm test`: 84 tests passed, 0 failed.
+- `npm test`: 86 tests passed, 0 failed, including the public documentation contract.
 - `npm run build`: pass.
 - Browser: `/` and `/terminal` inspected at desktop and 390x844. Landing CTA navigates correctly. Wallet mode with `0x1111…1111` renders an honest zero-local-evidence dossier. Hidden-panel regression was found and fixed.
 - Real RPC: COPY `0xac79255f6f404eba14f316e8669d76573a2d7b1e` resolved to symbol COPY, launch block `59283454`; chunk `59283454..59288453` returned 3,170 events and 25 attributed curve participants in 5.3 seconds after RPC pacing fixes.
+- Public documentation: required sections exist, every local Markdown link from the README resolves, and the MEERKAT hero reference is present.
 
 ## Immediate next task
 
