@@ -2,6 +2,8 @@
 
 The active product is a local read-only Pons V2 intelligence terminal. The user approved the split landing/terminal design and public roadmap. Never restore the paper-first UI or add a signer/transaction path.
 
+GitHub checkpoint: `main` at `9e5761a0f2460282f41e935f56f21852a7e922a5` contains the implementation; the following documentation-only commit records its verified publication.
+
 ## Implemented checkpoint
 
 `public/landing.*`: branded pixel-art landing, large readable headline, product proof, four analysis lenses, honest roadmap, GitHub link and terminal CTA. Uses the existing approved `public/assets/meerkat-desert.png` and local Press Start 2P font.

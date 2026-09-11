@@ -101,4 +101,4 @@
 - [x] Run final `npm run typecheck`, `npm test`, and `npm run build` after documentation changes.
 - [x] Start the built server and verify `/`, `/terminal`, token validation, and the empty wallet dossier path.
 - [x] Inspect desktop and mobile screenshots for both pages and record exact limitations.
-- [ ] Commit the coherent checkpoint, push it, and verify the remote revision.
+- [x] Commit the coherent checkpoint, push it, and verify remote revision `9e5761a0f2460282f41e935f56f21852a7e922a5`.
