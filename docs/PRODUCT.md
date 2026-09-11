@@ -18,16 +18,22 @@ Token mode first proves that the address belongs to a Pons V2 launch. It reads t
 
 | Source | Evidence |
 | --- | --- |
-| Pons curve | Buys, sells, refunds and curve completion |
-| Pons factory | Launch sweep and pool graduation |
+| Pons curve | Buys, sells, refunds, curve completion and creator-fee sweeps |
+| Pons factory | Launch sweep, pool graduation and creator-fee recipient changes |
 | Token contract | ERC-20 transfers |
-| Native ETH pool | Pool swaps when the pool identifier can be derived |
+| Native ETH pool and Pons hook | Pool swaps and creator-fee sweeps when the pool identifier can be derived |
 
 While indexing runs, the result shows `CALIBRATING`, exact block coverage and any RPC error instead of a partial numeric score. Once the captured launch-to-head range is ready, the result begins with a token signal score, confidence and five visible components. It then includes direct Pons and explorer links, the token profile, indexing cursor, total event count, latest lifecycle events, and attributed curve participants. Exact event fields remain in the local SQLite database even though the browser receives only the latest 500 lifecycle events.
 
 ### Relationship map
 
 Token mode also builds a bounded visual map from the complete persisted history. It connects the deployer, token, curve participants, transfer senders/recipients and pool callers. Solid lines use an address exposed by the decoded event. Dashed lines mean the address is only the pool caller and is not attributed to an end user. Selecting an address opens its local wallet dossier.
+
+### Fee flow
+
+The fee panel totals the token-specific `FeesSwept`, `FeesRescued`, `PoolFeesSwept` and `PoolFeesRescued` creator amounts. It separates curve and pool revenue, shows the configured initial and current recipient, reconstructs completed recipient changes, and warns about a pending change. A route selected at launch is distinguished from a later redirect.
+
+The fee escrow's current balance is useful context but can aggregate revenue from several launches assigned to the same recipient. MEERKAT therefore never adds that balance to the token's confirmed revenue. Transfers after the recipient withdraws from escrow are ordinary wallet activity until a separate transaction trace proves their purpose.
 
 ## Wallet mode
 

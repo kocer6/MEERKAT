@@ -39,6 +39,16 @@ Acceptance evidence: tests, build, browser QA, and the bounded COPY integration 
 
 The full COPY checkpoint reached the captured head after an interrupted restart. Exact results are recorded in `docs/evidence/copy-backfill-relationship-2026-09-11.md`.
 
+### Creator fee flow
+
+- totals exact creator amounts from curve and pool fee sweep events;
+- distinguishes a direct deployer route, a recipient selected at launch and a later redirect;
+- reconstructs completed and pending recipient changes;
+- keeps the recipient escrow balance separate from token-specific revenue;
+- links the current recipient to its local dossier, Pons profile and Blockscout address page.
+
+Acceptance evidence: deterministic aggregation and migration tests plus the real HOP OUT checkpoint in `docs/evidence/hop-out-fee-flow-2026-09-11.md`.
+
 ## Building now
 
 ### Global wallet discovery

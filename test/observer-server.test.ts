@@ -94,8 +94,13 @@ test('terminal connects token and wallet modes to read-only evidence APIs',async
   assert.match(js,/OPEN WALLET DOSSIER/);
   assert.match(js,/holdersComplete/);
   assert.match(js,/relationshipState/);
+  assert.match(js,/data\.feeFlow/);
+  assert.match(js,/FEE FLOW/);
+  assert.match(js,/CURRENT RECIPIENT/);
   assert.match(css,/\.relationship-inspector/);
   assert.match(css,/\.graph-mode-tabs/);
+  assert.match(css,/\.zone-fees/);
+  assert.match(css,/\.fee-route/);
   assert.match(js,/marker-end/);
   assert.doesNotMatch(js,/privateKey|sendTransaction|eth_sendTransaction/);
   const invalid=await fetch(app.url+'/api/wallet/dossier?address=bad');

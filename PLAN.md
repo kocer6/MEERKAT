@@ -29,6 +29,8 @@ MEERKAT scores Pons V2 tokens and locally evidenced wallet behavior, then expose
 - [x] Three-mode relationship workspace: Trade Flow, Current Holders and Wallet Routes.
 - [x] Selected-wallet graph inspector with direct dossier navigation and persistent view state during indexing.
 - [x] Reconstruct holder balances from indexed Transfer evidence, including existing persisted histories.
+- [x] Trace creator-fee flow from exact curve/pool sweeps, recipient configuration and recipient-change events.
+- [x] Clear stale persisted event families atomically when the history index schema changes.
 
 ## Next acceptance gates
 

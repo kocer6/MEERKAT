@@ -14,6 +14,8 @@ The relationship workspace has three persistent modes. Trade Flow points token t
 
 `src/token-history.ts`: durable token profiles/events, verified `TokenLaunched` lookup from block 0 to current head, 5,000-block indexing chunks, curve/pool/transfer/factory coverage, block-based early/fast behavior and bounded 429 retry. Transfer and trade event timestamps remain null; exact blocks and transaction hashes are preserved. Curve actors are attributed. Pool swaps remain unattributed without trace evidence.
 
+`src/fee-flow.ts`: token-specific creator revenue from curve and pool sweep events, the initial/current fee recipient, launch routing, completed redirects and pending recipient changes. The terminal displays the recipient escrow balance as aggregate context and never counts it as token revenue. History index schema v2 clears stale event families atomically before rebuilding.
+
 Interrupted jobs now reuse the saved verified profile and cursor instead of repeating the genesis-to-head launch lookup. Rate-limit backoff is bounded across a 60-second window. `src/relationship-graph.ts` builds a bounded multi-mode graph, reserves room for curve participants, holders and pool callers, and retains evidence for each investigation mode. Persisted legacy transfers that stored quantity in `details.value` remain usable without deleting the database.
 
 `src/wallet-dossier.ts`: pure cross-token aggregation over histories stored by this local installation. It reports indexed/ready coverage, event counts, buys/sells/transfers and block-based behavior. Smart status stays `not assessed`; realized PnL stays null.
@@ -29,7 +31,7 @@ Token index coverage is now a readiness gate rather than a source of score point
 ## Verification
 
 - `npm run typecheck`: pass.
-- `npm test`: 102 tests passed, 0 failed, including scoring, dense-range splitting, relationship modes, legacy transfer reconstruction, resume and public documentation contracts.
+- `npm test`: 107 tests passed, 0 failed, including fee aggregation, index-schema migration, scoring, dense-range splitting, relationship modes, legacy transfer reconstruction, resume and public documentation contracts.
 - `npm run build`: pass.
 - Browser: the rebuilt `/` and `/terminal` were inspected at desktop and 390x844. The landing has no page-level mobile overflow; the wide hero, embedded actions and score-first sections remain readable. The real COPY dossier rendered a 100/100 token evidence score with high confidence and all four components before the relationship/lifecycle evidence.
 - Real RPC: COPY `0xac79255f6f404eba14f316e8669d76573a2d7b1e` resolved to symbol COPY, launch block `59283454`; chunk `59283454..59288453` returned 3,170 events and 25 attributed curve participants in 5.3 seconds after RPC pacing fixes.
@@ -38,9 +40,10 @@ Token index coverage is now a readiness gate rather than a source of score point
 - Relationship API on that database: 48 nodes, 96 routes, 41,299 observed interactions and 11,750 pool-caller-only interactions; large-history truncation was reported. Desktop and 390x844 browser checks passed, including click-through to Wallet mode and no page-level mobile overflow.
 - Dense ZZZ recovery: the original 5,000-block transfer query exceeded the RPC's 10,000-log limit and the next range timed out. Adaptive splitting persisted 36,940 events in the first recovered checkpoint; a later live snapshot reached cursor 54,687,389 with 65,082 events, 29 attributed wallets and 48 bounded graph nodes while the score correctly remained withheld.
 - ZZZ terminal QA: a completed captured head loaded 741,643 persisted events, 29 curve participants, token score 93/100 and 16 displayed reconstructed holders. Trade Flow retained green buys and red sells; Current Holders reported complete/partial state from the live index; Wallet Routes rendered 36 transfer-only routes across 13 displayed nodes. Selecting a graph wallet opened its reconstructed balance/share and the Wallet dossier; Back restored the same token, map mode and selected wallet. At 760 px the shell stacked to one column, the mode tabs and graph controls stayed inside the viewport, and the page had no horizontal overflow.
+- HOP OUT fee-flow QA: captured head 60,571,478 completed with 6,366 events. Twenty-six exact creator payout events totaled 1.177461500182357592 ETH: 0.472838185133738444 ETH from the curve and 0.704623315048619148 ETH from the pool. The recipient `0x7c8560d80dc5d982231cef05f71bbd9d1961a3cc` was routed at launch, had no later recipient changes, and had a zero current escrow balance at the captured head.
 
 ## Immediate next task
 
 Build global wallet discovery beyond histories already indexed locally, with bounded RPC ranges, durable cursor, partial-coverage reporting and exact transaction evidence.
 
-Known limits: wallet mode searches local indexed histories rather than the entire chain; holder balances cover the indexed Transfer range and do not yet exclude every known protocol contract; the bounded visual graph is a ranked investigation view rather than the complete stored graph; public RPC can still rate-limit a chunk and requires resume; pool swap end-user attribution needs trace evidence; no per-event timestamps; only the latest 500 lifecycle events are sent to the browser; no external notifications.
+Known limits: wallet mode searches local indexed histories rather than the entire chain; holder balances cover the indexed Transfer range and do not yet exclude every known protocol contract; the bounded visual graph is a ranked investigation view rather than the complete stored graph; recipient escrow balances can aggregate several launches; downstream transfers after an escrow withdrawal are not attributed without trace evidence; public RPC can still rate-limit a chunk and requires resume; pool swap end-user attribution needs trace evidence; no per-event timestamps; only the latest 500 lifecycle events are sent to the browser; no external notifications.

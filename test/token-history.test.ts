@@ -14,6 +14,15 @@ test('decoded transfers retain their token quantity for holder reconstruction',(
  const result=decodedLogToTokenEvent({blockNumber:12n,blockHash:'0xblock',transactionHash:'0xtx',logIndex:3,eventName:'Transfer',args:{from,to,value:123n}});
  assert.equal(result?.kind,'Transfer');assert.equal(result?.actor,from);assert.equal(result?.recipient,to);assert.equal(result?.tokens,'123');assert.equal(result?.initiator,null);
 });
+test('decoded fee events retain payout amounts and recipient changes',()=>{
+ const previous='0x1111111111111111111111111111111111111111',next='0x2222222222222222222222222222222222222222';
+ const curve=decodedLogToTokenEvent({blockNumber:12n,blockHash:'0xblock',transactionHash:'0xcurve',logIndex:1,eventName:'FeesSwept',args:{protocolAmount:10n,buybackAmount:20n,creatorAmount:30n}})!;
+ const pool=decodedLogToTokenEvent({blockNumber:13n,blockHash:'0xblock',transactionHash:'0xpool',logIndex:2,eventName:'PoolFeesSwept',args:{poolId:'0xpool',protocolAmount:40n,buybackAmount:0n,creatorAmount:50n,tokensLocked:0n}})!;
+ const change=decodedLogToTokenEvent({blockNumber:14n,blockHash:'0xblock',transactionHash:'0xchange',logIndex:3,eventName:'CreatorFeeRecipientUpdated',args:{token:'0xtoken',previousRecipient:previous,newRecipient:next}})!;
+ assert.equal(curve.venue,'curve');assert.equal(curve.details?.creatorAmount,'30');
+ assert.equal(pool.venue,'pool');assert.equal(pool.details?.creatorAmount,'50');
+ assert.equal(change.venue,'factory');assert.equal(change.actor,previous);assert.equal(change.recipient,next);
+});
 test('launch lookup uses the indexed factory event instead of historical contract state',async()=>{
  const calls:Array<[bigint,bigint]>=[];
  const block=await findLaunchBlock(60_000_000n,async(from,to)=>{calls.push([from,to]);return [{blockNumber:59_283_454n}];});
@@ -44,13 +53,23 @@ test('wallet behavior falls back to exact block distance when event timestamps a
 test('an interrupted history resumes from its saved profile and 64-block overlap without repeating discovery',async()=>{
  const token='0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',other='0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
  const store=new HistoryStore(':memory:');
- const saved:HistoryState={profile:{token,name:'Token',symbol:'TKN',decimals:18,curve:other,deployer:other,pairToken:'0x0000000000000000000000000000000000000000',phase:0,birthBlock:'0',birthAt:0,head:'105',poolId:null,poolManager:other,totalSupply:'1000',deployerBalance:'0',creatorTaxBps:0,metadata:null,metadataError:null},cursor:'100',status:'error',error:'rate limited',updatedAt:1};
+ const saved:HistoryState={profile:{token,name:'Token',symbol:'TKN',decimals:18,curve:other,deployer:other,pairToken:'0x0000000000000000000000000000000000000000',phase:0,birthBlock:'0',birthAt:0,head:'105',poolId:null,poolManager:other,totalSupply:'1000',deployerBalance:'0',creatorTaxBps:0,metadata:null,metadataError:null},cursor:'100',status:'error',error:'rate limited',updatedAt:1,indexVersion:2};
  store.save(saved);const chunks:Array<[bigint,bigint]>=[];
  const history=new TokenHistory(store,{profile:async()=>{throw new Error('profile discovery must not repeat on resume');},chunk:async(_profile,from,to)=>{chunks.push([from,to]);return [];}});
  history.start(token);
  for(let attempt=0;attempt<50&&store.state(token)?.status!=='ready';attempt++)await new Promise(resolve=>setTimeout(resolve,1));
  assert.equal(store.state(token)?.status,'ready');assert.equal(store.state(token)?.error,null);assert.deepEqual(chunks,[[37n,105n]]);
  await history.close();
+});
+test('an index schema upgrade clears stale events before rebuilding history',async()=>{
+ const token='0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',other='0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
+ const store=new HistoryStore(':memory:'),profile={token,name:'Token',symbol:'TKN',decimals:18,curve:other,deployer:other,pairToken:'0x0000000000000000000000000000000000000000',phase:0,birthBlock:'10',birthAt:0,head:'20',poolId:null,poolManager:other,totalSupply:'1000',deployerBalance:'0',creatorTaxBps:0,metadata:null,metadataError:null};
+ store.chunk({profile,cursor:'20',status:'ready',error:null,updatedAt:1,indexVersion:1},10n,20n,[{...trade('buy',0),id:'stale',blockNumber:'12'}]);
+ let release!:()=>void;const blocked=new Promise<void>(resolve=>{release=resolve;});
+ const history=new TokenHistory(store,{profile:async()=>profile,chunk:async()=>{await blocked;return [];}});
+ history.start(token);
+ for(let attempt=0;attempt<50&&store.state(token)?.status!=='indexing';attempt++)await new Promise(resolve=>setTimeout(resolve,1));
+ try{assert.equal(store.events(token).length,0);}finally{release();await history.close();}
 });
 test('token history result includes a bounded relationship graph from persisted evidence',async()=>{
  const token='0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',deployer='0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',buyer='0x1111111111111111111111111111111111111111';
