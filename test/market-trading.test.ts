@@ -75,3 +75,17 @@ test('a market value below exit gas still triggers stop-loss and accounts for ne
  const result=await service.observe(p.id);assert.equal(result.status,'closed');assert.equal(result.exitReason,'stop-loss');assert.ok(BigInt(result.realizedPnlWei)<-BigInt(p.costWei));
  }finally{ledger.close();}
 });
+
+test('paper position survives graduation and closes using pool output with journal evidence',async()=>{
+ let phase=0,fail=false;const base=reader();
+ const market=reader({record:async(t,b)=>({...await base.record(t,b),phase,tickSpacing:200}),poolSell:async(t,spacing,quantity)=>{if(fail)throw new Error('pool unavailable');assert.equal(t,token);assert.ok(quantity>0n);return 99n*10n**14n;}});
+ const ledger=new Ledger(':memory:',10n**18n,10n**18n);
+ try{
+  const service=new MarketTrading(new PaperEngine(ledger,defaultRules),market);const p=await service.buy(token,10n**16n,'graduate-1');phase=2;fail=true;
+  await assert.rejects(service.observe(p.id),/pool unavailable/);assert.equal(ledger.position(p.id)?.status,'open');
+  fail=false;await service.observe(p.id);assert.equal(ledger.position(p.id)?.status,'open');
+  const closed=await service.close(p.id);assert.equal(closed.status,'closed');assert.equal(closed.lastValueWei,'9800000000000000');
+  const exit=ledger.events().find(e=>e.kind==='exit-filled');assert.equal((exit?.detail.quote as {phase:number}).phase,2);
+  assert.equal(ledger.events().filter(e=>e.kind==='reserve-warning').length,0);
+ }finally{ledger.close();}
+});

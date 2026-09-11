@@ -1,3 +1,11 @@
+## Latest checkpoint: graduation exits through v4 (2026-09-11)
+
+Existing native-ETH paper positions now quote their exact token quantity through Uniswap v4 Quoter after factory phase becomes 2. Reads, factory memeHook and simulation are pinned to one block. The pool key uses fee 0 per Pons v2, factory tick spacing and native ETH/token ordering. eth_call only; no signer or transaction. Quote failures retain the position. Exit journal records phase and quote model. Reserve watch becomes unavailable after graduation rather than comparing pool data to curve reserves.
+
+56 tests and build pass, including curve-entry -> pool outage -> recovery -> manual paper exit. Live quoter verified at block 60099012; docs/evidence/pool-quote-2026-09-11.json. Reproduce read-only with node --import tsx scripts/probe-pool.ts (overwrites this evidence file).
+
+Limits: new pool entries still blocked; non-native pairs, intermediate swept phase and rescued phase unsupported. Fixed modeled gas remains 0.0001 ETH per leg, not the quoter gas estimate. Full pool risk analysis remains open. Next priority: cross-block idempotent order replay, then durable discovery and more risk signals.
+Sources: https://developers.uniswap.org/docs/protocols/v4/deployments and https://docs.ponsfamily.com/v2; ABI/quote pattern adapted from pinned Bodkin MIT.
 ## Latest checkpoint: persistent reserve watch (2026-09-11)
 
 M3.3 partial: open chain paper positions now retain real ETH reserve snapshots in SQLite. A drop strictly above 15% between increasing blocks on the same curve within 60 seconds journals a warning. Missing RPC data, unsupported phases, old/duplicate blocks and long gaps do not fabricate a collapse. Last warning is historical and persists through restart; warnings never instruct an exit. Independent PnL rules still apply. API/export and Positions/Journal expose the state.

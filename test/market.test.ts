@@ -30,3 +30,14 @@ test('wrong network, old block and failed reserve read fail closed', async () =>
   await assert.rejects(inspectToken(reader({ block: async () => ({ number: 42n, timestamp: 1n }) }), token, 1000n), /stale/);
   await assert.rejects(inspectToken(reader({ curve: async () => { throw new Error('reserve read failed'); } }), token, 1000n), /reserve/);
 });
+
+test('graduated position uses exact-quantity pool quote at the inspection block',async()=>{
+ let called=false;
+ const result=await inspectToken(reader({record:async()=>({exists:true,curve,pairToken:zero,phase:2,tickSpacing:200}),poolSell:async(t,spacing,qty,block)=>{assert.equal(t,token);assert.equal(spacing,200);assert.equal(qty,123n);assert.equal(block,42n);called=true;return 900n;}}),token,1n,123n);
+ assert.equal(called,true);assert.equal(result.sellBackWei,900n);assert.deepEqual(result.reasons,[]);assert.equal(result.realQuoteReserveWei,null);
+});
+test('graduated quote failures and invalid quantities do not fabricate a valuation',async()=>{
+ const pool=reader({record:async()=>({exists:true,curve,pairToken:zero,phase:2,tickSpacing:200}),poolSell:async()=>{throw new Error('quoter reverted');}});
+ await assert.rejects(inspectToken(pool,token,1n,123n),/quoter reverted/);
+ await assert.rejects(inspectToken(pool,token,1n,0n),/quantity/);
+});

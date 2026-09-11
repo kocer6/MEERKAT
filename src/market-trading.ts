@@ -35,7 +35,7 @@ export class MarketTrading {
   catch(error){this.engine.ledger.recordReserve(p.id,{blockNumber:null,reserveWei:null,curve:null,observedAt:Date.now()});throw error;}
   this.recordReserve(p.id,q);
   if(q.reasons.length || q.sellBackWei===null) throw new Error(q.reasons.join('; ') || 'sell quote unavailable');
-  return {ethOut:q.sellBackWei,gasWei:paperGasWei,observedAt:q.observedAt,source:'chain' as const,blockNumber:q.blockNumber};
+  return {ethOut:q.sellBackWei,gasWei:paperGasWei,observedAt:q.observedAt,source:'chain' as const,blockNumber:q.blockNumber,phase:q.phase,quoteModel:q.quoteModel};
  }
  private async exclusive(id:string,work:()=>Promise<Position>) {
   if(this.active.has(id)) throw new Error('position update already in progress');this.active.add(id);

@@ -123,3 +123,6 @@ M3.4 partial: persisted open chain positions monitored sequentially every 15s af
 
 ### Reserve watch checkpoint (2026-09-11)
 M3.3 partial: durable real ETH reserve baseline and historical warnings (>15%, same curve, increasing blocks, <=60s). Unknown reads break comparison; no alert-triggered sale. API/export/position journal connected. 53 tests and build pass. Remaining: other Canary signals, pool support, durable discovery, cross-block order replay handling.
+
+### Graduation exits checkpoint (2026-09-11)
+M3.2/M4.2 partial: exact-quantity native ETH v4 pool quotes now support existing positions after phase 2, monitoring and paper close. 56 tests/build pass; live block 60099012 evidence saved. New pool entries and other pairs remain blocked. Next: cross-block order replay reliability.
