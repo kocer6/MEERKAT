@@ -135,3 +135,6 @@ M3.4 partial: SQLite cursor/history restored on restart, 2,000-block catch-up ch
 
 ### Position history checkpoint (2026-09-11)
 M4.3: Trade history shows linked entry checks, fills, valuations, alerts and exit evidence for one position. Read-only endpoint tested for correct linkage and 404. 63 tests/build/JS pass. Full UI interaction verification remains pending.
+
+### Exit settings checkpoint (2026-09-11)
+M4.2 partial: validated/persistent TP, SL, trailing, hold settings through authenticated UI/API, flat-book-only changes, strategy journal, entry rule evidence. 65 tests/build pass. Browser interaction verification remains pending; auto-entry and richer risk checks remain open.

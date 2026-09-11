@@ -1,13 +1,20 @@
 import { Ledger } from './ledger.js';
 import { assertRules, entryReasons, exitReason } from './rules.js';
-import type { Entry, Rules, BuyQuote, SellQuote, Position } from './types.js';
+import type { Entry, Rules, BuyQuote, SellQuote, Position, ExitSettings } from './types.js';
 
 /** This module has no wallet, private-key or network-send dependency. */
 export class PaperEngine {
-  readonly rules: Rules;
+  private currentRules: Rules;
+  get rules():Rules{return this.currentRules;}
   constructor(readonly ledger: Ledger, rules: Rules, private now = Date.now) {
     assertRules(rules);
-    this.rules = Object.freeze({ ...rules });
+    this.currentRules = Object.freeze(assertRules({ ...rules,...ledger.exitSettings() }));
+  }
+  setExitSettings(settings:ExitSettings):void {
+    const {takeProfitBps,stopLossBps,trailingBps,maxHoldMs}=settings;
+    const values={takeProfitBps,stopLossBps,trailingBps,maxHoldMs};
+    const next=Object.freeze(assertRules({...this.rules,...values}));
+    this.ledger.saveExitSettings(values,this.now());this.currentRules=next;
   }
   private fresh(q: { observedAt: number }): void {
     const age = this.now() - q.observedAt;

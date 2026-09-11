@@ -81,3 +81,21 @@ test('inspection API authenticates, validates input and returns read-only quotes
 
   } finally { await app.close(); }
 });
+
+test('strategy API requires authorization, persists across server restart and demo still completes',async()=>{
+ const {mkdtempSync,rmSync}=await import('node:fs');const {tmpdir}=await import('node:os');const {join}=await import('node:path');
+ const dir=mkdtempSync(join(tmpdir(),'meerkat-settings-'));const database=join(dir,'paper.sqlite');
+ try{
+  let app=await startServer({port:0,database});
+  try{
+   const html=await (await fetch(app.url)).text();const token=/name="control-token" content="([a-f0-9]+)"/.exec(html)![1]!;
+   const path='/api/strategy?takeProfitBps=9000&stopLossBps=1000&trailingBps=500&maxHoldMs=600000';
+   assert.equal((await fetch(app.url+path,{method:'POST'})).status,403);
+   assert.equal((await fetch(app.url+path,{method:'POST',headers:{'x-control-token':token}})).status,200);
+   assert.equal((await fetch(app.url+'/api/strategy?takeProfitBps=no',{method:'POST',headers:{'x-control-token':token}})).status,400);
+   const demo=await (await fetch(app.url+'/api/demo',{method:'POST',headers:{'x-control-token':token}})).json();assert.equal(demo.position.status,'closed');
+  }finally{await app.close();}
+  app=await startServer({port:0,database});
+  try{const state=await (await fetch(app.url+'/api/state')).json();assert.equal(state.rules.takeProfitBps,9000);assert.equal(state.events.filter((e:{kind:string})=>e.kind==='strategy-updated').length,1);}finally{await app.close();}
+ }finally{rmSync(dir,{recursive:true,force:true});}
+});

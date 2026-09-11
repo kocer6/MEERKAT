@@ -1,3 +1,10 @@
+## Latest checkpoint: persistent exit strategy settings (2026-09-11)
+
+Exit strategy form configures TP, SL, trailing and maximum hold. Authenticated POST /api/strategy validates values with existing Rules validation, persists the four fields and strategy-updated event atomically, then replaces the frozen engine rules. Settings restore on restart. Changes require no open/closing positions or reserved orders; server also rejects during entry/inspection/demo. Entry checks and gas limits remain fixed. New market entry evidence includes exitRules.
+
+Demo always completes its fixed fixture cycle: if custom rules do not trigger an exit, it uses the explicit demo-complete reason. This applies only to synthetic demo, never market positions. Trailing 0 retains existing semantics (not disabled), explained in UI.
+
+65 tests pass including endpoint authorization, invalid values, restart persistence, pending orders and high-TP demo completion. Build/JS syntax pass. Browser form interaction remains unverified; reload the local page to receive new assets. Next: UI verification of settings/history, additional risk signals and release QA. Strategy is global and can only change with a flat book; per-position editing is not implemented.
 ## Latest checkpoint: per-position trade history (2026-09-11)
 
 Positions now have a Trade history button. A dedicated panel loads /api/position-history?id=... and shows entry assessment, requested amount, costs, valuations, warnings, exit reason and expandable raw event evidence. Refresh history reloads the panel; switching positions discards stale responses. The ledger links pre-position entry-reserved events through the filled order ID, avoiding cross-trade contamination. Unknown positions return 404.

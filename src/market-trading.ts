@@ -24,7 +24,7 @@ export class MarketTrading {
   const completed=this.engine.ledger.marketOrder(orderId,token,amount);if(completed)return completed;
   if(!assessment.eligible) throw new Error([...q.reasons,...assessment.checks.filter(x=>!x.pass).map(x=>x.label)].join('; '));
   const position=await this.engine.buy({token:q.token,symbol:q.symbol,amountWei:amount,openingTaxBps:q.openingTaxBps,score:assessment.score,source:'chain',
-   evidence:{blockNumber:q.blockNumber,blockTimestamp:q.blockTimestamp,assessment,gasModel:'Fixed 0.0001 ETH per leg; not measured gas'}},orderId,
+   evidence:{blockNumber:q.blockNumber,blockTimestamp:q.blockTimestamp,assessment,exitRules:{takeProfitBps:this.engine.rules.takeProfitBps,stopLossBps:this.engine.rules.stopLossBps,trailingBps:this.engine.rules.trailingBps,maxHoldMs:this.engine.rules.maxHoldMs},gasModel:'Fixed 0.0001 ETH per leg; not measured gas'}},orderId,
    async()=>({...q.buy!,gasWei:paperGasWei,observedAt:q.observedAt,source:'chain'}));
   if(!this.engine.ledger.reserveWatches()[position.id])this.recordReserve(position.id,q);
   return position;

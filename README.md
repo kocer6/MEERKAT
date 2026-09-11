@@ -62,3 +62,5 @@ Existing native-ETH paper positions continue valuation and exits after Pons grad
 Retrying a completed market order with the same ID, token and requested amount returns its saved position without querying RPC or spending again, including after server restart. Failed/pending orders require a new explicit request. Browser retry keeps the ID until page reload or a new inspection.
 
 Scanner history and progress persist in SQLite. Connect after restart to resume; each 30-second cycle reads up to 2,000 blocks and replaces a 64-block overlap. The initial scan starts at the latest 2,000 blocks, not genesis. Deeper reorgs are not covered. The UI shows scanned/head blocks and the latest 15 saved launches; export includes saved history.
+
+Exit strategy settings (TP/SL/trailing/hold) are editable when all positions are closed and no order is pending. Values persist after restart and changes are journaled. Trailing 0 does not disable trailing. The fixed synthetic demo closes with demo-complete if custom exit thresholds do not fire.

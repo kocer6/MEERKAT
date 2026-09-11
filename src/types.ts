@@ -10,6 +10,7 @@ export interface Rules {
   minScore: number; maxTaxBps: number; maxPositions: number; maxGasWei: bigint;
   quoteMaxAgeMs: number; takeProfitBps: number; stopLossBps: number; trailingBps: number; maxHoldMs: number;
 }
+export type ExitSettings = Pick<Rules,'takeProfitBps'|'stopLossBps'|'trailingBps'|'maxHoldMs'>;
 export interface Position {
   id: string; mode: 'paper'; chainId: 4663; token: string; symbol: string; source: Source;
   quantity: string; costWei: string; peakWei: string; lastValueWei: string;

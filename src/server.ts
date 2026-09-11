@@ -55,6 +55,13 @@ export async function startServer(options: { port: number; database: string; dis
       if (req.method === 'POST') {
         const supplied = req.headers['x-control-token'];
         if (typeof supplied !== 'string' || Buffer.byteLength(supplied) !== Buffer.byteLength(controlToken) || !timingSafeEqual(Buffer.from(supplied), Buffer.from(controlToken))) { send(res, 403, { error: 'control token required' }); return; }
+        if(path==='/api/strategy'){
+          if(inspectionBusy || scenarioBusy){send(res,409,{error:'Wait for the current entry or inspection'});return;}
+          const params=new URL(req.url!,url).searchParams;
+          const number=(key:string)=>{const value=params.get(key);return value!==null && /^\d+$/.test(value)?Number(value):NaN;};
+          engine.setExitSettings({takeProfitBps:number('takeProfitBps'),stopLossBps:number('stopLossBps'),trailingBps:number('trailingBps'),maxHoldMs:number('maxHoldMs')});
+          send(res,200,{rules:engine.rules});return;
+        }
         if (path === '/api/monitor/start' || path === '/api/monitor/stop') {
           if(path.endsWith('/start')) monitor.start(); else await monitor.stop();
           send(res, 200, monitor.snapshot()); return;
@@ -98,7 +105,8 @@ export async function startServer(options: { port: number; database: string; dis
           scenarioBusy = true;
           try {
             const p = await engine.buy({ token: '0x1111111111111111111111111111111111111111', symbol: 'DEMO', amountWei: 100000000000000000n, score: 80, openingTaxBps: 0, source: 'synthetic' }, randomUUID(), async () => ({ tokensOut: 1000000000000000000000n, spentWei: 100000000000000000n, gasWei: 0n, observedAt: Date.now(), source: 'synthetic' }));
-            const position = await engine.observe(p.id, { ethOut: 140000000000000000n, gasWei: 0n, observedAt: Date.now(), source: 'synthetic' });
+            let position = await engine.observe(p.id, { ethOut: 140000000000000000n, gasWei: 0n, observedAt: Date.now(), source: 'synthetic' });
+            if(position.status==='open')position=await engine.close(p.id,'demo-complete',async()=>({ethOut:140000000000000000n,gasWei:0n,observedAt:Date.now(),source:'synthetic'}));
             send(res, 200, { position });
           } finally { scenarioBusy = false; }
           return;

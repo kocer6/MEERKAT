@@ -5,6 +5,12 @@ const el = (tag, text, className) => { const node = document.createElement(tag);
 async function refresh() {
   const response = await fetch('/api/state'); if (!response.ok) throw new Error('Local engine unavailable');
   const data = await response.json();
+  $('exit-rule-summary').textContent='+'+data.rules.takeProfitBps/100+'% / −'+data.rules.stopLossBps/100+'%';
+  $('trailing-rule-summary').textContent=data.rules.trailingBps/100+'% from peak';
+  if(!$('strategy-form').dataset.loaded){
+    for(const [id,value] of [['tp',data.rules.takeProfitBps/100],['sl',data.rules.stopLossBps/100],['trailing',data.rules.trailingBps/100],['hold',data.rules.maxHoldMs/60000]])$('strategy-'+id).value=value;
+    $('strategy-form').dataset.loaded='true';
+  }
   monitorActive=data.monitor.active; $('monitor-toggle').textContent=monitorActive?'Pause position monitoring':'Resume position monitoring'; $('monitor-status').textContent=monitorActive?'Automatic position quotes every 15 seconds after the previous cycle. TP/SL/trailing/hold rules active.':'Position monitoring paused. Automatic exits are not evaluated.';
   $('balance').textContent = eth(data.account.balanceWei) + ' ETH';
   const pnl = data.positions.reduce((sum, p) => sum + BigInt(p.realizedPnlWei), 0n);
@@ -54,6 +60,14 @@ async function refresh() {
   renderMarket(data);
 }
 let historyRequest=0;
+$('strategy-form').addEventListener('submit',async event=>{
+ event.preventDefault();$('strategy-save').disabled=true;
+ try{
+  const params=new URLSearchParams({takeProfitBps:String(Math.round(Number($('strategy-tp').value)*100)),stopLossBps:String(Math.round(Number($('strategy-sl').value)*100)),trailingBps:String(Math.round(Number($('strategy-trailing').value)*100)),maxHoldMs:String(Number($('strategy-hold').value)*60000)});
+  const response=await fetch('/api/strategy?'+params,{method:'POST',headers:{'x-control-token':control}});const result=await response.json();if(!response.ok)throw new Error(result.error);
+  await refresh();$('strategy-status').textContent='Saved for future paper trades.';
+ }catch(error){$('strategy-status').textContent=error.message;}finally{$('strategy-save').disabled=false;}
+});
 async function showHistory(id){
  const version=++historyRequest;
  let panel=$('trade-history');
