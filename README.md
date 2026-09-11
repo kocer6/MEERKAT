@@ -32,7 +32,7 @@ Paste a Pons V2 token or public wallet address into `/terminal`. MEERKAT returns
 - factory phase transitions, pool swaps and ERC-20 transfers;
 - exact block, transaction, log index, quantities and venue for every event;
 - participant summaries such as early entry and fast exit, with the rule shown;
-- token score components for coverage, participant breadth, activity depth and deployer exposure;
+- token score components for deployer exposure, creator tax, participant breadth, two-sided market activity and reconstructed current-holder breadth;
 - wallet score components for local scope, early discovery, two-sided activity and evidence depth;
 - exact creator-fee flow from curve and pool sweep events, including the current recipient and recipient-change history;
 - three relationship views: directional trade flow, reconstructed current holders and direct wallet-to-wallet transfer routes;

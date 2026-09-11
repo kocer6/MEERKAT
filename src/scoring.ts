@@ -19,15 +19,16 @@ export function scoreToken(state:HistoryState,events:TokenEvent[]):EvidenceScore
  const tax=state.profile.creatorTaxBps,taxScore=tax===0?20:tax<=100?16:tax<=300?10:tax<=500?5:0;
  const sides=new Map<string,Set<string>>();for(const event of events){if(event.venue!=='curve'||!event.initiator||!['buy','sell'].includes(event.kind))continue;const key=event.initiator.toLowerCase(),seen=sides.get(key)??new Set<string>();seen.add(event.kind);sides.set(key,seen);}const roundTrips=[...sides.values()].filter(seen=>seen.size===2).length;
  const twoSidedScore=participants?Math.round(roundTrips/participants*15):0;
- const excluded=new Set([zero,state.profile.token,state.profile.curve,state.profile.deployer,state.profile.poolManager].map(value=>value.toLowerCase()));
- const holders=new Set(events.filter(event=>event.kind.toLowerCase()==='transfer'&&event.recipient&&!excluded.has(event.recipient.toLowerCase())).map(event=>event.recipient!.toLowerCase())).size;
+ const excluded=new Set([zero,state.profile.token,state.profile.curve,state.profile.deployer,state.profile.poolManager,state.profile.memeHook].filter((value):value is string=>Boolean(value)).map(value=>value.toLowerCase()));
+ const balances=new Map<string,bigint>();for(const event of events){if(event.kind.toLowerCase()!=='transfer')continue;const value=BigInt(event.tokens??event.details?.value??0);if(event.actor){const actor=event.actor.toLowerCase();balances.set(actor,(balances.get(actor)??0n)-value);}if(event.recipient){const recipient=event.recipient.toLowerCase();balances.set(recipient,(balances.get(recipient)??0n)+value);}}
+ const holders=[...balances].filter(([address,balance])=>balance>0n&&!excluded.has(address)).length;
  const holderScore=holders===0?0:holders===1?2:holders<5?5:holders<10?8:holders<25?12:15;
  const components:ScoreComponent[]=[
   {label:'DEPLOYER EXPOSURE',score:deployerScore,max:25,evidence:deployerShare===null?'Current supply share unavailable':`${deployerShare.toFixed(2)}% of supply currently held by deployer`},
   {label:'CREATOR TAX',score:taxScore,max:20,evidence:`${(tax/100).toFixed(2)}% creator tax`},
   {label:'PARTICIPANT BREADTH',score:participantScore,max:25,evidence:`${participants} attributed curve participant${participants===1?'':'s'}`},
   {label:'TWO-SIDED MARKET',score:twoSidedScore,max:15,evidence:`${roundTrips} participants with attributed buys and sells`},
-  {label:'HOLDER BREADTH',score:holderScore,max:15,evidence:`${holders} non-protocol transfer recipients observed`},
+  {label:'HOLDER BREADTH',score:holderScore,max:15,evidence:`${holders} current non-core holder${holders===1?'':'s'} reconstructed from transfers`},
  ];
  const value=components.reduce((sum,component)=>sum+component.score,0);
  const confidence=events.length>=25&&participants>=10?'high':events.length>=10||participants>=3?'medium':'low';

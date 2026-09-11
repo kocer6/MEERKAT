@@ -21,7 +21,7 @@ export interface TokenProfile {token:string;name:string;symbol:string;decimals:n
 export interface HistoryState {profile:TokenProfile;cursor:string|null;status:'indexing'|'ready'|'error'|'paused';error:string|null;updatedAt:number;indexVersion?:number}
 const historyIndexVersion=2;
 export async function findLaunchBlock(head:bigint,read:(from:bigint,to:bigint)=>Promise<Array<{blockNumber:bigint|null}>>){
- const launches=await read(0n,head);if(launches.length!==1||launches[0]!.blockNumber===null)throw new Error('Launch block could not be verified from the Pons V2 factory event');return launches[0]!.blockNumber;
+ const launches=await readLogsAdaptive(0n,head,read);if(launches.length!==1||launches[0]!.blockNumber===null)throw new Error('Launch block could not be verified from the Pons V2 factory event');return launches[0]!.blockNumber;
 }
 export async function rpcReadWithRetry<T>(read:()=>Promise<T>,pause:(ms:number)=>Promise<void>=(ms)=>new Promise(resolve=>setTimeout(resolve,ms))):Promise<T>{
  const waits=[2000,4000,8000,16000,30000];
@@ -31,7 +31,7 @@ export async function rpcReadWithRetry<T>(read:()=>Promise<T>,pause:(ms:number)=
 export async function readLogsAdaptive<T>(from:bigint,to:bigint,read:(from:bigint,to:bigint)=>Promise<T[]>):Promise<T[]>{
  try{return await read(from,to);}catch(error){
   const details=String((error as {details?:unknown}).details??''),message=error instanceof Error?error.message:'';
-  if(from===to||!/logs matched by query exceeds limit|more than \d+ results|response size exceeded|log query timed out/i.test(`${details} ${message}`))throw error;
+  if(from===to||!/logs matched by query exceeds limit|more than \d+ results|response size exceeded|log query timed out|maximum block range|block range[^\n]*exceed|limited to[^\n]*blocks|query exceeds max block range/i.test(`${details} ${message}`))throw error;
   const middle=(from+to)/2n;
  return [...await readLogsAdaptive(from,middle,read),...await readLogsAdaptive(middle+1n,to,read)];
  }
@@ -61,14 +61,22 @@ export function summarizeWallets(events:TokenEvent[],birthAt:number,birthBlock?:
 }
 export class HistoryStore {
  private db:DatabaseSync;
- constructor(file:string){if(file!==':memory:')mkdirSync(dirname(file),{recursive:true});this.db=new DatabaseSync(file);this.db.exec('PRAGMA journal_mode=WAL; PRAGMA busy_timeout=3000; CREATE TABLE IF NOT EXISTS token_history(token TEXT PRIMARY KEY,value TEXT NOT NULL); CREATE TABLE IF NOT EXISTS token_events(token TEXT,id TEXT,block INTEGER,value TEXT,PRIMARY KEY(token,id));');}
+ constructor(file:string){if(file!==':memory:')mkdirSync(dirname(file),{recursive:true});this.db=new DatabaseSync(file);this.db.exec('PRAGMA journal_mode=WAL; PRAGMA busy_timeout=3000; CREATE TABLE IF NOT EXISTS token_history(token TEXT PRIMARY KEY,value TEXT NOT NULL); CREATE TABLE IF NOT EXISTS token_events(token TEXT,id TEXT,block INTEGER,value TEXT,initiator TEXT,actor TEXT,recipient TEXT,kind TEXT,PRIMARY KEY(token,id));');
+  const columns=new Set((this.db.prepare('PRAGMA table_info(token_events)').all() as {name:string}[]).map(row=>row.name));let migrated=false;
+  for(const column of ['initiator','actor','recipient','kind'])if(!columns.has(column)){this.db.exec(`ALTER TABLE token_events ADD COLUMN ${column} TEXT`);migrated=true;}
+  if(migrated)this.db.exec("UPDATE token_events SET initiator=lower(json_extract(value,'$.initiator')),actor=lower(json_extract(value,'$.actor')),recipient=lower(json_extract(value,'$.recipient')),kind=lower(json_extract(value,'$.kind'))");
+  this.db.exec('CREATE INDEX IF NOT EXISTS token_events_token_block_id ON token_events(token,block,id); CREATE INDEX IF NOT EXISTS token_events_initiator ON token_events(initiator,token,block,id); CREATE INDEX IF NOT EXISTS token_events_actor ON token_events(actor,token,block,id); CREATE INDEX IF NOT EXISTS token_events_recipient ON token_events(recipient,token,block,id); CREATE INDEX IF NOT EXISTS token_events_kind ON token_events(token,kind,block,id);');
+ }
  close(){this.db.close();}
  state(token:string):HistoryState|undefined{const r=this.db.prepare('SELECT value FROM token_history WHERE token=?').get(token) as {value:string}|undefined;return r?JSON.parse(r.value):undefined;}
+ states():HistoryState[]{return (this.db.prepare('SELECT value FROM token_history ORDER BY token').all() as {value:string}[]).map(row=>JSON.parse(row.value));}
  tokens():string[]{return (this.db.prepare('SELECT token FROM token_history ORDER BY token').all() as {token:string}[]).map(row=>row.token);}
  save(s:HistoryState){this.db.prepare('INSERT INTO token_history VALUES (?,?) ON CONFLICT(token) DO UPDATE SET value=excluded.value').run(s.profile.token,encode(s));}
  events(token:string):TokenEvent[]{return (this.db.prepare('SELECT value FROM token_events WHERE token=? ORDER BY block,id').all(token) as {value:string}[]).map(r=>JSON.parse(r.value));}
+ walletEvents(address:string):Array<{token:string;event:TokenEvent}>{address=address.toLowerCase();return (this.db.prepare('SELECT token,value FROM token_events WHERE initiator=? OR actor=? OR recipient=? ORDER BY token,block,id').all(address,address,address) as {token:string;value:string}[]).map(row=>({token:row.token,event:JSON.parse(row.value)}));}
+ eventsByKinds(token:string,kinds:string[]):TokenEvent[]{if(!kinds.length)return [];const placeholders=kinds.map(()=>'?').join(',');return (this.db.prepare(`SELECT value FROM token_events WHERE token=? AND kind IN (${placeholders}) ORDER BY block,id`).all(token,...kinds.map(kind=>kind.toLowerCase())) as {value:string}[]).map(row=>JSON.parse(row.value));}
  restart(s:HistoryState){this.db.exec('BEGIN IMMEDIATE');try{this.db.prepare('DELETE FROM token_events WHERE token=?').run(s.profile.token);this.save(s);this.db.exec('COMMIT');}catch(e){this.db.exec('ROLLBACK');throw e;}}
- chunk(s:HistoryState,from:bigint,to:bigint,events:TokenEvent[]){this.db.exec('BEGIN IMMEDIATE');try{this.db.prepare('DELETE FROM token_events WHERE token=? AND block>=? AND block<=?').run(s.profile.token,Number(from),Number(to));const insert=this.db.prepare('INSERT OR REPLACE INTO token_events VALUES (?,?,?,?)');for(const e of events)insert.run(s.profile.token,e.id,Number(e.blockNumber),encode(e));this.save(s);this.db.exec('COMMIT');}catch(e){this.db.exec('ROLLBACK');throw e;}}
+ chunk(s:HistoryState,from:bigint,to:bigint,events:TokenEvent[]){this.db.exec('BEGIN IMMEDIATE');try{this.db.prepare('DELETE FROM token_events WHERE token=? AND block>=? AND block<=?').run(s.profile.token,Number(from),Number(to));const insert=this.db.prepare('INSERT OR REPLACE INTO token_events(token,id,block,value,initiator,actor,recipient,kind) VALUES (?,?,?,?,?,?,?,?)');for(const e of events)insert.run(s.profile.token,e.id,Number(e.blockNumber),encode(e),e.initiator?.toLowerCase()??null,e.actor?.toLowerCase()??null,e.recipient?.toLowerCase()??null,e.kind.toLowerCase());this.save(s);this.db.exec('COMMIT');}catch(e){this.db.exec('ROLLBACK');throw e;}}
 }
 export function historyReader(){
  const client=createPublicClient({transport:http(process.env.MEERKAT_RPC_URL??'https://rpc.mainnet.chain.robinhood.com',{timeout:15000,retryCount:1})});
@@ -99,15 +107,17 @@ export class TokenHistory {
  private pending=new Map<string,Promise<void>>();private stopped=false;
  constructor(readonly store:HistoryStore,private reader=historyReader()){}
  start(raw:string){if(!isAddress(raw))throw new Error('Invalid token address');const token=raw.toLowerCase();if(this.stopped)throw new Error('History service stopped');if(this.pending.has(token))return;
-  if(this.pending.size>=2)throw new Error('Two history jobs already running');const work=this.run(token).finally(()=>this.pending.delete(token));this.pending.set(token,work);
+  if(this.pending.size>=2)throw new Error('Two history jobs already running');this.failures.delete(token);const existing=this.store.state(token);if(existing&&existing.indexVersion!==historyIndexVersion)this.store.restart({...existing,status:'indexing',error:null,updatedAt:Date.now()});const work=this.run(token).finally(()=>this.pending.delete(token));this.pending.set(token,work);
  }
- result(token:string){token=token.toLowerCase();const state=this.store.state(token);const events=this.store.events(token);return {state:state??null,running:this.pending.has(token),events:events.slice(-500).reverse(),totalEvents:events.length,wallets:state?summarizeWallets(events,state.profile.birthAt,state.profile.birthBlock):[],score:state?scoreToken(state,events):null,relationships:state?buildRelationshipGraph(state.profile,events,{complete:state.status==='ready'}):null,feeFlow:state?buildFeeFlow(state.profile,events):null,coverage:'Curve trades, native ETH pool swaps, token transfers, factory phases and creator-fee sweeps. Curve buyer/seller addresses are attributed; pool swaps remain unattributed without trace evidence. Events use exact blocks and transactions; per-event timestamps are not fetched from the rate-limited public RPC. Up to cursor only; latest 500 events displayed.'};}
+ result(token:string){token=token.toLowerCase();const state=this.store.state(token);const events=this.store.events(token),current=state?.indexVersion===historyIndexVersion;return {state:state??null,running:this.pending.has(token),events:events.slice(-500).reverse(),totalEvents:events.length,wallets:state?summarizeWallets(events,state.profile.birthAt,state.profile.birthBlock):[],score:state?scoreToken(state,events):null,relationships:state?buildRelationshipGraph(state.profile,events,{complete:state.status==='ready'&&current}):null,feeFlow:state&&current?buildFeeFlow(state.profile,events):null,coverage:'Curve trades, native ETH pool swaps, token transfers, factory phases and creator-fee sweeps. Curve buyer/seller addresses are attributed; pool swaps remain unattributed without trace evidence. Events use exact blocks and transactions; per-event timestamps are not fetched from the rate-limited public RPC. Up to cursor only; latest 500 events displayed.'};}
+ activity(token:string){token=token.toLowerCase();return {running:this.pending.has(token),error:this.failures.get(token)??null};}
  private async run(token:string){let s=this.store.state(token);try{
   const reusable=s?.indexVersion===historyIndexVersion,profile=reusable&&s&&s.status!=='ready'?s.profile:await this.reader.profile(token);s={profile,cursor:reusable?s?.cursor??null:null,status:'indexing',error:null,updatedAt:Date.now(),indexVersion:historyIndexVersion};if(reusable)this.store.save(s);else this.store.restart(s);
   let from=s.cursor===null?BigInt(profile.birthBlock):BigInt(s.cursor)>BigInt(profile.birthBlock)+63n?BigInt(s.cursor)-63n:BigInt(profile.birthBlock);const head=BigInt(profile.head);
   if(from>head)throw new Error('RPC head behind saved history');
   while(from<=head&&!this.stopped){const to=from+4999n<head?from+4999n:head;const events=await this.reader.chunk(profile,from,to);s={...s,cursor:to.toString(),status:to===head?'ready':'indexing',updatedAt:Date.now()};this.store.chunk(s,from,to,events);from=to+1n;}
   if(this.stopped&&s.status==='indexing')this.store.save({...s,status:'paused'});
+  this.failures.delete(token);
  }catch(e){const error=(e instanceof Error?e.message:'History read failed').split('\n')[0]!.replace(/https?:\/\/\S+/g,'[RPC endpoint]').slice(0,240);if(s)this.store.save({...s,status:'error',error});else this.failures.set(token,error);}}
  private failures=new Map<string,string>();
  error(token:string){return this.failures.get(token.toLowerCase())??null;}

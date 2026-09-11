@@ -31,6 +31,12 @@ MEERKAT scores Pons V2 tokens and locally evidenced wallet behavior, then expose
 - [x] Reconstruct holder balances from indexed Transfer evidence, including existing persisted histories.
 - [x] Trace creator-fee flow from exact curve/pool sweeps, recipient configuration and recipient-change events.
 - [x] Clear stale persisted event families atomically when the history index schema changes.
+- [x] Normalize and index event addresses so wallet dossiers do not parse every stored token event.
+- [x] Score current reconstructed holders instead of historical transfer recipients.
+- [x] Include deployer, creator-fee and pending-recipient roles in wallet dossiers.
+- [x] Gate legacy scores and fee flow during schema migration; clear transient profile errors after a successful retry.
+- [x] Adaptively split launch discovery when an RPC rejects a wide block range.
+- [x] Keep fee addresses and the centered relationship map usable on narrow screens; reveal results after mobile analysis.
 
 ## Next acceptance gates
 

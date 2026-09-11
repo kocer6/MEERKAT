@@ -38,6 +38,18 @@ test('a sparse new token cannot receive a perfect score just because indexing fi
  assert.equal(score.confidence,'low');
 });
 
+test('holder breadth counts current positive balances instead of historical recipients',()=>{
+ const events=[] as TokenEvent[];
+ for(let index=0;index<25;index++){
+  const wallet=numberedAddress(index+100);
+  events.push({...transfer(index*2),id:`in-${index}`,actor:deployer,recipient:wallet,tokens:'1'});
+  events.push({...transfer(index*2+1),id:`out-${index}`,actor:wallet,recipient:deployer,tokens:'1'});
+ }
+ const component=scoreToken(state({deployerBalance:'0'}),events).components.find(value=>value.label==='HOLDER BREADTH');
+ assert.equal(component?.score,0);
+ assert.match(component?.evidence??'',/0 current non-core holders/i);
+});
+
 test('wallet score measures repeated observed behavior without claiming profit or skill',()=>{
  const score=scoreWallet({matchedTokens:8,readyMatchedTokens:8,events:80,earlyEntries:4,roundTrips:6});
  assert.equal(score.value,82);

@@ -51,3 +51,16 @@ test('wallet dossier labels block-proximate entry and exit without inventing tim
  const dossier=buildWalletDossier(address,[{state:state('0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',100_000),events:[buy,sell]}]);
  assert.equal(dossier.tokens[0]?.earlyEntry,true);assert.equal(dossier.tokens[0]?.fastExit,true);
 });
+
+test('wallet dossier includes creator fee and deployer roles even without a direct wallet event',()=>{
+ const historyState=state('0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',100_000);
+ historyState.profile.creatorFeeRecipient=address;
+ const fee=event('a','FeesSwept',0,{at:null as never,initiator:null,actor:null,recipient:null,details:{creatorAmount:'42'}});
+ const dossier=buildWalletDossier(address,[{state:historyState,events:[fee]}]);
+ assert.equal(dossier.tokens.length,1);
+ assert.deepEqual(dossier.tokens[0]?.roles,['fee recipient']);
+ assert.equal(dossier.tokens[0]?.creatorRevenue,'42');
+ assert.equal(dossier.summary.feeTokens,1);
+ assert.equal(dossier.score.value,0);
+ assert.ok(dossier.assessment.labels.includes('creator fee recipient'));
+});

@@ -101,6 +101,8 @@ test('terminal connects token and wallet modes to read-only evidence APIs',async
   assert.match(css,/\.graph-mode-tabs/);
   assert.match(css,/\.zone-fees/);
   assert.match(css,/\.fee-route/);
+  assert.match(css,/overflow-wrap:anywhere/);
+  assert.match(js,/scrollIntoView/);
   assert.match(js,/marker-end/);
   assert.doesNotMatch(js,/privateKey|sendTransaction|eth_sendTransaction/);
   const invalid=await fetch(app.url+'/api/wallet/dossier?address=bad');

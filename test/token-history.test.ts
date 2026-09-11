@@ -33,6 +33,12 @@ test('launch lookup rejects a missing or ambiguous factory event',async()=>{
  await assert.rejects(()=>findLaunchBlock(10n,async()=>[]),/could not be verified/);
  await assert.rejects(()=>findLaunchBlock(10n,async()=>[{blockNumber:1n},{blockNumber:2n}]),/could not be verified/);
 });
+test('launch lookup adaptively splits RPC ranges that exceed provider limits',async()=>{
+ const calls:Array<[bigint,bigint]>=[];
+ const block=await findLaunchBlock(15n,async(from,to)=>{calls.push([from,to]);if(to-from>3n)throw new Error('maximum block range exceeded');return from<=9n&&to>=9n?[{blockNumber:9n}]:[];});
+ assert.equal(block,9n);
+ assert.ok(calls.length>1);
+});
 test('RPC enrichment survives a sustained rate-limit window with bounded backoff',async()=>{
  let attempts=0;const waits:number[]=[];
  const value=await rpcReadWithRetry(async()=>{attempts++;if(attempts<6)throw Object.assign(new Error('Too Many Requests'),{code:429});return 'ok';},async ms=>{waits.push(ms);});
@@ -71,10 +77,31 @@ test('an index schema upgrade clears stale events before rebuilding history',asy
  for(let attempt=0;attempt<50&&store.state(token)?.status!=='indexing';attempt++)await new Promise(resolve=>setTimeout(resolve,1));
  try{assert.equal(store.events(token).length,0);}finally{release();await history.close();}
 });
+test('an index schema upgrade withholds legacy score and fee flow before profile refresh completes',async()=>{
+ const token='0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',other='0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
+ const store=new HistoryStore(':memory:'),profile={token,name:'Legacy',symbol:'OLD',decimals:18,curve:other,deployer:other,pairToken:'0x0000000000000000000000000000000000000000',phase:2,birthBlock:'1',birthAt:0,head:'2',poolId:null,poolManager:other,totalSupply:'1000',deployerBalance:'0',creatorTaxBps:0,metadata:null,metadataError:null};
+ store.save({profile,cursor:'2',status:'ready',error:null,updatedAt:1});let release!:()=>void;const blocked=new Promise<void>(resolve=>{release=resolve;});
+ const history=new TokenHistory(store,{profile:async()=>{await blocked;return profile;},chunk:async()=>[]});history.start(token);
+ try{const result=history.result(token);assert.equal(result.running,true);assert.equal(result.score?.value,null);assert.equal(result.feeFlow,null);}finally{release();await history.close();}
+});
+test('a successful retry clears the previous first-profile failure',async()=>{
+ const token='0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',other='0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',store=new HistoryStore(':memory:');let calls=0;
+ const profile={token,name:'Token',symbol:'TKN',decimals:18,curve:other,deployer:other,pairToken:'0x0000000000000000000000000000000000000000',phase:0,birthBlock:'1',birthAt:0,head:'1',poolId:null,poolManager:other,totalSupply:'1000',deployerBalance:'0',creatorTaxBps:0,metadata:null,metadataError:null};
+ const history=new TokenHistory(store,{profile:async()=>{if(++calls===1)throw new Error('first RPC failed');return profile;},chunk:async()=>[]});history.start(token);
+ for(let attempt=0;attempt<50&&!history.error(token);attempt++)await new Promise(resolve=>setTimeout(resolve,1));
+ history.start(token);for(let attempt=0;attempt<50&&store.state(token)?.status!=='ready';attempt++)await new Promise(resolve=>setTimeout(resolve,1));
+ assert.equal(history.error(token),null);await history.close();
+});
+test('wallet event lookup uses normalized address columns and returns only matching evidence',()=>{
+ const token='0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',other='0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',wallet='0x1111111111111111111111111111111111111111',store=new HistoryStore(':memory:');
+ const profile={token,name:'Token',symbol:'TKN',decimals:18,curve:other,deployer:other,pairToken:'0x0000000000000000000000000000000000000000',phase:0,birthBlock:'1',birthAt:0,head:'2',poolId:null,poolManager:other,totalSupply:'1000',deployerBalance:'0',creatorTaxBps:0,metadata:null,metadataError:null};
+ store.chunk({profile,cursor:'2',status:'ready',error:null,updatedAt:1,indexVersion:2},1n,2n,[{...trade('buy',0),id:'match',initiator:wallet,actor:wallet,recipient:wallet},{...trade('buy',1),id:'other',initiator:other,actor:other,recipient:other}]);
+ assert.deepEqual(store.walletEvents(wallet).map(value=>value.event.id),['match']);store.close();
+});
 test('token history result includes a bounded relationship graph from persisted evidence',async()=>{
  const token='0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',deployer='0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',buyer='0x1111111111111111111111111111111111111111';
  const store=new HistoryStore(':memory:'),profile={token,name:'Token',symbol:'TKN',decimals:18,curve:deployer,deployer,pairToken:'0x0000000000000000000000000000000000000000',phase:0,birthBlock:'10',birthAt:0,head:'20',poolId:null,poolManager:deployer,totalSupply:'1000',deployerBalance:'0',creatorTaxBps:0,metadata:null,metadataError:null};
- const state:HistoryState={profile,cursor:'20',status:'ready',error:null,updatedAt:1};
+ const state:HistoryState={profile,cursor:'20',status:'ready',error:null,updatedAt:1,indexVersion:2};
  store.chunk(state,10n,20n,[{...trade('buy',0),id:'buy',blockNumber:'11',initiator:buyer,actor:buyer,recipient:buyer}]);
  const history=new TokenHistory(store),result=history.result(token);
  assert.equal(result.relationships?.edges.find(edge=>edge.kind==='curve buy')?.from,token);

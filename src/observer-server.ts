@@ -8,11 +8,15 @@ import {marketReader,type MarketReader} from './chain/market.js';
 import {PonsDiscovery,rpcReader} from './chain/discovery.js';
 import {PositionMonitor} from './monitor.js';
 import {encode} from './types.js';
+import {isAddress} from 'viem';
+import {Worker} from 'node:worker_threads';
 export async function startObserver(options:{port:number;database:string;market?:MarketReader;discovery?:PonsDiscovery}){
  const historyStore=new HistoryStore(options.database);const history=new TokenHistory(historyStore);
  const store=new WatchStore(options.database);const service=new WatchService(store,options.market??marketReader());
  const discovery=options.discovery??new PonsDiscovery(rpcReader(),{load:()=>store.loadDiscovery(),save:s=>store.saveDiscovery(s)});
  const monitor=new PositionMonitor(()=>store.items().map(w=>({id:w.token,source:'chain',status:'open'})),token=>service.refresh(token));
+ const resultCache=new Map<string,{updatedAt:number;value:ReturnType<TokenHistory['result']>}>(),resultJobs=new Map<string,Promise<ReturnType<TokenHistory['result']>>>();
+ const tokenResult=async(token:string)=>{token=token.toLowerCase();const state=historyStore.state(token);if(!state||options.database===':memory:')return history.result(token);const cached=resultCache.get(token);if(cached?.updatedAt===state.updatedAt)return {...cached.value,...history.activity(token)};const active=resultJobs.get(token);if(active)return {...await active,...history.activity(token)};const workerUrl=new URL(import.meta.url.endsWith('.ts')?'./history-result-worker.ts':'./history-result-worker.js',import.meta.url),job=new Promise<ReturnType<TokenHistory['result']>>((resolve,reject)=>{const worker=new Worker(workerUrl,{workerData:{database:options.database,token}});worker.once('message',resolve);worker.once('error',reject);worker.once('exit',code=>{if(code!==0)reject(new Error(`History result worker exited with code ${code}`));});});resultJobs.set(token,job);try{const value=await job;const latest=historyStore.state(token);if(latest?.updatedAt===state.updatedAt)resultCache.set(token,{updatedAt:state.updatedAt,value});return {...value,...history.activity(token)};}finally{resultJobs.delete(token);}};
  const control=randomBytes(32).toString('hex');let url='',closing=false,scannerActive=false,scannerGeneration=0,scannerTimer:NodeJS.Timeout|undefined;
  const scan=async(generation:number)=>{await discovery.refresh();if(scannerActive&&!closing&&generation===scannerGeneration)scannerTimer=setTimeout(()=>void scan(generation),30000);};
  const state=()=>({mode:'observe',chainId:4663,watches:store.items(),events:store.events(),monitor:monitor.snapshot(),scannerActive,discovery:discovery.snapshot()});
@@ -38,8 +42,8 @@ export async function startObserver(options:{port:number;database:string;market?
   try{
    if(req.method==='GET'){
     const asset=assets.get(path);if(asset){res.writeHead(200,{'content-type':asset.type});res.end(asset.body);return;}
-    if(path==='/api/token/history'){const token=p.get('token')??'';send(res,200,{...history.result(token),error:history.error(token)});return;}
-    if(path==='/api/wallet/dossier'){const address=p.get('address')??'';const histories=historyStore.tokens().map(token=>({state:historyStore.state(token)!,events:historyStore.events(token)}));send(res,200,buildWalletDossier(address,histories));return;}
+    if(path==='/api/token/history'){const token=p.get('token')??'';send(res,200,await tokenResult(token));return;}
+    if(path==='/api/wallet/dossier'){const address=p.get('address')??'';if(!isAddress(address))throw new Error('Invalid wallet address');const normalized=address.toLowerCase(),matched=new Map<string,ReturnType<HistoryStore['events']>>();for(const row of historyStore.walletEvents(normalized)){const events=matched.get(row.token)??[];events.push(row.event);matched.set(row.token,events);}const histories=historyStore.states().map(state=>{const profile=state.profile,roleMatch=[profile.deployer,profile.creatorFeeRecipient,profile.pendingCreatorFeeRecipient?.newRecipient].some(value=>value?.toLowerCase()===normalized),events=matched.get(profile.token)??[];if(roleMatch){const ids=new Set(events.map(event=>event.id));for(const event of historyStore.eventsByKinds(profile.token,['FeesSwept','FeesRescued','PoolFeesSwept','PoolFeesRescued']))if(!ids.has(event.id))events.push(event);}return {state,events};});send(res,200,buildWalletDossier(normalized,histories));return;}
     if(path==='/api/state'||path==='/api/export'){if(path.endsWith('export'))res.setHeader('Content-Disposition','attachment; filename="meerkat-observations.json"');send(res,200,state());return;}
    }
    if(req.method==='POST'){
@@ -58,5 +62,5 @@ export async function startObserver(options:{port:number;database:string;market?
  });
  await new Promise<void>((resolve,reject)=>{server.once('error',reject);server.listen(options.port,'127.0.0.1',resolve);});
  const address=server.address();if(!address||typeof address==='string')throw new Error('No server address');url=`http://127.0.0.1:${address.port}`;monitor.start();
- return {url,close:async()=>{closing=true;scannerActive=false;scannerGeneration++;if(scannerTimer)clearTimeout(scannerTimer);await monitor.stop();await discovery.settled();await history.close();await new Promise<void>((resolve,reject)=>{server.close(e=>e?reject(e):resolve());server.closeIdleConnections();});store.close();}};
+ return {url,close:async()=>{closing=true;scannerActive=false;scannerGeneration++;if(scannerTimer)clearTimeout(scannerTimer);await monitor.stop();await discovery.settled();await new Promise<void>((resolve,reject)=>{server.close(e=>e?reject(e):resolve());server.closeIdleConnections();});await history.close();store.close();}};
 }
