@@ -1,3 +1,5 @@
+import {HistoryStore,TokenHistory} from './token-history.js';
+import {buildWalletDossier} from './wallet-dossier.js';
 import {createServer,type ServerResponse} from 'node:http';
 import {randomBytes,timingSafeEqual} from 'node:crypto';
 import {readFileSync} from 'node:fs';
@@ -7,6 +9,7 @@ import {PonsDiscovery,rpcReader} from './chain/discovery.js';
 import {PositionMonitor} from './monitor.js';
 import {encode} from './types.js';
 export async function startObserver(options:{port:number;database:string;market?:MarketReader;discovery?:PonsDiscovery}){
+ const historyStore=new HistoryStore(options.database);const history=new TokenHistory(historyStore);
  const store=new WatchStore(options.database);const service=new WatchService(store,options.market??marketReader());
  const discovery=options.discovery??new PonsDiscovery(rpcReader(),{load:()=>store.loadDiscovery(),save:s=>store.saveDiscovery(s)});
  const monitor=new PositionMonitor(()=>store.items().map(w=>({id:w.token,source:'chain',status:'open'})),token=>service.refresh(token));
@@ -15,7 +18,14 @@ export async function startObserver(options:{port:number;database:string;market?
  const state=()=>({mode:'observe',chainId:4663,watches:store.items(),events:store.events(),monitor:monitor.snapshot(),scannerActive,discovery:discovery.snapshot()});
  const send=(res:ServerResponse,status:number,value:unknown)=>{res.writeHead(status,{'content-type':'application/json'});res.end(encode(value));};
  const assets=new Map([
-  ['/',{type:'text/html; charset=utf-8',body:readFileSync(new URL('../public/observer.html',import.meta.url),'utf8').replace('__CONTROL_TOKEN__',control)}],
+  ['/',{type:'text/html; charset=utf-8',body:readFileSync(new URL('../public/landing.html',import.meta.url),'utf8')}],
+  ['/terminal',{type:'text/html; charset=utf-8',body:readFileSync(new URL('../public/terminal.html',import.meta.url),'utf8').replace('__CONTROL_TOKEN__',control)}],
+  ['/landing.css',{type:'text/css',body:readFileSync(new URL('../public/landing.css',import.meta.url),'utf8')}],
+  ['/landing.js',{type:'text/javascript',body:readFileSync(new URL('../public/landing.js',import.meta.url),'utf8')}],
+  ['/terminal.css',{type:'text/css',body:readFileSync(new URL('../public/terminal.css',import.meta.url),'utf8')}],
+  ['/terminal.js',{type:'text/javascript',body:readFileSync(new URL('../public/terminal.js',import.meta.url),'utf8')}],
+  ['/assets/meerkat-desert.png',{type:'image/png',body:readFileSync(new URL('../public/assets/meerkat-desert.png',import.meta.url))}],
+  ['/assets/press-start-2p.ttf',{type:'font/ttf',body:readFileSync(new URL('../public/assets/press-start-2p.ttf',import.meta.url))}],
   ['/observer.js',{type:'text/javascript',body:readFileSync(new URL('../public/observer.js',import.meta.url),'utf8')}],
   ['/observer.css',{type:'text/css',body:readFileSync(new URL('../public/observer.css',import.meta.url),'utf8')}],
  ]);
@@ -27,10 +37,13 @@ export async function startObserver(options:{port:number;database:string;market?
   try{
    if(req.method==='GET'){
     const asset=assets.get(path);if(asset){res.writeHead(200,{'content-type':asset.type});res.end(asset.body);return;}
+    if(path==='/api/token/history'){const token=p.get('token')??'';send(res,200,{...history.result(token),error:history.error(token)});return;}
+    if(path==='/api/wallet/dossier'){const address=p.get('address')??'';const histories=historyStore.tokens().map(token=>({state:historyStore.state(token)!,events:historyStore.events(token)}));send(res,200,buildWalletDossier(address,histories));return;}
     if(path==='/api/state'||path==='/api/export'){if(path.endsWith('export'))res.setHeader('Content-Disposition','attachment; filename="meerkat-observations.json"');send(res,200,state());return;}
    }
    if(req.method==='POST'){
     const token=req.headers['x-control-token'];if(typeof token!=='string'||Buffer.byteLength(token)!==Buffer.byteLength(control)||!timingSafeEqual(Buffer.from(token),Buffer.from(control))){send(res,403,{error:'Control token required'});return;}
+    if(path==='/api/token/index'){history.start(p.get('token')??'');send(res,202,{started:true});return;}
     if(path==='/api/watch/add'){send(res,200,await service.add(p.get('token')??'',p.get('quantity')??'',p.get('cost')??''));return;}
     if(path==='/api/watch/refresh'){send(res,200,await service.refresh((p.get('token')??'').toLowerCase()));return;}
     if(path==='/api/watch/archive'){store.archive((p.get('token')??'').toLowerCase());send(res,200,{ok:true});return;}
@@ -44,5 +57,5 @@ export async function startObserver(options:{port:number;database:string;market?
  });
  await new Promise<void>((resolve,reject)=>{server.once('error',reject);server.listen(options.port,'127.0.0.1',resolve);});
  const address=server.address();if(!address||typeof address==='string')throw new Error('No server address');url=`http://127.0.0.1:${address.port}`;monitor.start();
- return {url,close:async()=>{closing=true;scannerActive=false;scannerGeneration++;if(scannerTimer)clearTimeout(scannerTimer);await monitor.stop();await discovery.settled();await new Promise<void>((resolve,reject)=>{server.close(e=>e?reject(e):resolve());server.closeIdleConnections();});store.close();}};
+ return {url,close:async()=>{closing=true;scannerActive=false;scannerGeneration++;if(scannerTimer)clearTimeout(scannerTimer);await monitor.stop();await discovery.settled();await history.close();await new Promise<void>((resolve,reject)=>{server.close(e=>e?reject(e):resolve());server.closeIdleConnections();});store.close();}};
 }

@@ -1,30 +1,32 @@
-# MEERKAT — read-only product plan
+# MEERKAT product plan
 
-Updated 2026-09-11. This replaces the earlier paper-MVP product target at the user's explicit request.
+Updated 2026-09-11. The user approved a branded landing page plus a separate read-only token/wallet terminal.
 
 ## Product contract
 
-No private key. No signer. No transaction path. MEERKAT watches real chain data and helps a user understand changes. It never claims to execute a buy/sell. Manual positions are explicitly user-entered, not wallet-verified.
+MEERKAT reconstructs Pons V2 token lifecycles and locally evidenced wallet behavior. No private key, signer, approval, or transaction path. No invented PnL, ownership, bot identity, or smart-money rating.
 
-## Implemented
+## Completed
 
-- [x] Default observer server and UI; no demo balance, buy or sell endpoints.
-- [x] Durable token watchlist, add/refresh/archive, maximum 50 active tokens.
-- [x] Optional manual quantity and total entry cost; exact-quantity real quote and P&L before gas where supported.
-- [x] Sequential background refresh; stale/error labels and retained last good observation.
-- [x] Persistent reserve/phase/data-quality activity; in-app alerts, no execution.
-- [x] Real launch discovery, saved cursor/history, bounded catch-up and shallow overlap replacement.
-- [x] Observe-mode JSON export, loopback binding, origin/host checks, authenticated controls.
-- [x] Automated tests and live read-only API evidence: docs/evidence/observer-live-2026-09-11.json.
+- [x] Branded `/` landing page using the approved pixel-art desert and mascot direction.
+- [x] Public roadmap with separate Live, Building, Next, Planned, and Later statuses.
+- [x] Separate `/terminal` with explicit Token and Wallet modes.
+- [x] Token profile lookup from the indexed Pons factory launch event; works without archive state.
+- [x] Durable 5,000-block lifecycle indexing for curve events, phases, pool swaps, and transfers.
+- [x] Curve participant aggregation and exact block-based early-entry / fast-exit evidence.
+- [x] Local cross-token wallet dossier with honest coverage limits.
+- [x] Live Scout, watchlist, monitoring, and activity retained as secondary tools.
+- [x] Desktop and 390x844 responsive browser QA; no page-level horizontal overflow.
+- [x] Real COPY evidence: verified launch block 59283454; first 5,000 blocks returned 3,170 events and 25 curve participants.
 
 ## Next acceptance gates
 
-- [ ] End-to-end browser interaction QA: add/manual position/pause/resume/archive/export and mobile inspection. Empty product page loaded successfully; full interaction QA remains open.
-- [ ] Edit manual position details without archive/re-add; record corrections in activity.
-- [ ] Configurable valuation thresholds as signals only, with deduplication and data-quality rules.
-- [ ] Public address import and verified holdings, with explicit limitations on historical entry cost.
-- [ ] External notification delivery, opt-in and tested (no provider currently configured).
-- [ ] More risk signals, granular field quality, deep reorg handling and scalable history retention.
-- [ ] Release review, clean-install and packaged launch checks.
+- [ ] Complete a launch-to-head backfill through the packaged server and record duration, cursor, event count, and restart/resume evidence.
+- [ ] Add a relationship graph for deployer, curve buyers/sellers, transfer recipients, and unattributed pool actors.
+- [ ] Build global wallet discovery beyond histories already indexed locally, with bounded RPC workload and saved cursor.
+- [ ] Add saved cases and configurable local alert rules to Live Scout.
+- [ ] Add lazy per-event block timestamps without blocking the base dossier.
+- [ ] Document the read-only API and export token/wallet evidence bundles.
+- [ ] Clean-install and packaged launch verification on Windows.
 
-70 tests currently pass across retained paper fixtures and new observer modules. This is an implemented local observer product, not a claim that every item above is complete. Do not estimate completion from the test count. See HANDOFF.md for the next exact operation.
+Current product status and exact evidence are in HANDOFF.md. Historical paper modules remain tests/development history and are not exposed by the default product server.

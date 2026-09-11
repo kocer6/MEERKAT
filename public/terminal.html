@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="control-token" content="__CONTROL_TOKEN__">
+  <title>Terminal — MEERKAT</title>
+  <link rel="stylesheet" href="/terminal.css">
+  <script src="/terminal.js" defer></script>
+</head>
+<body>
+  <header class="terminal-header"><a href="/" class="brand"><span class="brand-mark">M</span><span>MEERKAT<small>ON-CHAIN OBSERVATORY</small></span></a><div class="command"><span>meerkat@rh:~/terminal</span> $ inspect --chain 4663 <i></i></div><nav><span>RH 4663</span><a href="/">SITE ↗</a><a href="https://github.com/kocer6/MEERKAT" target="_blank" rel="noreferrer">SOURCE ↗</a></nav></header>
+  <div class="status-strip"><span>SESSION <b id="session-status">READY</b></span><span>MODE <b id="mode-status">TOKEN</b></span><span>ENGINE <b>READ ONLY</b></span><span>OUTPUT <b>EVIDENCE</b></span></div>
+  <main class="terminal-shell">
+    <aside class="query-panel">
+      <div class="panel-title"><span>01</span><h1>BUILD THE CHECK</h1><b>NO CONNECT</b></div>
+      <div class="mode-tabs" role="tablist" aria-label="Address type"><button class="active" data-mode="token" role="tab" aria-selected="true">TOKEN</button><button data-mode="wallet" role="tab" aria-selected="false">WALLET</button></div>
+      <form id="inspect-form">
+        <label for="inspect-address"><span id="address-label">TOKEN CONTRACT</span><b>REQUIRED</b></label>
+        <input id="inspect-address" name="address" required autocomplete="off" spellcheck="false" placeholder="0x…">
+        <p id="address-help">Paste a Pons V2 token contract on Robinhood Chain.</p>
+        <button class="inspect-button" id="inspect-button">⌁ ANALYZE ADDRESS <kbd>ENTER</kbd></button>
+        <p id="query-status" role="status"></p>
+      </form>
+      <div class="local-note"><b>LOCAL &amp; READ ONLY</b><p>No browser wallet, private keys, approvals, signatures or transaction path.</p></div>
+    </aside>
+
+    <section class="result-panel">
+      <div class="panel-title"><span>02</span><h2 id="result-title">DOSSIER</h2><b id="result-badge">READY</b></div>
+      <div id="result-empty" class="result-empty"><div class="mini-meerkat" aria-hidden="true">M</div><div><small>READY FOR INPUT</small><h2>PASTE AN ADDRESS.<br>FOLLOW THE TRACKS.</h2><p>Choose Token or Wallet. MEERKAT only reports evidence that the local index can support.</p></div></div>
+      <div id="result-content" hidden></div>
+    </section>
+
+    <aside class="evidence-panel">
+      <section><small>ENGINE STATUS</small><dl><div><dt>READY</dt><dd>local service connected</dd></div><div><dt>SAFE</dt><dd>no signer or transaction path</dd></div><div><dt>SOURCE</dt><dd>public chain evidence</dd></div></dl></section>
+      <section><small>TOOLS</small><button data-tool="scout">LIVE SCOUT</button><button data-tool="watch">WATCHLIST</button><button data-tool="activity">ACTIVITY</button></section>
+      <section id="context"><small>INDEX CONTEXT</small><p>Waiting for an address.</p></section>
+    </aside>
+  </main>
+  <section id="secondary-tools" class="secondary-tools" hidden><div class="panel-title"><span>03</span><h2 id="tool-title">LIVE SCOUT</h2><button id="close-tools">CLOSE ×</button></div><div id="tool-content"></div></section>
+  <footer><span>MEERKAT / TOKEN INTELLIGENCE TERMINAL</span><a href="/">HOW IT WORKS ↗</a><span>NO WALLET CONNECT / NO TRADES</span></footer>
+</body>
+</html>

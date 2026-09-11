@@ -1,9 +1,20 @@
-# MEERKAT — Market Watch
+# MEERKAT — Token Intelligence
 
-Local read-only companion for Pons V2 on Robinhood Chain (4663).
-**No private key. No signer. No transaction path in the product server.**
+Local, open-source Pons V2 token and wallet intelligence for Robinhood Chain (4663).
 
-## Run
+**No private key. No signer. No transaction path.**
+
+## What it does
+
+- `/` is a branded product landing page with an honest public roadmap.
+- `/terminal` accepts a Pons V2 token or a public wallet address.
+- Token dossiers reconstruct the verified launch, curve buys/sells, factory phases, pool swaps, transfers, participants, and transaction evidence.
+- Wallet dossiers aggregate behavior across token histories indexed by the local installation.
+- Live Scout, watchlist, monitoring, and local activity remain available as secondary terminal tools.
+
+MEERKAT labels observable behavior. An early entry is a curve buy within 30 blocks of launch; a fast exit is a sell within 300 blocks of that wallet's first indexed buy. It does not claim beneficial ownership, realized PnL, bot identity, or investment skill.
+
+## Run locally
 
 Requires Node.js 24.
 
@@ -12,33 +23,42 @@ npm ci
 npm start
 ```
 
-Open http://127.0.0.1:4664/. The default entry point is the observer product, not the former paper preview.
-Use `MEERKAT_RPC_URL` for another HTTP RPC endpoint, `PORT` for the local port and `MEERKAT_DB` for the database file. Default data: `data/observer.sqlite`. Keep this file and its SQLite companions private; export can contain your manual positions.
+Open [http://127.0.0.1:4664/](http://127.0.0.1:4664/). Select **Open terminal** to analyze an address.
 
-## Use
+Environment variables:
 
-1. Paste a Pons V2 token address, or connect Discover and select a real launch.
-2. Leave amounts blank for a watch-only token. To track a position, enter token quantity and total ETH entry cost. These are user records, not verified wallet holdings.
-3. The server refreshes saved watches sequentially every 15 seconds after the previous cycle. View phase, reserve, tax, exact-quantity estimated proceeds and P&L before gas when available.
-4. Activity records reserve drops above 15%, phase changes and unavailable/restored data. No alert executes a trade. Remove archives a watch; it does not sell tokens.
-5. Export observations includes watches, discovery and the latest 300 activity events. Pause stops polling for this session; restart resumes saved watches. Scanner needs Connect after restart.
+- `MEERKAT_RPC_URL`: Robinhood Chain HTTP RPC endpoint.
+- `PORT`: loopback port; default `4664`.
+- `MEERKAT_DB`: SQLite file; default `data/observer.sqlite`.
 
-Real native-ETH curve and graduated-pool position estimates use block-pinned reads. Failed reads retain the last observation with an error/age label. Unsupported phases/pairs show missing values/reasons. Quantity and entry cost cannot currently be edited in place: remove and add again. At most 50 active watches.
+The database and its SQLite companion files remain local and are ignored by Git.
 
-## Scope and limits
+## Evidence boundaries
 
-- Local product; server must be running for monitoring. Alerts are in-app only.
-- Public-wallet import, verified wallet balances, configurable price alerts and external notification delivery are not implemented.
-- This is not a contract safety audit, prediction service or automated trader. No all-clear score is presented.
-- Discovery starts from the latest 2,000 blocks and resumes persisted history in bounded chunks; 64-block overlap does not cover deep reorgs.
-- Old paper modules and their tests remain development fixtures. Their HTTP endpoints are absent from the default observer server. The former `data/paper.sqlite` is preserved and never shown as real holdings.
+- Token history is persisted in 5,000-block chunks and resumes after restart or a rate-limit failure.
+- Curve buyer/seller event addresses are attributed. Pool swaps remain unattributed without transaction-trace evidence.
+- Events retain exact block, log, transaction, venue, quantities, and raw event fields. Per-event timestamps are omitted because the default public RPC rate-limits historical block reads.
+- A wallet dossier covers locally indexed Pons histories. An empty dossier does not prove that the address has no chain activity.
+- Unsupported pairs or phases remain unavailable instead of becoming zero.
 
-## Verify and continue
+## Public roadmap
+
+| Capability | Status | Meaning |
+| --- | --- | --- |
+| Token lifecycle | Live | Real Pons profile and chunked on-chain history |
+| Wallet dossiers | Building | Working local cross-token aggregation; global discovery remains limited |
+| Relationship map | Next | Visual address routes with explicit attribution limits |
+| Live Scout | Next | Existing scanner expanded into saved cases and alert rules |
+| Public data API | Planned | Documented read-only evidence endpoints |
+| Additional chains | Later | Only after validated source adapters exist |
+
+## Verify
 
 ```sh
+npm run typecheck
 npm test
 npm run build
 npm run start:built
 ```
 
-See PLAN.md and HANDOFF.md. `node --import tsx scripts/probe-observer.ts` runs a real read-only API check against an in-memory database and rewrites the named evidence file. Imported protocol code provenance remains in THIRD_PARTY_NOTICES.md.
+See [PLAN.md](PLAN.md), [HANDOFF.md](HANDOFF.md), and [the approved design](docs/design/LANDING-TERMINAL-V1.md). Imported protocol-code provenance remains in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
