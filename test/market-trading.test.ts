@@ -5,7 +5,32 @@ import { PaperEngine } from '../src/paper.js';
 import { defaultRules } from '../src/rules.js';
 import { MarketTrading } from '../src/market-trading.js';
 import type { MarketReader } from '../src/chain/market.js';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 const token = '0x1111111111111111111111111111111111111111';
+test('closed market order survives SQLite restart and replay cannot reopen it',async()=>{
+ const dir=mkdtempSync(join(tmpdir(),'meerkat-replay-'));const file=join(dir,'paper.sqlite');
+ try{
+  let ledger=new Ledger(file,10n**18n,10n**18n);let id='';
+  try{const service=new MarketTrading(new PaperEngine(ledger,defaultRules),reader());const p=await service.buy(token,10n**16n,'restart-1');id=p.id;await service.close(id);}finally{ledger.close();}
+  ledger=new Ledger(file,10n**18n,10n**18n);
+  try{ledger.recover(Date.now());const before=ledger.account();const count=ledger.events().length;
+   const service=new MarketTrading(new PaperEngine(ledger,defaultRules),reader({chainId:async()=>{throw new Error('RPC must not run');}}));
+   const replay=await service.buy(token,10n**16n,'restart-1');assert.equal(replay.id,id);assert.equal(replay.status,'closed');assert.deepEqual(ledger.account(),before);assert.equal(ledger.events().length,count);
+  }finally{ledger.close();}
+ }finally{rmSync(dir,{recursive:true,force:true});}
+});
+test('pending and failed orders cannot be treated as filled market replays',async()=>{
+ const ledger=new Ledger(':memory:',10n**18n,10n**18n);
+ try{
+  ledger.reserve('pending-1',{token,symbol:'TEST',amountWei:10n**16n,score:100,openingTaxBps:0,source:'chain'},10n**16n,3,Date.now());
+  const service=new MarketTrading(new PaperEngine(ledger,defaultRules),reader());
+  await assert.rejects(service.buy(token,10n**16n,'pending-1'),/already reserved/);
+  ledger.failEntry('pending-1','interrupted',Date.now());
+  await assert.rejects(service.buy(token,10n**16n,'pending-1'),/already failed/);assert.equal(ledger.positions().length,0);
+ }finally{ledger.close();}
+});
 const reader = (patch: Partial<MarketReader> = {}): MarketReader => ({
  chainId: async () => 4663, block: async () => ({number: 42n,timestamp: BigInt(Math.floor(Date.now()/1000))}),
  record: async () => ({exists:true,curve:'0x2222222222222222222222222222222222222222',pairToken:'0x0000000000000000000000000000000000000000',phase:0}),
@@ -87,5 +112,20 @@ test('paper position survives graduation and closes using pool output with journ
   const closed=await service.close(p.id);assert.equal(closed.status,'closed');assert.equal(closed.lastValueWei,'9800000000000000');
   const exit=ledger.events().find(e=>e.kind==='exit-filled');assert.equal((exit?.detail.quote as {phase:number}).phase,2);
   assert.equal(ledger.events().filter(e=>e.kind==='reserve-warning').length,0);
+ }finally{ledger.close();}
+});
+
+test('market order replay returns the original position without RPC or another fill',async()=>{
+ let offline=false;const base=reader();
+ const market=reader({block:async()=>{if(offline)throw new Error('offline');return base.block();}});
+ const ledger=new Ledger(':memory:',10n**18n,10n**18n);
+ try{
+  const service=new MarketTrading(new PaperEngine(ledger,defaultRules),market);const p=await service.buy(token,10n**16n,'replay-1');
+  const account=ledger.account();offline=true;
+  const restarted=new MarketTrading(new PaperEngine(ledger,defaultRules),market);
+  assert.equal((await restarted.buy(token,10n**16n,'replay-1')).id,p.id);
+  await assert.rejects(restarted.buy(token,2n*10n**16n,'replay-1'),/different entry/);
+  await assert.rejects(restarted.buy('0x3333333333333333333333333333333333333333',10n**16n,'replay-1'),/different entry/);
+  assert.deepEqual(ledger.account(),account);assert.equal(ledger.events().filter(e=>e.kind==='entry-filled').length,1);
  }finally{ledger.close();}
 });

@@ -19,7 +19,9 @@ export class MarketTrading {
  private active = new Set<string>();
  constructor(private engine: PaperEngine, private reader: MarketReader) {}
  async buy(token: string, amount: bigint, orderId: string) {
+  const existing=this.engine.ledger.marketOrder(orderId,token,amount);if(existing)return existing;
   const q=await inspectToken(this.reader,token,amount); const assessment=assessEntry(q,this.engine.rules);
+  const completed=this.engine.ledger.marketOrder(orderId,token,amount);if(completed)return completed;
   if(!assessment.eligible) throw new Error([...q.reasons,...assessment.checks.filter(x=>!x.pass).map(x=>x.label)].join('; '));
   const position=await this.engine.buy({token:q.token,symbol:q.symbol,amountWei:amount,openingTaxBps:q.openingTaxBps,score:assessment.score,source:'chain',
    evidence:{blockNumber:q.blockNumber,blockTimestamp:q.blockTimestamp,assessment,gasModel:'Fixed 0.0001 ETH per leg; not measured gas'}},orderId,

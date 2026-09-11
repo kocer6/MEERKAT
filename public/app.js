@@ -129,8 +129,8 @@ $('inspect-form').addEventListener('submit', async event => {
 $('paper-buy').addEventListener('click',async()=>{
  if(!inspectedEntry)return; const entry=inspectedEntry; $('paper-buy').disabled=true;
  try{const response=await fetch('/api/paper/buy?'+new URLSearchParams(entry),{method:'POST',headers:{'x-control-token':control}});const result=await response.json();if(!response.ok)throw new Error(result.error);
- inspectedEntry=null;await refresh();$('paper-status').textContent='Paper position opened. Automatic monitoring follows the status in Positions; Update quote and Close remain available.';
- }catch(error){$('paper-status').textContent=error.message+' Inspect again before retrying.';}
+ inspectedEntry=null;await refresh();$('paper-status').textContent='Paper order confirmed. Position status: '+result.position.status+'. See Positions for monitoring and controls.';
+ }catch(error){$('paper-status').textContent=error.message+' Retry uses the same order ID; an already filled order will not spend twice.';if(inspectedEntry===entry)$('paper-buy').disabled=false;}
 });
 
 $('monitor-toggle').addEventListener('click',async()=>{const b=$('monitor-toggle');b.disabled=true;try{const r=await fetch('/api/monitor/'+(monitorActive?'stop':'start'),{method:'POST',headers:{'x-control-token':control}});if(!r.ok)throw new Error('Monitor control failed');await refresh();}catch(e){$('monitor-status').textContent=e.message;}finally{b.disabled=false;}});

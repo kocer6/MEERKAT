@@ -43,6 +43,16 @@ export class Ledger {
     return row ? JSON.parse(row.value) : undefined;
   }
   private saveOrder(o: Order): void { this.db.prepare('INSERT INTO orders VALUES (?,?) ON CONFLICT(id) DO UPDATE SET value=excluded.value').run(o.id, encode(o)); }
+  /** Market request identity excludes changing quote evidence; old stored orders need no migration. */
+  marketOrder(id:string,token:string,amount:bigint):Position|undefined {
+    const order=this.order(id);if(!order)return undefined;
+    const entry=JSON.parse(order.fingerprint) as Entry;
+    if(entry.source!=='chain' || entry.token.toLowerCase()!==token.toLowerCase() || BigInt(entry.amountWei)!==amount)throw new Error('idempotency key reused with different entry');
+    if(order.status!=='filled')throw new Error(`order already ${order.status}; use a new id for an explicit retry`);
+    const position=this.position(order.positionId!);
+    if(!position)throw new Error('filled order position unavailable');
+    return position;
+  }
   private event(kind: string, at: number, detail: Record<string, unknown>): void { this.db.prepare('INSERT INTO events(kind,at,detail) VALUES (?,?,?)').run(kind, at, encode(detail)); }
   events(): JournalEvent[] { return (this.db.prepare('SELECT * FROM events ORDER BY id').all() as { id: number; kind: string; at: number; detail: string }[]).map(x => ({ ...x, detail: JSON.parse(x.detail) })); }
 

@@ -126,3 +126,6 @@ M3.3 partial: durable real ETH reserve baseline and historical warnings (>15%, s
 
 ### Graduation exits checkpoint (2026-09-11)
 M3.2/M4.2 partial: exact-quantity native ETH v4 pool quotes now support existing positions after phase 2, monitoring and paper close. 56 tests/build pass; live block 60099012 evidence saved. New pool entries and other pairs remain blocked. Next: cross-block order replay reliability.
+
+### Order replay checkpoint (2026-09-11)
+Completed market order replay now works without RPC and across restart, using stable request identity. Changed requests and failed/pending orders reject; closed positions stay closed. UI retry retains the ID until reload/reinspection. 59 tests/build/typecheck/JS checks pass. Next durable discovery and additional risk signals.

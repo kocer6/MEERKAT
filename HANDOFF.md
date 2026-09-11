@@ -1,3 +1,12 @@
+## Latest checkpoint: reliable market order replay (2026-09-11)
+
+Completed market orders are now looked up in SQLite before RPC inspection, by order ID plus normalized token, requested amount and chain source. Volatile block evidence remains saved on the original order but no longer prevents replay at a later block. Existing database records work without migration. Closed positions return their closed state instead of reopening. Changed token/amount, reserved and failed orders are rejected. A second lookup after inspection covers orders completed during that read.
+
+The buy button can retry the same request after an error; success displays the returned position status. Pending request IDs remain in page memory only: reloading or inspecting again creates a new request. Server replay durability is tested across SQLite close/reopen; browser reload recovery is not implemented.
+
+Validation: 59 tests pass, TypeScript build/typecheck and JS syntax pass. Covers offline replay, changed inputs, pending/failed orders and closed-order replay after restart with unchanged balance/journal. UI was not visually rechecked.
+
+Next: durable discovery cursor/backfill/reorg handling; additional watch signals; pool-entry risk checks. Product stays paper-only. Older checkpoint notes about cross-block replay rejection are superseded.
 ## Latest checkpoint: graduation exits through v4 (2026-09-11)
 
 Existing native-ETH paper positions now quote their exact token quantity through Uniswap v4 Quoter after factory phase becomes 2. Reads, factory memeHook and simulation are pinned to one block. The pool key uses fee 0 per Pons v2, factory tick spacing and native ETH/token ordering. eth_call only; no signer or transaction. Quote failures retain the position. Exit journal records phase and quote model. Reserve watch becomes unavailable after graduation rather than comparing pool data to curve reserves.

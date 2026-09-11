@@ -58,3 +58,5 @@ Inspect a supported token and amount, review all five entry checks, then choose 
 Reserve watch: real ETH curve reserves are checked with position quotes. A fall over 15% within 60 seconds produces a persistent journal warning, not a sell instruction. Missing reads and phase changes break comparison. Positions show the last historical warning; existing PnL exit rules remain independent.
 
 Existing native-ETH paper positions continue valuation and exits after Pons graduation using block-pinned Uniswap v4 Quoter eth_call. New entries into pools remain unsupported. Quotes include pool/hook effects; paper gas stays fixed at 0.0001 ETH per leg.
+
+Retrying a completed market order with the same ID, token and requested amount returns its saved position without querying RPC or spending again, including after server restart. Failed/pending orders require a new explicit request. Browser retry keeps the ID until page reload or a new inspection.
