@@ -1,3 +1,12 @@
+## Latest checkpoint: durable scanner/backfill (2026-09-11)
+
+The default server scanner saves launches and cursor together in one SQLite statement, restores them as idle on restart and resumes after Connect. Initial scan covers only the last 2,000 blocks. Subsequent cycles read at most 2,000 blocks, replacing the last 64 scanned blocks, then advance through downtime without skipping to the current head. UI displays scanned/head blocks and saved count; latest 15 rows shown, all saved launches in state/export. Failures retain the previous checkpoint. Shutdown waits for an in-flight scanner read before closing SQLite.
+
+62 tests and build/JS syntax pass. Tests cover SQLite restart, duplicate/orphan replacement, bounded backfill, RPC and checkpoint-write errors. No real outage was induced and UI was not visually rechecked.
+
+Limits: 64-block overlap handles shallow replacements only, not arbitrary deep reorgs or historical chain verification. A head below saved cursor fails closed. Catch-up runs one chunk each 30-second cycle while connected; users reconnect after server restart. History is currently a single growing JSON checkpoint, suitable for the local MVP; pagination/normalized storage remain future work. No history before the first scanned window is claimed.
+
+Next: more watch signals and pool-entry risk checks; deeper reorg handling and historical retention remain open. Supersedes earlier no-durable-cursor notes.
 ## Latest checkpoint: reliable market order replay (2026-09-11)
 
 Completed market orders are now looked up in SQLite before RPC inspection, by order ID plus normalized token, requested amount and chain source. Volatile block evidence remains saved on the original order but no longer prevents replay at a later block. Existing database records work without migration. Closed positions return their closed state instead of reopening. Changed token/amount, reserved and failed orders are rejected. A second lookup after inspection covers orders completed during that read.

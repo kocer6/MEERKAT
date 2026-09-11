@@ -23,7 +23,7 @@ export async function startServer(options: { port: number; database: string; dis
     ['/assets/meerkat-desert.png', { type: 'image/png', body: readFileSync(new URL('../public/assets/meerkat-desert.png', import.meta.url)) }],
     ['/assets/press-start-2p.ttf', { type: 'font/ttf', body: readFileSync(new URL('../public/assets/press-start-2p.ttf', import.meta.url)) }],
   ]);
-  const discovery = options.discovery ?? new PonsDiscovery(rpcReader());
+  const discovery = options.discovery ?? new PonsDiscovery(rpcReader(),{load:()=>ledger.loadDiscovery(),save:s=>ledger.saveDiscovery(s)});
   const market = options.market ?? marketReader(); let inspectionBusy = false;
   const trading = new MarketTrading(engine, market);
   const monitor = new PositionMonitor(() => ledger.positions(), id => trading.observe(id));
@@ -107,7 +107,9 @@ export async function startServer(options: { port: number; database: string; dis
   const address = server.address(); if (!address || typeof address === 'string') throw new Error('missing bound address');
   url = `http://127.0.0.1:${address.port}`;
   monitor.start();
-  return { url, close: async () => { await monitor.stop(); return new Promise<void>((resolve, reject) => {
+  return { url, close: async () => {
+    marketActive=false;marketRun++;if(marketTimer)clearTimeout(marketTimer);
+    await monitor.stop();await discovery.settled();return new Promise<void>((resolve, reject) => {
     marketActive = false; marketRun++; if (marketTimer) clearTimeout(marketTimer);
     server.close(error => { ledger.close(); error ? reject(error) : resolve(); }); server.closeIdleConnections();
   }); } };

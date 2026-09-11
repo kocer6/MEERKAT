@@ -60,3 +60,5 @@ Reserve watch: real ETH curve reserves are checked with position quotes. A fall 
 Existing native-ETH paper positions continue valuation and exits after Pons graduation using block-pinned Uniswap v4 Quoter eth_call. New entries into pools remain unsupported. Quotes include pool/hook effects; paper gas stays fixed at 0.0001 ETH per leg.
 
 Retrying a completed market order with the same ID, token and requested amount returns its saved position without querying RPC or spending again, including after server restart. Failed/pending orders require a new explicit request. Browser retry keeps the ID until page reload or a new inspection.
+
+Scanner history and progress persist in SQLite. Connect after restart to resume; each 30-second cycle reads up to 2,000 blocks and replaces a 64-block overlap. The initial scan starts at the latest 2,000 blocks, not genesis. Deeper reorgs are not covered. The UI shows scanned/head blocks and the latest 15 saved launches; export includes saved history.

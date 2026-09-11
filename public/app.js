@@ -70,7 +70,7 @@ function renderMarket(data) {
   const age = market.observedAt ? Math.max(0, Math.floor((Date.now() - market.observedAt) / 1000)) : null;
   $('market-status').textContent = market.status === 'error'
     ? 'RPC error — displayed observations may be stale. ' + market.error
-    : market.observedAt ? `${marketActive ? 'Polling every 30s' : 'Paused'} · block ${market.blockNumber} · observed ${age}s ago · ${market.checkedFactoryRecord ? 'factory ABI checked' : 'no event available for ABI check'}`
+    : market.observedAt ? `${marketActive ? 'Polling every 30s' : 'Paused'} · scanned ${market.blockNumber} / head ${market.headBlock || market.blockNumber} · ${market.launches.length} saved launches · observed ${age}s ago · ${market.checkedFactoryRecord ? 'factory ABI checked' : 'no event available for ABI check'}`
     : 'Not connected. This reads public launch events; it does not place orders.';
   $('launch-rows').replaceChildren();
   for (const launch of market.launches.slice(0, 15)) {

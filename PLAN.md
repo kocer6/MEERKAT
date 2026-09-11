@@ -129,3 +129,6 @@ M3.2/M4.2 partial: exact-quantity native ETH v4 pool quotes now support existing
 
 ### Order replay checkpoint (2026-09-11)
 Completed market order replay now works without RPC and across restart, using stable request identity. Changed requests and failed/pending orders reject; closed positions stay closed. UI retry retains the ID until reload/reinspection. 59 tests/build/typecheck/JS checks pass. Next durable discovery and additional risk signals.
+
+### Durable scanner checkpoint (2026-09-11)
+M3.4 partial: SQLite cursor/history restored on restart, 2,000-block catch-up chunks, 64-block replacement overlap, errors preserve checkpoint, shutdown awaits read. UI scanned/head progress. 62 tests/build/JS pass. Deep reorgs and scalable history storage remain open.

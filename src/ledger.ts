@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { reserveDrop } from './rules.js';
+import type { DiscoverySnapshot } from './chain/discovery.js';
 import { encode, type Account, type Entry, type Position, type JournalEvent, type BuyQuote, type SellQuote } from './types.js';
 
 interface Order { id: string; fingerprint: string; reserveWei: string; status: 'reserved' | 'filled' | 'failed'; positionId?: string }
@@ -21,10 +22,18 @@ export class Ledger {
       CREATE TABLE IF NOT EXISTS positions (id TEXT PRIMARY KEY, value TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS orders (id TEXT PRIMARY KEY, value TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS reserve_watch (id TEXT PRIMARY KEY, value TEXT NOT NULL);
+      CREATE TABLE IF NOT EXISTS scanner (id INTEGER PRIMARY KEY CHECK(id=1), value TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS events (id INTEGER PRIMARY KEY AUTOINCREMENT, kind TEXT NOT NULL, at INTEGER NOT NULL, detail TEXT NOT NULL);`);
     this.db.prepare('INSERT OR IGNORE INTO account VALUES (1,?)').run(encode({ balanceWei: initialWei, budgetWei, spentWei: 0n, reservedWei: 0n }));
   }
   close(): void { this.db.close(); }
+  loadDiscovery():DiscoverySnapshot|undefined {
+    const row=this.db.prepare('SELECT value FROM scanner WHERE id=1').get() as {value:string}|undefined;
+    return row?JSON.parse(row.value):undefined;
+  }
+  saveDiscovery(snapshot:DiscoverySnapshot):void {
+    this.db.prepare('INSERT INTO scanner VALUES (1,?) ON CONFLICT(id) DO UPDATE SET value=excluded.value').run(encode(snapshot));
+  }
   private transaction<T>(fn: () => T): T {
     this.db.exec('BEGIN IMMEDIATE');
     try { const value = fn(); this.db.exec('COMMIT'); return value; }

@@ -12,7 +12,7 @@ export interface DiscoveryReader {
 }
 export interface DiscoverySnapshot {
   source: 'chain'; status: 'idle' | 'connected' | 'error'; chainId: number | null;
-  factory: string; blockNumber: string | null; fromBlock: string | null;
+  headBlock?: string; factory: string; blockNumber: string | null; fromBlock: string | null;
   observedAt: number | null; checkedFactoryRecord: boolean; error: string | null; launches: Launch[];
 }
 
@@ -33,11 +33,15 @@ export function rpcReader(rpcUrl = process.env.MEERKAT_RPC_URL ?? 'https://rpc.m
   };
 }
 
-/** Recent observations only: no signer, auto-entry, durable cursor or history completeness claim. */
+export interface DiscoveryStore { load():DiscoverySnapshot|undefined; save(snapshot:DiscoverySnapshot):void }
+/** Bounded backfill with a 64-block replacement overlap; deeper reorgs are not covered. */
 export class PonsDiscovery {
   private state: DiscoverySnapshot = { source: 'chain', status: 'idle', chainId: null, factory, blockNumber: null, fromBlock: null, observedAt: null, checkedFactoryRecord: false, error: null, launches: [] };
   private pending?: Promise<DiscoverySnapshot>;
-  constructor(private reader: DiscoveryReader) {}
+  constructor(private reader: DiscoveryReader,private store?:DiscoveryStore) {
+    const saved=store?.load();if(saved && saved.chainId===4663 && saved.factory===factory)this.state={...saved,status:'idle',error:null};
+  }
+  async settled():Promise<void>{await this.pending;}
   snapshot(): DiscoverySnapshot { return { ...this.state, launches: this.state.launches.map(x => ({ ...x })) }; }
   refresh(): Promise<DiscoverySnapshot> {
     if (this.pending) return this.pending;
@@ -48,16 +52,20 @@ export class PonsDiscovery {
       const chainId = await this.reader.chainId(); if (chainId !== 4663) throw new Error(`wrong chain: ${chainId}; expected 4663`);
       const head = await this.reader.head();
       if (await this.reader.code(head) === '0x') throw new Error('Pons V2 factory has no deployed code');
-      const from = head > 1999n ? head - 1999n : 0n;
-      const logs = await this.reader.logs(from, head);
-      const launches = [...new Map(logs.map(l => [`${l.blockHash}:${l.txHash}:${l.logIndex}`, l])).values()]
-        .sort((a, b) => Number(BigInt(b.blockNumber) - BigInt(a.blockNumber)) || b.logIndex - a.logIndex).slice(0, 50);
+      const cursor=this.state.blockNumber===null?null:BigInt(this.state.blockNumber);
+      if(cursor!==null && head<cursor)throw new Error('RPC head behind saved scanner cursor');
+      const from = cursor===null?(head>1999n?head-1999n:0n):(cursor>63n?cursor-63n:0n);
+      const to=from+1999n<head?from+1999n:head;
+      const logs = await this.reader.logs(from, to);
+      const launches = [...new Map([...this.state.launches.filter(l=>BigInt(l.blockNumber)<from),...logs.filter(l=>BigInt(l.blockNumber)>=from && BigInt(l.blockNumber)<=to)].map(l => [`${l.blockHash}:${l.txHash}:${l.logIndex}`, l])).values()]
+        .sort((a, b) => Number(BigInt(b.blockNumber) - BigInt(a.blockNumber)) || b.logIndex - a.logIndex);
       const latest = launches[0];
       if (latest) {
-        const record = await this.reader.record(latest.token, head);
+        const record = await this.reader.record(latest.token, to);
         if (!record.exists || record.curve.toLowerCase() !== latest.curve.toLowerCase() || record.deployer.toLowerCase() !== latest.deployer.toLowerCase() || record.pairToken.toLowerCase() !== latest.pairToken.toLowerCase()) throw new Error('factory ABI record does not match launch event');
       }
-      this.state = { source: 'chain', status: 'connected', chainId, factory, blockNumber: head.toString(), fromBlock: from.toString(), observedAt: Date.now(), checkedFactoryRecord: !!latest, error: null, launches };
+      const next:DiscoverySnapshot = { source: 'chain', status: 'connected', chainId, factory, headBlock:head.toString(), blockNumber: to.toString(), fromBlock: this.state.fromBlock??from.toString(), observedAt: Date.now(), checkedFactoryRecord: !!latest, error: null, launches };
+      this.store?.save(next);this.state=next;
     } catch (error) {
       // Do not expose RPC URLs containing credentials in UI/export errors.
       const message = error instanceof Error ? error.message.split('\n')[0]! : 'RPC read failed';
