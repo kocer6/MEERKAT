@@ -33,7 +33,7 @@ export async function startServer(options: { port: number; database: string; dis
     if (marketActive && marketRun === run) marketTimer = setTimeout(() => { void pollMarket(run); }, 30000);
   };
   const send = (res: ServerResponse, status: number, data: unknown) => { res.writeHead(status, { 'content-type': 'application/json' }); res.end(encode(data)); };
-  const snapshot = () => ({ mode: 'paper', source: 'mixed', paperGasWei, monitor: monitor.snapshot(), marketActive, market: discovery.snapshot(), account: ledger.account(), positions: ledger.positions(), events: ledger.events(), rules: engine.rules, scenarioBusy });
+  const snapshot = () => ({ mode: 'paper', source: 'mixed', paperGasWei, monitor: monitor.snapshot(), marketActive, market: discovery.snapshot(), reserveWatches: ledger.reserveWatches(), account: ledger.account(), positions: ledger.positions(), events: ledger.events(), rules: engine.rules, scenarioBusy });
   const server = createServer(async (req, res) => {
     res.setHeader('Cache-Control', 'no-store'); res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");

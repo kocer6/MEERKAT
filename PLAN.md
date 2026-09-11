@@ -120,3 +120,6 @@ M3.2/M4.2 partial: authenticated market paper buy/update/full close, five mandat
 
 ### Evidence — background position monitoring, 2026-09-11
 M3.4 partial: persisted open chain positions monitored sequentially every 15s after completion, shared in-flight tick, pause/resume, per-position RPC error/last success, graceful shutdown. Negative-net liquidation now triggers stop-loss and charges modeled gas correctly. 49 tests + build/typecheck/JS syntax pass; browser pause/resume verified. Backfill/reorg discovery remains open. Next M3.3 quality-aware reserve watch and pool graduation support.
+
+### Reserve watch checkpoint (2026-09-11)
+M3.3 partial: durable real ETH reserve baseline and historical warnings (>15%, same curve, increasing blocks, <=60s). Unknown reads break comparison; no alert-triggered sale. API/export/position journal connected. 53 tests and build pass. Remaining: other Canary signals, pool support, durable discovery, cross-block order replay handling.

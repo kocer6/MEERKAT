@@ -21,13 +21,19 @@ export class MarketTrading {
  async buy(token: string, amount: bigint, orderId: string) {
   const q=await inspectToken(this.reader,token,amount); const assessment=assessEntry(q,this.engine.rules);
   if(!assessment.eligible) throw new Error([...q.reasons,...assessment.checks.filter(x=>!x.pass).map(x=>x.label)].join('; '));
-  return this.engine.buy({token:q.token,symbol:q.symbol,amountWei:amount,openingTaxBps:q.openingTaxBps,score:assessment.score,source:'chain',
+  const position=await this.engine.buy({token:q.token,symbol:q.symbol,amountWei:amount,openingTaxBps:q.openingTaxBps,score:assessment.score,source:'chain',
    evidence:{blockNumber:q.blockNumber,blockTimestamp:q.blockTimestamp,assessment,gasModel:'Fixed 0.0001 ETH per leg; not measured gas'}},orderId,
    async()=>({...q.buy!,gasWei:paperGasWei,observedAt:q.observedAt,source:'chain'}));
+  if(!this.engine.ledger.reserveWatches()[position.id])this.recordReserve(position.id,q);
+  return position;
  }
+ private recordReserve(id:string,q:Inspection){this.engine.ledger.recordReserve(id,{blockNumber:q.blockNumber,reserveWei:q.realQuoteReserveWei?.toString()??null,curve:q.phase===0?q.curve:null,observedAt:q.observedAt});}
  private async quote(p:Position) {
   if(p.source!=='chain') throw new Error('market controls require a chain-source paper position');
-  const q=await inspectToken(this.reader,p.token,1n,BigInt(p.quantity));
+  let q:Inspection;
+  try{q=await inspectToken(this.reader,p.token,1n,BigInt(p.quantity));}
+  catch(error){this.engine.ledger.recordReserve(p.id,{blockNumber:null,reserveWei:null,curve:null,observedAt:Date.now()});throw error;}
+  this.recordReserve(p.id,q);
   if(q.reasons.length || q.sellBackWei===null) throw new Error(q.reasons.join('; ') || 'sell quote unavailable');
   return {ethOut:q.sellBackWei,gasWei:paperGasWei,observedAt:q.observedAt,source:'chain' as const,blockNumber:q.blockNumber};
  }

@@ -29,6 +29,9 @@ async function refresh() {
       }
       const health=data.monitor.positions[p.id]; actions.append(el('small',health?.status==='error'?'QUOTE ERROR · '+health.error:monitorActive?'Monitoring active':'Monitoring paused'));
       actions.append(el('small','Last valuation: '+new Date(p.updatedAt).toLocaleTimeString()));
+      const watch=data.reserveWatches?.[p.id];
+      if(watch)actions.append(el('small',watch.reserveWei===null?'Reserve data unavailable':'Real ETH reserve: '+eth(watch.reserveWei)+' ETH'));
+      if(watch?.lastWarning)actions.append(el('small','RESERVE WARNING · −'+(watch.lastWarning.dropBps/100).toFixed(2)+'% at '+new Date(watch.lastWarning.at).toLocaleString()+' · historical alert, not an exit instruction'));
       actions.append(el('small','Unrealized: '+eth(BigInt(p.lastValueWei)-BigInt(p.costWei))+' ETH'));
     }
     tr.append(actions); $('position-rows').append(tr);
@@ -42,6 +45,7 @@ async function refresh() {
     if (d.quote) detail += d.quote.tokensOut ? ' · input ' + eth(d.quote.spentWei) + ' ETH' : ' · output ' + eth(d.quote.ethOut) + ' ETH';
     if (d.reserveWei) detail = 'Reserved ' + eth(d.reserveWei) + ' ETH before obtaining a quote';
     if (d.valueWei) detail = 'Net position value ' + eth(d.valueWei) + ' ETH';
+    if(event.kind==='reserve-warning')detail='Reserve fell '+(d.dropBps/100).toFixed(2)+'% · '+eth(d.beforeWei)+' → '+eth(d.afterWei)+' ETH · blocks '+d.fromBlock+' → '+d.blockNumber+' · warning only';
     content.append(el('small', detail)); row.append(content); $('events').append(row);
   }
   $('health').textContent = 'LOCAL ENGINE CONNECTED · PAPER EXECUTION';

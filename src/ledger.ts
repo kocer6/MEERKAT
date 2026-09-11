@@ -2,9 +2,12 @@ import { DatabaseSync } from 'node:sqlite';
 import { randomUUID } from 'node:crypto';
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
+import { reserveDrop } from './rules.js';
 import { encode, type Account, type Entry, type Position, type JournalEvent, type BuyQuote, type SellQuote } from './types.js';
 
 interface Order { id: string; fingerprint: string; reserveWei: string; status: 'reserved' | 'filled' | 'failed'; positionId?: string }
+interface ReserveObservation { blockNumber:string|null; reserveWei:string|null; curve:string|null; observedAt:number }
+interface ReserveWatch extends ReserveObservation { lastWarning?:{dropBps:number;at:number} }
 
 /** Single-user paper ledger. Every balance/position/event transition is one SQLite transaction. */
 export class Ledger {
@@ -17,6 +20,7 @@ export class Ledger {
       CREATE TABLE IF NOT EXISTS account (id INTEGER PRIMARY KEY CHECK(id=1), value TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS positions (id TEXT PRIMARY KEY, value TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS orders (id TEXT PRIMARY KEY, value TEXT NOT NULL);
+      CREATE TABLE IF NOT EXISTS reserve_watch (id TEXT PRIMARY KEY, value TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS events (id INTEGER PRIMARY KEY AUTOINCREMENT, kind TEXT NOT NULL, at INTEGER NOT NULL, detail TEXT NOT NULL);`);
     this.db.prepare('INSERT OR IGNORE INTO account VALUES (1,?)').run(encode({ balanceWei: initialWei, budgetWei, spentWei: 0n, reservedWei: 0n }));
   }
@@ -41,6 +45,26 @@ export class Ledger {
   private saveOrder(o: Order): void { this.db.prepare('INSERT INTO orders VALUES (?,?) ON CONFLICT(id) DO UPDATE SET value=excluded.value').run(o.id, encode(o)); }
   private event(kind: string, at: number, detail: Record<string, unknown>): void { this.db.prepare('INSERT INTO events(kind,at,detail) VALUES (?,?,?)').run(kind, at, encode(detail)); }
   events(): JournalEvent[] { return (this.db.prepare('SELECT * FROM events ORDER BY id').all() as { id: number; kind: string; at: number; detail: string }[]).map(x => ({ ...x, detail: JSON.parse(x.detail) })); }
+
+  reserveWatches(): Record<string,ReserveWatch> {
+    return Object.fromEntries((this.db.prepare('SELECT id,value FROM reserve_watch').all() as {id:string;value:string}[]).map(x=>[x.id,JSON.parse(x.value)]));
+  }
+  /** Alert only. Unknown reads break continuity; comparisons require a new block within 60 seconds. */
+  recordReserve(id:string, observation:ReserveObservation):void {
+    this.transaction(()=>{
+      const before=this.reserveWatches()[id];
+      if(before && observation.observedAt<before.observedAt)return;
+      if(before?.blockNumber && observation.blockNumber && BigInt(observation.blockNumber)<=BigInt(before.blockNumber))return;
+      const next:ReserveWatch={...observation,...(before?.lastWarning?{lastWarning:before.lastWarning}:{})};
+      const comparable=before && before.curve===next.curve && next.curve!==null && before.blockNumber!==null && next.blockNumber!==null && next.observedAt-before.observedAt<=60000;
+      const drop=comparable?reserveDrop(before.reserveWei===null?null:BigInt(before.reserveWei),next.reserveWei===null?null:BigInt(next.reserveWei)):null;
+      if(drop!==null && drop>1500){
+        next.lastWarning={dropBps:drop,at:next.observedAt};
+        this.event('reserve-warning',next.observedAt,{positionId:id,dropBps:drop,beforeWei:before!.reserveWei,afterWei:next.reserveWei,fromBlock:before!.blockNumber,blockNumber:next.blockNumber,reason:'Real ETH curve reserve fell over 15%; warning only, not an exit instruction'});
+      }
+      this.db.prepare('INSERT INTO reserve_watch VALUES (?,?) ON CONFLICT(id) DO UPDATE SET value=excluded.value').run(id,encode(next));
+    });
+  }
 
   reserve(id: string, entry: Entry, reserveWei: bigint, maxPositions: number, now: number): Position | undefined {
     return this.transaction(() => {

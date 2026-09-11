@@ -1,3 +1,10 @@
+## Latest checkpoint: persistent reserve watch (2026-09-11)
+
+M3.3 partial: open chain paper positions now retain real ETH reserve snapshots in SQLite. A drop strictly above 15% between increasing blocks on the same curve within 60 seconds journals a warning. Missing RPC data, unsupported phases, old/duplicate blocks and long gaps do not fabricate a collapse. Last warning is historical and persists through restart; warnings never instruct an exit. Independent PnL rules still apply. API/export and Positions/Journal expose the state.
+
+Validation: 53 tests pass, TypeScript build and browser JS syntax pass. Tests cover restart, duplicate suppression, unknown data, curve changes and warning-without-exit. UI rendering was not visually rechecked this checkpoint.
+
+Next: full pool/graduation quote support, richer watch signals and durable discovery/reorg handling remain open. Also harden market order replay: current fingerprint includes block evidence, so replay at a newer block is rejected (no duplicate spend); same-block replay test now uses a deterministic timestamp.
 # MEERKAT — exact continuation state
 
 ## Latest checkpoint: background position monitoring (2026-09-11)

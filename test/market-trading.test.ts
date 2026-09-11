@@ -14,13 +14,28 @@ const reader = (patch: Partial<MarketReader> = {}): MarketReader => ({
 });
 test('market paper entry and full exit use chain quotes, debit modeled gas and persist evidence', async () => {
  const ledger = new Ledger(':memory:',10n**18n,5n*10n**17n);
- try { const service = new MarketTrading(new PaperEngine(ledger,defaultRules),reader());
+ const timestamp=BigInt(Math.floor(Date.now()/1000));
+ try { const service = new MarketTrading(new PaperEngine(ledger,defaultRules),reader({block:async()=>({number:42n,timestamp})}));
  const p = await service.buy(token,10n**16n,'order-1'); assert.equal(p.source,'chain'); assert.equal(p.costWei,'10100000000000000');
  assert.equal((await service.buy(token,10n**16n,'order-1')).id,p.id);
  const closed = await service.close(p.id); assert.equal(closed.status,'closed'); assert.equal(closed.exitReason,'manual');
  assert.equal(ledger.events().filter(x=>x.kind==='entry-filled').length,1);
  assert.ok(ledger.events().some(x=>x.kind==='entry-reserved' && JSON.stringify(x.detail).includes('blockNumber')));
  } finally { ledger.close(); }
+});
+
+test('reserve warning persists while a healthy paper valuation remains open; outage breaks comparison',async()=>{
+ let block=42n,reserve=10n**18n,outage=false;const base=reader();
+ const market=reader({block:async()=>({number:block,timestamp:BigInt(Math.floor(Date.now()/1000))}),curve:async(a,b)=>{if(outage)throw new Error('offline');return {...await base.curve(a,b),realQuoteReserve:reserve};}});
+ const ledger=new Ledger(':memory:',10n**18n,10n**18n);
+ try{
+  const service=new MarketTrading(new PaperEngine(ledger,defaultRules),market);const p=await service.buy(token,10n**16n,'reserve-1');
+  block++;reserve=7n*10n**17n;await service.observe(p.id);
+  assert.equal(ledger.position(p.id)?.status,'open');assert.equal(ledger.reserveWatches()[p.id]?.lastWarning?.dropBps,3000);
+  outage=true;await assert.rejects(service.observe(p.id));assert.equal(ledger.reserveWatches()[p.id]?.reserveWei,null);
+  outage=false;block++;reserve=3n*10n**17n;await service.observe(p.id);
+  assert.equal(ledger.events().filter(e=>e.kind==='reserve-warning').length,1);assert.equal(ledger.position(p.id)?.status,'open');
+ }finally{ledger.close();}
 });
 test('unknown tax and oversized share of liquidity cannot reserve money',async()=>{
  for (const patch of [{curve:async()=>({...await reader().curve('',0n),openingTaxBps:null})},{curve:async()=>({...await reader().curve('',0n),realQuoteReserve:10n**16n})}]) {
