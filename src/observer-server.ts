@@ -25,6 +25,7 @@ export async function startObserver(options:{port:number;database:string;market?
   ['/terminal.css',{type:'text/css',body:readFileSync(new URL('../public/terminal.css',import.meta.url),'utf8')}],
   ['/terminal.js',{type:'text/javascript',body:readFileSync(new URL('../public/terminal.js',import.meta.url),'utf8')}],
   ['/assets/meerkat-desert.png',{type:'image/png',body:readFileSync(new URL('../public/assets/meerkat-desert.png',import.meta.url))}],
+  ['/assets/meerkat-banner-v2.png',{type:'image/png',body:readFileSync(new URL('../public/assets/meerkat-banner-v2.png',import.meta.url))}],
   ['/assets/press-start-2p.ttf',{type:'font/ttf',body:readFileSync(new URL('../public/assets/press-start-2p.ttf',import.meta.url))}],
   ['/observer.js',{type:'text/javascript',body:readFileSync(new URL('../public/observer.js',import.meta.url),'utf8')}],
   ['/observer.css',{type:'text/css',body:readFileSync(new URL('../public/observer.css',import.meta.url),'utf8')}],

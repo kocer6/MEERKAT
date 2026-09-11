@@ -4,6 +4,8 @@ import {dirname} from 'node:path';
 import {createPublicClient,http,parseAbi,isAddress,encodeAbiParameters,parseAbiParameters,keccak256,type Address,type Hex} from 'viem';
 import {factory,factoryAbi,launched} from './chain/abi.js';
 import {encode} from './types.js';
+import {buildRelationshipGraph} from './relationship-graph.js';
+import {scoreToken} from './scoring.js';
 const zero='0x0000000000000000000000000000000000000000';
 // Selected event ABIs from pinned Bodkin/Canary MIT sources; read-only.
 const curveEvents=parseAbi(['event CurveBuy(address indexed buyer,address indexed recipient,uint256 quoteIn,uint256 tokensOut,uint256 fee,uint256 tax)','event CurveSell(address indexed seller,address indexed recipient,uint256 tokensIn,uint256 quoteOut,uint256 fee,uint256 tax)','event CurveBuyRefunded(address indexed recipient,uint256 refundAmount)','event CurveCompleted()']);
@@ -17,7 +19,8 @@ export async function findLaunchBlock(head:bigint,read:(from:bigint,to:bigint)=>
  const launches=await read(0n,head);if(launches.length!==1||launches[0]!.blockNumber===null)throw new Error('Launch block could not be verified from the Pons V2 factory event');return launches[0]!.blockNumber;
 }
 export async function rpcReadWithRetry<T>(read:()=>Promise<T>,pause:(ms:number)=>Promise<void>=(ms)=>new Promise(resolve=>setTimeout(resolve,ms))):Promise<T>{
- for(let attempt=0;attempt<3;attempt++)try{return await read();}catch(error){const code=(error as {code?:number}).code,message=error instanceof Error?error.message:'';if(attempt===2||(code!==429&&!/Too Many Requests/i.test(message)))throw error;await pause(1000*(attempt+1));}
+ const waits=[2000,4000,8000,16000,30000];
+ for(let attempt=0;attempt<=waits.length;attempt++)try{return await read();}catch(error){const code=(error as {code?:number}).code,message=error instanceof Error?error.message:'';if(attempt===waits.length||(code!==429&&!/Too Many Requests/i.test(message)))throw error;await pause(waits[attempt]!);}
  throw new Error('RPC retry exhausted');
 }
 export function summarizeWallets(events:TokenEvent[],birthAt:number,birthBlock?:string){
@@ -81,9 +84,9 @@ export class TokenHistory {
  start(raw:string){if(!isAddress(raw))throw new Error('Invalid token address');const token=raw.toLowerCase();if(this.stopped)throw new Error('History service stopped');if(this.pending.has(token))return;
   if(this.pending.size>=2)throw new Error('Two history jobs already running');const work=this.run(token).finally(()=>this.pending.delete(token));this.pending.set(token,work);
  }
- result(token:string){token=token.toLowerCase();const state=this.store.state(token);const events=this.store.events(token);return {state:state??null,running:this.pending.has(token),events:events.slice(-500).reverse(),totalEvents:events.length,wallets:state?summarizeWallets(events,state.profile.birthAt,state.profile.birthBlock):[],coverage:'Curve trades, native ETH pool swaps, token transfers and factory phases. Curve buyer/seller addresses are attributed; pool swaps remain unattributed without trace evidence. Events use exact blocks and transactions; per-event timestamps are not fetched from the rate-limited public RPC. Up to cursor only; latest 500 events displayed.'};}
+ result(token:string){token=token.toLowerCase();const state=this.store.state(token);const events=this.store.events(token);return {state:state??null,running:this.pending.has(token),events:events.slice(-500).reverse(),totalEvents:events.length,wallets:state?summarizeWallets(events,state.profile.birthAt,state.profile.birthBlock):[],score:state?scoreToken(state,events):null,relationships:state?buildRelationshipGraph(state.profile,events):null,coverage:'Curve trades, native ETH pool swaps, token transfers and factory phases. Curve buyer/seller addresses are attributed; pool swaps remain unattributed without trace evidence. Events use exact blocks and transactions; per-event timestamps are not fetched from the rate-limited public RPC. Up to cursor only; latest 500 events displayed.'};}
  private async run(token:string){let s=this.store.state(token);try{
-  const profile=await this.reader.profile(token);s={profile,cursor:s?.cursor??null,status:'indexing',error:null,updatedAt:Date.now()};this.store.save(s);
+  const profile=s&&s.status!=='ready'?s.profile:await this.reader.profile(token);s={profile,cursor:s?.cursor??null,status:'indexing',error:null,updatedAt:Date.now()};this.store.save(s);
   let from=s.cursor===null?BigInt(profile.birthBlock):BigInt(s.cursor)>BigInt(profile.birthBlock)+63n?BigInt(s.cursor)-63n:BigInt(profile.birthBlock);const head=BigInt(profile.head);
   if(from>head)throw new Error('RPC head behind saved history');
   while(from<=head&&!this.stopped){const to=from+4999n<head?from+4999n:head;const events=await this.reader.chunk(profile,from,to);s={...s,cursor:to.toString(),status:to===head?'ready':'indexing',updatedAt:Date.now()};this.store.chunk(s,from,to,events);from=to+1n;}

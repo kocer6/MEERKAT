@@ -19,10 +19,10 @@ test('landing and terminal are separate product surfaces',async()=>{
   const landing=await (await fetch(app.url+'/')).text();
   const terminal=await (await fetch(app.url+'/terminal')).text();
   assert.match(landing,/<title>MEERKAT — Token Intelligence<\/title>/);
-  assert.match(landing,/THOUSANDS LAUNCH/);
+  assert.match(landing,/SCORE FIRST/);
   assert.match(landing,/OPEN TERMINAL/);
   assert.match(landing,/TOKEN LIFECYCLE/);
-  assert.match(landing,/WALLET DOSSIERS/);
+  assert.match(landing,/WALLET SCORE/);
   assert.match(landing,/RELATIONSHIP MAP/);
   assert.doesNotMatch(landing,/name="control-token"/);
   assert.match(terminal,/<title>Terminal — MEERKAT<\/title>/);
@@ -36,14 +36,20 @@ test('landing carries the approved brand, roadmap truth and accessible motion co
  const app=await startObserver({port:0,database:':memory:'});
  try{
   const [html,css]=await Promise.all([fetch(app.url+'/').then(r=>r.text()),fetch(app.url+'/landing.css').then(r=>r.text())]);
-  assert.match(css,/meerkat-desert\.png/);
+  assert.match(css,/meerkat-banner-v2\.png/);
   assert.match(html,/OPEN SOURCE · COMMUNITY DRIVEN/);
   assert.match(html,/\[ LIVE \]/);
   assert.match(html,/\[ BUILDING \]/);
   assert.match(html,/\[ PLANNED \]/);
+  assert.match(html,/RELATIONSHIP MAP[\s\S]{0,160}\[ LIVE \]/);
   assert.match(css,/@font-face/);
   assert.match(css,/prefers-reduced-motion/);
-  assert.match(css,/font-size:\s*16px/);
+  assert.match(css,/font-size:\s*18px/);
+  assert.doesNotMatch(html,/scan-line|marquee/);
+  assert.match(html,/hero-board[\s\S]*OPEN TERMINAL[\s\S]*VIEW SOURCE/);
+  const banner=await fetch(app.url+'/assets/meerkat-banner-v2.png');
+  assert.equal(banner.status,200);
+  assert.equal(banner.headers.get('content-type'),'image/png');
  }finally{await app.close();}
 });
 
@@ -58,12 +64,17 @@ test('terminal connects token and wallet modes to read-only evidence APIs',async
   assert.match(html,/data-mode="token"/);
   assert.match(html,/data-mode="wallet"/);
   assert.match(css,/@font-face/);
-  assert.match(css,/font-size:\s*16px/);
+  assert.match(css,/font-size:\s*18px/);
   assert.match(css,/prefers-reduced-motion/);
   assert.match(css,/\[hidden\]\s*\{\s*display:\s*none\s*!important/);
   assert.match(js,/\/api\/token\/index/);
   assert.match(js,/\/api\/token\/history/);
   assert.match(js,/\/api\/wallet\/dossier/);
+  assert.match(html,/RELATIONSHIP MAP/);
+  assert.match(css,/\.relationship-map/);
+  assert.match(css,/\.relationship-section \.section-heading/);
+  assert.match(js,/data\.relationships/);
+  assert.match(js,/renderScore/);
   assert.doesNotMatch(js,/privateKey|sendTransaction|eth_sendTransaction/);
   const invalid=await fetch(app.url+'/api/wallet/dossier?address=bad');
   assert.equal(invalid.status,400);

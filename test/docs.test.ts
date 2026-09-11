@@ -22,7 +22,7 @@ test('public GitHub documentation is present and linked from the README', () => 
     assert.ok(existsSync(resolve(root, path)), `missing public document: ${path}`);
     assert.match(readme, new RegExp(`\\(${path.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&')}\\)`), `README does not link ${path}`);
   }
-  assert.match(readme, /<img[^>]+public\/assets\/meerkat-desert\.png/i, 'README is missing the MEERKAT hero');
+  assert.match(readme, /<img[^>]+public\/assets\/meerkat-banner-v2\.png/i, 'README is missing the wide MEERKAT hero');
 });
 
 test('every relative Markdown link in the README points to a repository file', () => {

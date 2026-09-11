@@ -21,6 +21,12 @@ Curve buys and sells expose the initiating buyer or seller in the event, so MEER
 
 An address is evidence of an on-chain role. It is not proof of beneficial ownership or a real-world identity.
 
+## Relationship graph
+
+The graph aggregates repeated interactions between public addresses and the token. It always retains the token and deployer, ranks other nodes by evidenced interaction count, and bounds the response to 48 nodes and 96 routes. The browser draws the top 18 nodes for readability.
+
+Curve buy/sell and transfer routes are solid because the decoded event supplies the address. Pool routes are dashed and labeled `pool caller only`. A line means an on-chain interaction occurred; it does not mean common ownership, coordination, or control.
+
 ## Current labels
 
 | Label | Exact rule | What it does not mean |
@@ -45,7 +51,12 @@ Raw integer quantities are stored as decimal strings to avoid floating-point los
 
 `ready` describes the bounded indexing job. New blocks after the captured head require another refresh. The UI must show cursor/status and must not describe partial history as complete chain history.
 
-## Scoring direction
+## Scores
 
-MEERKAT does not yet publish a composite wallet score. A useful score needs global token discovery, normalized opportunity sets, trace-aware attribution, realized outcome methodology, sample-size thresholds, and resistance to address splitting. Until those gates are met, the product presents counts and rule-based observations instead of a decorative number.
+Scores summarize the evidence MEERKAT can show; they are not safety ratings, price predictions, or profitability claims. Every API score contains the 0–100 value, confidence (`low`, `medium`, or `high`), component points, supporting observation, and a caveat.
 
+The **token evidence score** allocates 35 points to launch-to-head index coverage, 25 to attributed curve-participant breadth, 20 to observed event depth, and 20 to current deployer exposure. Lower deployer exposure receives more points, but the UI states that transfers can change this reading and that the score is not an audit.
+
+The **wallet behavior score** allocates 25 points each to locally matched token scope, early-entry frequency, tokens with both attributed buys and sells, and matched event depth. Confidence remains low below three matched tokens and becomes high only with at least seven matched tokens whose histories are all ready.
+
+Global wallet discovery, normalized opportunity sets, trace-aware attribution, realized outcome methodology, and resistance to address splitting remain future work. Realized PnL therefore stays `null`, and smart status stays `not assessed` even when a numeric behavior score is present.

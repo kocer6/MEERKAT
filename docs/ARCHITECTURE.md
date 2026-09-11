@@ -24,7 +24,9 @@ flowchart TB
 | CLI | `src/cli.ts` | Starts the active observer product server |
 | Observer server | `src/observer-server.ts` | Static routes and local read-only APIs |
 | Token history | `src/token-history.ts` | Profile verification, chunk reads, persistence and participant summaries |
+| Relationship graph | `src/relationship-graph.ts` | Bounded role/route aggregation with explicit attribution level |
 | Wallet dossier | `src/wallet-dossier.ts` | Cross-token aggregation over local histories |
+| Score model | `src/scoring.ts` | Deterministic components, confidence and caveats |
 | Discovery | `src/discovery.ts` | Recent Pons launch discovery used by Live Scout |
 | Watch service | `src/watch.ts` | Local watchlist, snapshots and activity |
 | Chain adapters | `src/chain/*` | Selected Pons ABI, market reads and quote math |
@@ -43,6 +45,8 @@ Watch and discovery state use tables in the same local database. Database files 
 ## Indexing and resume
 
 The history reader verifies one factory launch event, captures the current head, and requests logs in 5,000-block chunks. Each successful chunk and its cursor commit in one SQLite transaction. A resumed job starts with a 64-block overlap, replacing events in the overlap before writing the new result. At most two token-history jobs run at once.
+
+Interrupted/error jobs reuse the already verified saved profile and captured head. This avoids repeating the expensive genesis-to-head launch lookup during recovery. A completed `ready` history performs a fresh profile/head read when the user explicitly refreshes it.
 
 RPC rate-limit retries are bounded. Failure changes the state to `error`; it does not erase already committed chunks or silently switch data sources.
 

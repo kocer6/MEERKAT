@@ -4,6 +4,15 @@ This roadmap records product capability, not marketing dates. A feature moves to
 
 ## Live locally
 
+### Transparent scores
+
+- returns a token evidence score from coverage, participant breadth, activity depth and deployer exposure;
+- returns a wallet behavior score from local scope, early discovery, two-sided activity and evidence depth;
+- shows every component, observation, caveat and confidence level before the detailed dossier;
+- keeps realized PnL null and smart status unassessed.
+
+Acceptance evidence: deterministic scoring tests for strong, partial and thin-evidence cases plus UI/API contract checks.
+
 ### Token lifecycle indexer
 
 - verifies a Pons V2 launch from the factory event;
@@ -21,15 +30,16 @@ Acceptance evidence: tests, build, browser QA, and the bounded COPY integration 
 - local SQLite persistence;
 - no signer or transaction route.
 
+### Relationship map
+
+- aggregates deployer, curve participants, transfer routes and pool callers from persisted evidence;
+- distinguishes event addresses from pool-caller-only routes;
+- bounds large histories to 48 nodes / 96 routes and shows the top 18 nodes in the browser;
+- opens a local wallet dossier from an address node.
+
+The full COPY checkpoint reached the captured head after an interrupted restart. Exact results are recorded in `docs/evidence/copy-backfill-relationship-2026-09-11.md`.
+
 ## Building now
-
-### Complete lifecycle operations
-
-- prove a launch-to-head backfill through the packaged server;
-- interrupt after multiple chunks, restart, and record cursor resume behavior;
-- expose refresh/head age so `ready` cannot be confused with permanently current.
-
-Acceptance gate: a reproducible evidence report with duration, block range, event count, interruption point, restart cursor, and final status.
 
 ### Global wallet discovery
 
@@ -41,10 +51,6 @@ Acceptance gate: a reproducible evidence report with duration, block range, even
 Acceptance gate: clean-install test showing a previously unseen wallet can be indexed, interrupted, resumed, and audited from exact transactions.
 
 ## Next
-
-### Relationship map
-
-Visualize deployer, attributed curve buyers/sellers, transfer routes, and pool callers. Edges will name the exact on-chain event. Router calls and unattributed pool actors will remain visibly distinct from end-user ownership claims.
 
 ### Saved cases and alerts
 
@@ -73,4 +79,3 @@ Package a public read-only deployment with RPC quotas, abuse controls, observabi
 ## Product boundary
 
 MEERKAT will remain useful without wallet connection or token ownership. No roadmap item requires custody, a private key, transaction signing, or gated access to the base evidence terminal.
-

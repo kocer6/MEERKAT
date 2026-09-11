@@ -4,7 +4,7 @@ Updated 2026-09-11. The user approved a branded landing page plus a separate rea
 
 ## Product contract
 
-MEERKAT reconstructs Pons V2 token lifecycles and locally evidenced wallet behavior. No private key, signer, approval, or transaction path. No invented PnL, ownership, bot identity, or smart-money rating.
+MEERKAT scores Pons V2 tokens and locally evidenced wallet behavior, then exposes the lifecycle and address relationships behind the number. No private key, signer, approval, or transaction path. No invented PnL, ownership, bot identity, or smart-money rating.
 
 ## Completed
 
@@ -21,11 +21,13 @@ MEERKAT reconstructs Pons V2 token lifecycles and locally evidenced wallet behav
 - [x] Public GitHub project hub with branded hero, quickstart, verified evidence, navigation, and honest token status.
 - [x] Public product, analysis, architecture, local setup, roadmap, security, token-status, and contribution documents.
 - [x] Automated README contract checking required documents and every local Markdown link.
+- [x] Score-first token and wallet API/UI with visible components, confidence and caveats.
+- [x] Wide informative 3:1 repository banner and original landing-page structure with readable type.
 
 ## Next acceptance gates
 
-- [ ] Complete a launch-to-head backfill through the packaged server and record duration, cursor, event count, and restart/resume evidence.
-- [ ] Add a relationship graph for deployer, curve buyers/sellers, transfer recipients, and unattributed pool actors.
+- [x] Complete a launch-to-head backfill through the packaged server and record duration, cursor, event count, and restart/resume evidence.
+- [x] Add a relationship graph for deployer, curve buyers/sellers, transfer recipients, and explicitly marked pool callers.
 - [ ] Build global wallet discovery beyond histories already indexed locally, with bounded RPC workload and saved cursor.
 - [ ] Add saved cases and configurable local alert rules to Live Scout.
 - [ ] Add lazy per-event block timestamps without blocking the base dossier.

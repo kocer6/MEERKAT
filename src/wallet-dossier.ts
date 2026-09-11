@@ -1,5 +1,6 @@
 import {isAddress} from 'viem';
 import type {HistoryState,TokenEvent} from './token-history.js';
+import {scoreWallet} from './scoring.js';
 
 export interface IndexedTokenHistory {state:HistoryState;events:TokenEvent[]}
 
@@ -26,5 +27,6 @@ export function buildWalletDossier(raw:string,histories:IndexedTokenHistory[]){
  }
  tokens.sort((a,b)=>(b.lastSeenAt??0)-(a.lastSeenAt??0));
  const labels=[] as string[];if(earlyEntries)labels.push('early participant');if(fastExits)labels.push('fast exit');if(buys&&!sells)labels.push('no indexed sells');if(!labels.length&&totalEvents)labels.push('participant');
- return {address,indexedTokens:histories.length,readyTokens:histories.filter(history=>history.state.status==='ready').length,summary:{events:totalEvents,buys,sells,transfersIn,transfersOut,earlyEntries,fastExits},tokens,assessment:{labels,smartStatus:'not assessed',realizedPnl:null},coverage:'Built only from locally indexed Pons token histories in this MEERKAT installation. It is not a complete wallet history and does not prove ownership, profit, or investment skill.'};
+ const readyMatchedTokens=tokens.filter(token=>token.status==='ready').length,roundTrips=tokens.filter(token=>token.buys>0&&token.sells>0).length;
+ return {address,indexedTokens:histories.length,readyTokens:histories.filter(history=>history.state.status==='ready').length,summary:{events:totalEvents,buys,sells,transfersIn,transfersOut,earlyEntries,fastExits},score:scoreWallet({matchedTokens:tokens.length,readyMatchedTokens,events:totalEvents,earlyEntries,roundTrips}),tokens,assessment:{labels,smartStatus:'not assessed',realizedPnl:null},coverage:'Built only from locally indexed Pons token histories in this MEERKAT installation. It is not a complete wallet history and does not prove ownership, profit, or investment skill.'};
 }
