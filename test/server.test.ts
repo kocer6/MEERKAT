@@ -64,6 +64,9 @@ test('inspection API authenticates, validates input and returns read-only quotes
     const response = await post('0.01'); assert.equal(response.status, 200);
     const result = await response.json(); assert.equal(result.source, 'chain'); assert.ok(BigInt(result.buy.tokensOut) > 0n);
     const state = await (await fetch(app.url + '/api/state')).json(); assert.deepEqual(state.positions, []);
+    assert.equal((await fetch(app.url+'/api/monitor/stop',{method:'POST'})).status,403);
+    const monitorStop=await fetch(app.url+'/api/monitor/stop',{method:'POST',headers:{'x-control-token':token}});assert.equal((await monitorStop.json()).active,false);
+    const monitorStart=await fetch(app.url+'/api/monitor/start',{method:'POST',headers:{'x-control-token':token}});assert.equal((await monitorStart.json()).active,true);
     const buyPath='/api/paper/buy?token=0x1111111111111111111111111111111111111111&amount=0.01&orderId=test-order-123';
     for(const route of [buyPath,'/api/paper/close?id=unknown','/api/paper/observe?id=unknown']) assert.equal((await fetch(app.url+route,{method:'POST'})).status,403);
     const send=(route:string)=>fetch(app.url+route,{method:'POST',headers:{'x-control-token':token}});

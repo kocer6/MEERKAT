@@ -117,3 +117,6 @@ M3.2 partial: native-ETH pre-graduation curve inspection, taxes, fee-aware buy/r
 
 ### Evidence — manual market paper lifecycle, 2026-09-11
 M3.2/M4.2 partial: authenticated market paper buy/update/full close, five mandatory curve liquidity/cost checks, 0.0001 ETH fixed modeled gas per side, persistent entry-block/check evidence, CHAIN labels and unrealized PnL. 45 tests, typecheck/build/JS syntax pass. Real cycle: docs/evidence/market-paper-cycle-2026-09-11.json. Manual position updates only; background monitoring, pool quotes, strategy settings and richer risk analysis remain open. Next M3.4 monitoring + M3.3 watch quality.
+
+### Evidence — background position monitoring, 2026-09-11
+M3.4 partial: persisted open chain positions monitored sequentially every 15s after completion, shared in-flight tick, pause/resume, per-position RPC error/last success, graceful shutdown. Negative-net liquidation now triggers stop-loss and charges modeled gas correctly. 49 tests + build/typecheck/JS syntax pass; browser pause/resume verified. Backfill/reorg discovery remains open. Next M3.3 quality-aware reserve watch and pool graduation support.

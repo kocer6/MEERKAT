@@ -9,6 +9,7 @@ import { PonsDiscovery, rpcReader } from './chain/discovery.js';
 import { inspectToken, marketReader, type MarketReader } from './chain/market.js';
 import { parseEther } from 'viem';
 import { assessEntry, MarketTrading, paperGasWei } from './market-trading.js';
+import { PositionMonitor } from './monitor.js';
 
 export async function startServer(options: { port: number; database: string; discovery?: PonsDiscovery; market?: MarketReader }) {
   if (!Number.isInteger(options.port) || options.port < 0 || options.port > 65535) throw new Error('invalid port');
@@ -25,13 +26,14 @@ export async function startServer(options: { port: number; database: string; dis
   const discovery = options.discovery ?? new PonsDiscovery(rpcReader());
   const market = options.market ?? marketReader(); let inspectionBusy = false;
   const trading = new MarketTrading(engine, market);
+  const monitor = new PositionMonitor(() => ledger.positions(), id => trading.observe(id));
   let url = ''; let scenarioBusy = false; let marketActive = false; let marketRun = 0; let marketTimer: NodeJS.Timeout | undefined;
   const pollMarket = async (run: number) => {
     await discovery.refresh();
     if (marketActive && marketRun === run) marketTimer = setTimeout(() => { void pollMarket(run); }, 30000);
   };
   const send = (res: ServerResponse, status: number, data: unknown) => { res.writeHead(status, { 'content-type': 'application/json' }); res.end(encode(data)); };
-  const snapshot = () => ({ mode: 'paper', source: 'mixed', paperGasWei, marketActive, market: discovery.snapshot(), account: ledger.account(), positions: ledger.positions(), events: ledger.events(), rules: engine.rules, scenarioBusy });
+  const snapshot = () => ({ mode: 'paper', source: 'mixed', paperGasWei, monitor: monitor.snapshot(), marketActive, market: discovery.snapshot(), account: ledger.account(), positions: ledger.positions(), events: ledger.events(), rules: engine.rules, scenarioBusy });
   const server = createServer(async (req, res) => {
     res.setHeader('Cache-Control', 'no-store'); res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
@@ -47,6 +49,10 @@ export async function startServer(options: { port: number; database: string; dis
       if (req.method === 'POST') {
         const supplied = req.headers['x-control-token'];
         if (typeof supplied !== 'string' || Buffer.byteLength(supplied) !== Buffer.byteLength(controlToken) || !timingSafeEqual(Buffer.from(supplied), Buffer.from(controlToken))) { send(res, 403, { error: 'control token required' }); return; }
+        if (path === '/api/monitor/start' || path === '/api/monitor/stop') {
+          if(path.endsWith('/start')) monitor.start(); else await monitor.stop();
+          send(res, 200, monitor.snapshot()); return;
+        }
         if (path === '/api/paper/close' || path === '/api/paper/observe') {
           const id = new URL(req.url!, url).searchParams.get('id') ?? '';
           try { send(res, 200, { position: path.endsWith('/close') ? await trading.close(id) : await trading.observe(id) }); }
@@ -100,8 +106,9 @@ export async function startServer(options: { port: number; database: string; dis
   });
   const address = server.address(); if (!address || typeof address === 'string') throw new Error('missing bound address');
   url = `http://127.0.0.1:${address.port}`;
-  return { url, close: () => new Promise<void>((resolve, reject) => {
+  monitor.start();
+  return { url, close: async () => { await monitor.stop(); return new Promise<void>((resolve, reject) => {
     marketActive = false; marketRun++; if (marketTimer) clearTimeout(marketTimer);
     server.close(error => { ledger.close(); error ? reject(error) : resolve(); }); server.closeIdleConnections();
-  }) };
+  }); } };
 }

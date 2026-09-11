@@ -1,5 +1,19 @@
 # MEERKAT — exact continuation state
 
+## Latest checkpoint: background position monitoring (2026-09-11)
+
+PositionMonitor now starts with the local server, selects persisted open CHAIN positions directly from SQLite (independent of the launch feed), reads them sequentially and schedules the next cycle 15 seconds after completion. One in-flight cycle only; generation guards prevent duplicate loops on stop/start. Authenticated pause/resume endpoints and UI controls are available. Pause waits for an in-flight read to finish; the pause state is session-only and restart enables monitoring again. Server shutdown waits for monitor work before closing SQLite.
+
+Each position exposes last success/error health. A failed quote retains its prior valuation and position; successful reads clear the error. Closing a position removes it from the next cycle. TP/SL/trailing/hold are evaluated automatically through the existing MarketTrading/PaperEngine path. No automatic entries. Unsupported pool phase continues to report an error and retain the position until pool quotes are implemented.
+
+Fixed known negative-net-value bug: if token proceeds fall below modeled exit gas, net valuation can be negative and still trigger stop-loss. Ledger records negative liquidation value and actual modeled net proceeds, while respecting available funds for exit gas. Unknown RPC reserves remain errors; this does not turn unknown data into zero. Regression added for the previously failing case.
+
+Verification: 49/49 tests, typecheck/build, JS syntax pass. Tests cover shared in-flight ticks, filtering open chain positions, error recovery/removal, stop waiting with no future scheduling, authenticated pause/resume, plus negative-net stop-loss and prior lifecycle tests. Browser pause and resume controls verified. Background scheduling is verified with mocked reads; no new live unattended-run duration is claimed.
+
+Next: M3.3 reserve-change watch rules with field quality, then pool-phase quote support and graduation transitions. M3.4 remains PARTIAL: pinned polling/restart selection/error state exist, discovery durable backfill/reorg handling does not. Full safety intelligence and strategy editing also remain open. User has paused design work.
+
+
+
 ## Latest checkpoint: manual market-based paper trades (2026-09-11)
 
 User priority is product; design remains paused. Inspect now shows five mandatory curve-entry checks: readable ETH curve/two-way quote, opening tax <= configured limit (3%), protocol+creator fees <=5%, requested amount <=1% of real ETH reserve, modeled round-trip loss <=10%. Each observed check contributes 20 to a curve-entry-fit score, but ALL must pass. This is deliberately not Bodkin's social/deployer score and not a contract-safety rating. Do not present 100 as investment confidence. Holder/deployer analysis is still missing.

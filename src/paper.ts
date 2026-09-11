@@ -33,7 +33,7 @@ export class PaperEngine {
   }
   async observe(id: string, q: SellQuote): Promise<Position> {
     this.fresh(q); const existing = this.ledger.position(id);
-    if (!existing || q.source !== existing.source || q.ethOut < 0n || q.gasWei < 0n || q.gasWei > q.ethOut) throw new Error('invalid observation');
+    if (!existing || q.source !== existing.source || q.ethOut < 0n || q.gasWei < 0n || q.gasWei > this.rules.maxGasWei) throw new Error('invalid observation');
     const p = this.ledger.mark(id, q.ethOut - q.gasWei, this.now());
     const reason = exitReason(p, q.ethOut - q.gasWei, this.rules, this.now());
     return reason ? this.close(id, reason, async () => q) : p;

@@ -5,6 +5,7 @@ const el = (tag, text, className) => { const node = document.createElement(tag);
 async function refresh() {
   const response = await fetch('/api/state'); if (!response.ok) throw new Error('Local engine unavailable');
   const data = await response.json();
+  monitorActive=data.monitor.active; $('monitor-toggle').textContent=monitorActive?'Pause position monitoring':'Resume position monitoring'; $('monitor-status').textContent=monitorActive?'Automatic position quotes every 15 seconds after the previous cycle. TP/SL/trailing/hold rules active.':'Position monitoring paused. Automatic exits are not evaluated.';
   $('balance').textContent = eth(data.account.balanceWei) + ' ETH';
   const pnl = data.positions.reduce((sum, p) => sum + BigInt(p.realizedPnlWei), 0n);
   $('pnl').textContent = (pnl > 0n ? '+' : '') + eth(pnl) + ' ETH'; $('pnl').className = pnl >= 0n ? 'green' : '';
@@ -26,6 +27,7 @@ async function refresh() {
           finally{button.disabled=false;}
         });actions.append(button);
       }
+      const health=data.monitor.positions[p.id]; actions.append(el('small',health?.status==='error'?'QUOTE ERROR · '+health.error:monitorActive?'Monitoring active':'Monitoring paused'));
       actions.append(el('small','Last valuation: '+new Date(p.updatedAt).toLocaleTimeString()));
       actions.append(el('small','Unrealized: '+eth(BigInt(p.lastValueWei)-BigInt(p.costWei))+' ETH'));
     }
@@ -87,6 +89,7 @@ $('market-toggle').addEventListener('click', async () => {
 });
 setInterval(() => { refresh().catch(error => { $('health').textContent = error.message; }); }, 5000);
 
+let monitorActive=true;
 let inspectionVersion = 0; let inspectedEntry = null;
 $('inspect-form').addEventListener('input', () => { inspectionVersion++; inspectedEntry=null; $('paper-buy').disabled=true; $('inspect-result').replaceChildren(); $('inspect-status').textContent = 'Inputs changed. Inspect again for a current quote.'; });
 $('inspect-form').addEventListener('submit', async event => {
@@ -122,6 +125,8 @@ $('inspect-form').addEventListener('submit', async event => {
 $('paper-buy').addEventListener('click',async()=>{
  if(!inspectedEntry)return; const entry=inspectedEntry; $('paper-buy').disabled=true;
  try{const response=await fetch('/api/paper/buy?'+new URLSearchParams(entry),{method:'POST',headers:{'x-control-token':control}});const result=await response.json();if(!response.ok)throw new Error(result.error);
- inspectedEntry=null;await refresh();$('paper-status').textContent='Paper position opened. Use Update quote to value it and evaluate exit rules, or Close paper position for a full exit.';
+ inspectedEntry=null;await refresh();$('paper-status').textContent='Paper position opened. Automatic monitoring follows the status in Positions; Update quote and Close remain available.';
  }catch(error){$('paper-status').textContent=error.message+' Inspect again before retrying.';}
 });
+
+$('monitor-toggle').addEventListener('click',async()=>{const b=$('monitor-toggle');b.disabled=true;try{const r=await fetch('/api/monitor/'+(monitorActive?'stop':'start'),{method:'POST',headers:{'x-control-token':control}});if(!r.ok)throw new Error('Monitor control failed');await refresh();}catch(e){$('monitor-status').textContent=e.message;}finally{b.disabled=false;}});

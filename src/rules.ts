@@ -37,7 +37,7 @@ export function entryReasons(e: Entry, r: Rules): string[] {
 }
 
 export function exitReason(p: Pick<Position, 'costWei' | 'peakWei' | 'openedAt'>, value: bigint, r: Rules, now: number): string | null {
-  const cost = BigInt(p.costWei); if (cost <= 0n || value < 0n) return null;
+  const cost = BigInt(p.costWei); if (cost <= 0n) return null;
   const gain = (value - cost) * 10000n / cost;
   if (gain <= -BigInt(r.stopLossBps)) return 'stop-loss';
   const peak = BigInt(p.peakWei) > value ? BigInt(p.peakWei) : value;

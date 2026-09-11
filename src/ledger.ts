@@ -89,7 +89,7 @@ export class Ledger {
   mark(id: string, value: bigint, now: number): Position {
     return this.transaction(() => {
       const p = this.position(id); if (!p || p.status !== 'open') throw new Error('position is not open');
-      if (value < 0n) throw new Error('negative valuation');
+      // Net liquidation value can be negative when exit gas exceeds token proceeds.
       p.lastValueWei = value.toString(); p.peakWei = (value > BigInt(p.peakWei) ? value : BigInt(p.peakWei)).toString(); p.updatedAt = now;
       this.savePosition(p); this.event('position-marked', now, { positionId: id, valueWei: value }); return p;
     });

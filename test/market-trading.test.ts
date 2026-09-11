@@ -52,3 +52,11 @@ test('reserve RPC outage during exit preserves the balance, quantity and open st
  await assert.rejects(service.close(p.id),/RPC unavailable/);assert.equal(ledger.account().balanceWei,balance);assert.equal(ledger.position(p.id)?.quantity,p.quantity);assert.equal(ledger.position(p.id)?.status,'open');
  }finally{ledger.close();}
 });
+
+test('a market value below exit gas still triggers stop-loss and accounts for negative proceeds',async()=>{
+ let collapsed=false;const base=reader();const market=reader({curve:async(a,b)=>({...await base.curve(a,b),quoteReserve:collapsed?1000n:10n**19n})});
+ const ledger=new Ledger(':memory:',10n**18n,10n**18n);
+ try{const service=new MarketTrading(new PaperEngine(ledger,defaultRules),market);const p=await service.buy(token,10n**16n,'collapse-1');collapsed=true;
+ const result=await service.observe(p.id);assert.equal(result.status,'closed');assert.equal(result.exitReason,'stop-loss');assert.ok(BigInt(result.realizedPnlWei)<-BigInt(p.costWei));
+ }finally{ledger.close();}
+});
