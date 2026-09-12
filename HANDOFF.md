@@ -4,7 +4,7 @@ The active product is a local read-only Pons V2 scoring and intelligence termina
 
 The current `main` checkpoint includes the tabbed dossier, paginated Timeline and the product-proof landing sections described below.
 
-The landing sections now span the available desktop width instead of stopping at 1,500–1,800 px, and the terminal shell uses the full viewport with an 18 px working gutter. The mobile shell keeps its existing 10 px gutter and no page-level horizontal overflow. `docs/assets/terminal-overview.png` and `docs/assets/relationship-map.png` are current HOP OUT product captures used by the README and roadmap.
+The landing sections now span the available desktop width instead of stopping at 1,500–1,800 px, and the terminal shell uses the full viewport with an 18 px working gutter. The mobile shell keeps its existing 10 px gutter and no page-level horizontal overflow. The README now presents a visual product tour using current HOP OUT captures for Overview, Fee Flow, Relationship Map, Current Holders and Timeline; the roadmap reuses the focused relationship evidence capture.
 
 ## Implemented checkpoint
 

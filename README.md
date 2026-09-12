@@ -25,11 +25,26 @@
 
 > **Project status:** transparent token scoring, local wallet scoring, lifecycle reconstruction and the relationship map work locally today. Wallet coverage is limited to histories indexed by that installation. A hosted public terminal and a MEERKAT token have not launched.
 
+## What it looks like
+
+**Score first, then inspect the reasons.** The Overview keeps the token score, confidence, index coverage, market activity and source links in one workspace. This capture uses the real HOP OUT token on Robinhood Chain.
+
 <p align="center">
   <img src="docs/assets/terminal-overview.png" alt="MEERKAT local terminal showing the HOP OUT token score and evidence overview" width="100%">
 </p>
 
-<p align="center"><em>A real HOP OUT dossier: transparent score, index state, market activity and direct source links in one local workspace.</em></p>
+**Follow creator revenue to its current recipient.** Fee Flow separates curve payouts from pool payouts, reconstructs routing changes and links the recipient to its wallet dossier, Pons profile and Blockscout evidence.
+
+![MEERKAT Fee Flow showing the HOP OUT payout route and exact indexed revenue](docs/assets/fee-flow.png)
+
+**See who interacted with the token and in which direction.** Relationship Map separates BUY and SELL flows, current holders and direct wallet routes. Every wallet node opens the observed activity behind it.
+
+![MEERKAT Relationship Map showing wallets arranged around the token](docs/assets/relationship-map.png)
+
+| Reconstructed current holders | Paginated lifecycle evidence |
+| --- | --- |
+| Balances and supply shares come from indexed ERC-20 transfers and remain marked partial until the captured head is complete. | Timeline loads 50 events at a time, colors BUY and SELL separately and links every row to its transaction. |
+| ![MEERKAT Current Holders table with balances, supply shares and observed roles](docs/assets/wallets-holders.png) | ![MEERKAT Timeline with BUY, SELL, TRANSFER and FEES controls](docs/assets/timeline.png) |
 
 ## What MEERKAT does
 

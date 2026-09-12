@@ -45,6 +45,7 @@ MEERKAT scores Pons V2 tokens and locally evidenced wallet behavior, then expose
 - [x] Preserve and load Timeline pages across index refreshes, including checksummed token input, and remove the unused terminal utility column.
 - [x] Expand landing and terminal workspaces across wide displays while retaining compact edge gutters and zero page-level overflow on mobile.
 - [x] Add current product screenshots to the GitHub README and public roadmap.
+- [x] Turn the README into a visual product tour covering score, fee flow, relationships, holders and paginated lifecycle evidence with real HOP OUT captures.
 
 ## Next acceptance gates
 

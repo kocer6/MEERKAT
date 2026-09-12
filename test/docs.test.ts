@@ -24,9 +24,11 @@ test('public GitHub documentation is present and linked from the README', () => 
     assert.match(readme, new RegExp(`\\(${path.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&')}\\)`), `README does not link ${path}`);
   }
   assert.match(readme, /<img[^>]+public\/assets\/meerkat-banner-v2\.png/i, 'README is missing the wide MEERKAT hero');
-  assert.match(readme, /docs\/assets\/terminal-overview\.png/i, 'README is missing the product screenshot');
+  for (const image of ['terminal-overview.png', 'fee-flow.png', 'relationship-map.png', 'wallets-holders.png', 'timeline.png']) {
+    assert.match(readme, new RegExp(`docs/assets/${image.replace('.', '\\.')}`, 'i'), `README is missing the ${image} product screenshot`);
+  }
   assert.match(roadmap, /docs\/assets\/relationship-map\.png/i, 'ROADMAP is missing the relationship evidence screenshot');
-  for (const image of ['docs/assets/terminal-overview.png', 'docs/assets/relationship-map.png']) {
+  for (const image of ['docs/assets/terminal-overview.png', 'docs/assets/fee-flow.png', 'docs/assets/relationship-map.png', 'docs/assets/wallets-holders.png', 'docs/assets/timeline.png']) {
     assert.ok(existsSync(resolve(root, image)), `missing documentation image: ${image}`);
   }
 });
