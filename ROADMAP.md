@@ -28,12 +28,14 @@ Acceptance evidence: tests, build, browser QA, and the bounded COPY integration 
 - branded public landing page with a compact interactive ZZZ dossier preview, five working evidence tabs and a direct ZZZ analysis route;
 - token and wallet address modes plus five persistent token dossier tabs;
 - lazy Timeline pages of 50 events with BUY, SELL, TRANSFER and FEES filters;
+- BUY/SELL-specific radial Trade Flow views and per-wallet trade counts in holder and transfer-route maps;
 - local SQLite persistence;
 - no signer or transaction route.
 
 ### Relationship map
 
 - aggregates deployer, curve participants, transfer routes and pool callers from persisted evidence;
+- separates attributed BUY and SELL flows around the token and exposes buy/sell counts on wallet nodes;
 - distinguishes event addresses from pool-caller-only routes;
 - bounds large histories to 48 nodes / 96 routes and shows the top 18 nodes in the browser;
 - opens a local wallet dossier from an address node.

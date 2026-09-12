@@ -8,13 +8,13 @@ The current `main` checkpoint includes the tabbed dossier, paginated Timeline an
 
 `public/landing.*`: original field-board landing centered on token and wallet scoring, with terminal/source actions inside a wide information-rich hero. It uses `public/assets/meerkat-banner-v2.png`, removes the scan-line/marquee treatment and does not repeat a cropped hero at the bottom.
 
-`public/terminal.*`: explicit Token/Wallet address modes. A transparent 0–100 score, confidence, component points and evidence reasons appear first. Token dossiers use five persistent tabs: Overview & Score, Fee Flow, Relationships, Wallets & Holders, and Timeline. BUY is green, SELL is red, Transfer is amber and unattributed evidence is gray. The active tab survives indexing refreshes and the mobile relationship canvas opens centered.
+`public/terminal.*`: explicit Token/Wallet address modes. A transparent 0–100 score, confidence, component points and evidence reasons appear first. Token dossiers use five persistent tabs: Overview & Score, Fee Flow, Relationships, Wallets & Holders, and Timeline. BUY is green, SELL is red, Transfer is amber and unattributed evidence is gray. Trade Flow has separate BUY and SELL controls with radial wallet placement. Holder and route nodes show indexed B/S counts. Timeline state survives indexing refreshes and checksummed input. The unused Engine Status / Tools / Index Context column was removed.
 
 `public/landing.*`: the MEERKAT hero leads into a fixed-height interactive ZZZ dossier preview. Its Overview, Fee Flow, Relationships, Wallets and Timeline tabs switch in place and the ZZZ route opens `/terminal?token=...` for live analysis. Decorative mascot spacers and the standalone Fee Flow diagram were removed so every landing section carries product information.
 
 The relationship workspace has three persistent modes. Trade Flow points token to buyer and seller to token. Current Holders ranks balances reconstructed from indexed Transfer events and says whether the index is complete or partial. Wallet Routes contains direct address-to-address transfers only. Selecting a wallet opens its roles, trade counts, token amounts, balance, supply share and block range, then links to the full Wallet dossier. Mode, selection and zoom survive the three-second indexing refresh for the same token.
 
-`src/token-history.ts`: durable token profiles/events, verified `TokenLaunched` lookup from block 0 to current head, 5,000-block indexing chunks, curve/pool/transfer/factory coverage, block-based early/fast behavior and bounded 429 retry. Transfer and trade event timestamps remain null; exact blocks and transaction hashes are preserved. Curve actors are attributed. Pool swaps remain unattributed without trace evidence.
+`src/token-history.ts`: durable token profiles/events, verified `TokenLaunched` lookup from block 0 to current head, 50,000-block adaptive indexing ranges, parallel curve/token/factory/pool reads, block-based early/fast behavior and bounded 429 retry. Dense responses still split recursively. Transfer and trade event timestamps remain null; exact blocks and transaction hashes are preserved. Curve actors are attributed. Pool swaps remain unattributed without trace evidence.
 
 The token summary no longer serializes raw lifecycle rows. `HistoryStore.timeline()` and `GET /api/token/timeline` return newest-first cursor pages of at most 50 events with BUY, SELL, TRANSFER and FEES filters. This keeps the first dossier response bounded while the complete history remains in SQLite.
 
@@ -35,7 +35,7 @@ Token index coverage is now a readiness gate rather than a source of score point
 ## Verification
 
 - `npm run typecheck`: pass.
-- `npm test`: 114 tests passed, 0 failed, including timeline cursor/filter coverage, landing/terminal contracts, fee-recipient roles, current-holder scoring, migration gating and retry recovery.
+- `npm test`: 115 tests passed, 0 failed, including wide adaptive index ranges, timeline cursor/filter coverage, landing/terminal contracts, fee-recipient roles, current-holder scoring, migration gating and retry recovery.
 - `npm run build`: pass.
 - Browser: the rebuilt `/` and `/terminal` were inspected at desktop and 390x844. The landing has no page-level mobile overflow; the wide hero, embedded actions and score-first sections remain readable. Token dossiers render all five score components before relationship and lifecycle evidence.
 - Real RPC: COPY `0xac79255f6f404eba14f316e8669d76573a2d7b1e` resolved to symbol COPY, launch block `59283454`; chunk `59283454..59288453` returned 3,170 events and 25 attributed curve participants in 5.3 seconds after RPC pacing fixes.
@@ -51,6 +51,8 @@ Token index coverage is now a readiness gate rather than a source of score point
 - Tabbed terminal QA at 390 × 844: the document stayed inside a 375 px layout width; the dossier tab rail scrolled locally; Relationship Map measured 720/311 px and opened at scrollLeft 205; graph metadata rendered at 12 px. A ready HOP OUT Timeline loaded 50 of 6,390 rows, Load More reached 100, and FEES returned the exact 26 fee events.
 - Response-size QA: HOP OUT summary/timeline responses measured 70,044/38,867 bytes; ZZZ measured 62,903/38,169 bytes. Both Timeline responses contained 50 rows with a next cursor. This replaces the previous roughly 423–451 KB summary response that embedded lifecycle events.
 - Landing QA at desktop and 390 × 844: all five ZZZ preview tabs switched inside a fixed 380/390 px stage, the relationship legend and graph remained visible, the exact ZZZ live-analysis route was present, and the document stayed inside the viewport.
+- Terminal refinement QA: HOP OUT rendered 13 BUY wallets and 13 SELL wallets independently around the token; Current Holders and Wallet Routes displayed B/S counts. Timeline loaded 50 of 6,390 events and the FEES filter returned 26 of 26. Checksummed ZZZ input loaded 50 of 282,220 currently indexed events while indexing continued. The right utility column was absent and the result workspace expanded to use its width.
+- RPC throughput probe: a real 250,000-block HOP OUT range completed all parallel evidence reads in 1.814 seconds and returned 165 decoded events. Production commits every 50,000 blocks so dense tokens expose progress more frequently while adaptive splitting handles provider limits.
 
 ## Immediate next task
 

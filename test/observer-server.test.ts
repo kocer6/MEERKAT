@@ -101,6 +101,9 @@ test('terminal connects token and wallet modes to read-only evidence APIs',async
   assert.match(js,/marketSummary/);
   assert.match(js,/transactionClass/);
   assert.match(js,/TRADE FLOW/);
+  assert.match(js,/BUY FLOW/);
+  assert.match(js,/SELL FLOW/);
+  assert.match(js,/tradeSide/);
   assert.match(js,/CURRENT HOLDERS/);
   assert.match(js,/WALLET ROUTES/);
   assert.match(js,/OPEN WALLET DOSSIER/);
@@ -118,12 +121,17 @@ test('terminal connects token and wallet modes to read-only evidence APIs',async
   for(const label of ['OVERVIEW & SCORE','FEE FLOW','RELATIONSHIPS','WALLETS & HOLDERS','TIMELINE'])assert.match(js,new RegExp(label.replace('&','&')));
   assert.match(js,/\/api\/token\/timeline/);
   assert.match(js,/LOAD 50 MORE/);
+  assert.match(js,/LOADING 50 EVENTS/);
+  assert.match(js,/Fast adaptive index/);
+  assert.doesNotMatch(js,/version:null/);
   assert.match(js,/INDEXED REVENUE · PARTIAL/);
   assert.match(js,/URLSearchParams\(location\.search\)/);
   assert.match(js,/function centerRelationshipMap[\s\S]{0,260}requestAnimationFrame\(\(\)=>requestAnimationFrame/);
   assert.match(css,/\.dossier-tabs/);
   assert.match(css,/font-size:12px/);
   assert.match(js,/marker-end/);
+  assert.doesNotMatch(html,/ENGINE STATUS|INDEX CONTEXT|data-tool=/);
+  assert.doesNotMatch(css,/grid-template-columns:350px minmax\(540px,1fr\) 290px/);
   assert.doesNotMatch(js,/privateKey|sendTransaction|eth_sendTransaction/);
   const invalid=await fetch(app.url+'/api/wallet/dossier?address=bad');
   assert.equal(invalid.status,400);

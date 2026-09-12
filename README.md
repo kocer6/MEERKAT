@@ -41,7 +41,7 @@ Paste a Pons V2 token or public wallet address into `/terminal`. MEERKAT returns
 
 Token evidence is split into five persistent views: **Overview & Score**, **Fee Flow**, **Relationships**, **Wallets & Holders**, and **Timeline**. The Timeline loads only when opened, fetches 50 newest events at a time, and can filter BUY, SELL, TRANSFER, and FEES evidence without placing the complete history in the browser.
 
-BUY evidence is green, SELL evidence is red, transfers are amber and unattributed activity is gray throughout the terminal. Missing evidence lowers the score's confidence and remains visible. Holder balances are reconstructed from indexed ERC-20 Transfer events; while an index is incomplete, the holder view is explicitly marked partial. A score is a summary of observed evidence, not a safety rating, price prediction, beneficial-ownership claim, realized profit, bot identity, or investment-skill verdict.
+BUY evidence is green, SELL evidence is red, transfers are amber and unattributed activity is gray throughout the terminal. Trade Flow can isolate BUY or SELL wallets and places them around the token; Current Holders and Wallet Routes show each displayed wallet's indexed buy/sell counts. Missing evidence lowers the score's confidence and remains visible. Holder balances are reconstructed from indexed ERC-20 Transfer events; while an index is incomplete, the holder view is explicitly marked partial. A score is a summary of observed evidence, not a safety rating, price prediction, beneficial-ownership claim, realized profit, bot identity, or investment-skill verdict.
 
 ## Run it
 

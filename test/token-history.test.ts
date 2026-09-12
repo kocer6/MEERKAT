@@ -67,6 +67,14 @@ test('an interrupted history resumes from its saved profile and 64-block overlap
  assert.equal(store.state(token)?.status,'ready');assert.equal(store.state(token)?.error,null);assert.deepEqual(chunks,[[37n,105n]]);
  await history.close();
 });
+test('new histories use wide adaptive ranges instead of thousands of tiny RPC passes',async()=>{
+ const token='0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',other='0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',store=new HistoryStore(':memory:');
+ const profile={token,name:'Token',symbol:'TKN',decimals:18,curve:other,deployer:other,pairToken:'0x0000000000000000000000000000000000000000',phase:0,birthBlock:'0',birthAt:0,head:'600000',poolId:null,poolManager:other,totalSupply:'1000',deployerBalance:'0',creatorTaxBps:0,metadata:null,metadataError:null};
+ const chunks:Array<[bigint,bigint]>=[],history=new TokenHistory(store,{profile:async()=>profile,chunk:async(_profile,from,to)=>{chunks.push([from,to]);return [];}});
+ history.start(token);for(let attempt=0;attempt<50&&store.state(token)?.status!=='ready';attempt++)await new Promise(resolve=>setTimeout(resolve,1));
+ assert.equal(chunks.length,13);assert.deepEqual(chunks[0],[0n,49999n]);assert.deepEqual(chunks.at(-1),[600000n,600000n]);assert.deepEqual(history.result(token).indexing,{rangeBlocks:50000,remainingRanges:0});
+ await history.close();
+});
 test('an index schema upgrade clears stale events before rebuilding history',async()=>{
  const token='0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',other='0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
  const store=new HistoryStore(':memory:'),profile={token,name:'Token',symbol:'TKN',decimals:18,curve:other,deployer:other,pairToken:'0x0000000000000000000000000000000000000000',phase:0,birthBlock:'10',birthAt:0,head:'20',poolId:null,poolManager:other,totalSupply:'1000',deployerBalance:'0',creatorTaxBps:0,metadata:null,metadataError:null};
