@@ -53,6 +53,8 @@ test('landing carries the approved brand, interactive ZZZ preview and roadmap tr
   assert.doesNotMatch(html,/scan-line|marquee/);
   assert.match(html,/hero-board[\s\S]*OPEN TERMINAL[\s\S]*VIEW SOURCE/);
   assert.match(html,/class="pons-link"[^>]+https:\/\/www\.ponsfamily\.com\//);
+  assert.match(html,/<nav aria-label="Landing navigation">[\s\S]*href="https:\/\/github\.com\/kocer6\/MEERKAT\/tree\/main\/docs"[^>]*>DOCS ↗<\/a>/);
+  assert.match(html,/<nav aria-label="Landing navigation">[\s\S]*href="https:\/\/github\.com\/kocer6\/MEERKAT"[^>]*>GITHUB ↗<\/a>/);
   assert.match(html,/TOKEN HOLDER INTELLIGENCE/);
   assert.match(html,/EVIDENCE EXPORT/);
   assert.match(html,/INTERACTIVE TERMINAL/);
@@ -69,6 +71,8 @@ test('landing carries the approved brand, interactive ZZZ preview and roadmap tr
   assert.match(css,/\.hero-wrap\{max-width:none;/);
   assert.match(css,/\.score-intro,\.roadmap\{max-width:none;/);
   assert.match(css,/\.product-preview\{max-width:none;/);
+  assert.doesNotMatch(css,/\.site-header nav\{display:none\}/);
+  assert.match(css,/\.site-header nav\{[^}]*overflow-x:auto/);
   assert.doesNotMatch(html,/mascot-interlude|fee-feature|ANALYZE HOP OUT/);
   const banner=await fetch(app.url+'/assets/meerkat-banner-v2.png');
   assert.equal(banner.status,200);
