@@ -39,6 +39,8 @@ Paste a Pons V2 token or public wallet address into `/terminal`. MEERKAT returns
 - a wallet inspector on every graph node with observed roles, buys, sells, token amounts, current reconstructed balance and supply share;
 - a wallet dossier across every token history stored on the same installation.
 
+Token evidence is split into five persistent views: **Overview & Score**, **Fee Flow**, **Relationships**, **Wallets & Holders**, and **Timeline**. The Timeline loads only when opened, fetches 50 newest events at a time, and can filter BUY, SELL, TRANSFER, and FEES evidence without placing the complete history in the browser.
+
 BUY evidence is green, SELL evidence is red, transfers are amber and unattributed activity is gray throughout the terminal. Missing evidence lowers the score's confidence and remains visible. Holder balances are reconstructed from indexed ERC-20 Transfer events; while an index is incomplete, the holder view is explicitly marked partial. A score is a summary of observed evidence, not a safety rating, price prediction, beneficial-ownership claim, realized profit, bot identity, or investment-skill verdict.
 
 ## Run it
@@ -58,7 +60,7 @@ Open [http://127.0.0.1:4664/](http://127.0.0.1:4664/), select **Open terminal**,
 
 | Mode | Input | Result | Current boundary |
 | --- | --- | --- | --- |
-| **Token** | Pons V2 token address | Evidence score, fee flow, confidence, profile, trade flow, holders, wallet routes and lifecycle | Latest 500 events are rendered; the full indexed history stays in SQLite |
+| **Token** | Pons V2 token address | Five focused views for score, fee flow, relationships, holders and lifecycle evidence | Timeline pages load 50 events at a time; the full indexed history stays in SQLite |
 | **Wallet** | Public EVM address | Behavior score, confidence, cross-token activity and timing labels | Searches locally indexed Pons histories; global wallet discovery is in development |
 
 The landing page, terminal, APIs, indexer, state, and database all run inside one local Node.js process. The browser never receives a signing route because the server has none.

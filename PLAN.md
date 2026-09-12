@@ -37,6 +37,10 @@ MEERKAT scores Pons V2 tokens and locally evidenced wallet behavior, then expose
 - [x] Gate legacy scores and fee flow during schema migration; clear transient profile errors after a successful retry.
 - [x] Adaptively split launch discovery when an RPC rejects a wide block range.
 - [x] Keep fee addresses and the centered relationship map usable on narrow screens; reveal results after mobile analysis.
+- [x] Split token dossiers into five persistent evidence tabs and retain the active tab while indexing refreshes.
+- [x] Move raw lifecycle events to a cursor-paginated endpoint with 50-event pages and BUY/SELL/TRANSFER/FEES filters.
+- [x] Mark Fee Flow revenue partial until launch-to-head indexing is ready.
+- [x] Add a real terminal preview, mini graph, Fee Flow proof route, two mascot scenes and an auto-running HOP OUT example to the landing page.
 
 ## Next acceptance gates
 

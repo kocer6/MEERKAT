@@ -25,8 +25,9 @@ Acceptance evidence: tests, build, browser QA, and the bounded COPY integration 
 
 ### Local product shell
 
-- branded public landing page and separate analysis terminal;
-- token and wallet address modes;
+- branded public landing page with a real terminal preview, mini relationship graph, Fee Flow example and direct HOP OUT analysis route;
+- token and wallet address modes plus five persistent token dossier tabs;
+- lazy Timeline pages of 50 events with BUY, SELL, TRANSFER and FEES filters;
 - local SQLite persistence;
 - no signer or transaction route.
 
@@ -92,7 +93,7 @@ Acceptance gate: dense-token fixture above the provider log limit, restart proof
 
 ### Versioned read-only API
 
-Publish schemas for token history, wallet dossier, case and evidence export endpoints. Add pagination instead of sending a fixed browser window.
+Publish stable schemas for the existing token summary, paginated timeline and wallet dossier endpoints, then add case and evidence-export endpoints.
 
 ### Hosted public terminal
 

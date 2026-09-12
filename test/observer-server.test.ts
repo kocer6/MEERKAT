@@ -50,6 +50,12 @@ test('landing carries the approved brand, roadmap truth and accessible motion co
   assert.match(html,/class="pons-link"[^>]+https:\/\/www\.ponsfamily\.com\//);
   assert.match(html,/TOKEN HOLDER INTELLIGENCE/);
   assert.match(html,/EVIDENCE EXPORT/);
+  assert.match(html,/TERMINAL PREVIEW/);
+  assert.match(html,/FEE FLOW · LIVE/);
+  assert.match(html,/MINI RELATIONSHIP GRAPH/);
+  assert.match(html,/ANALYZE HOP OUT/);
+  assert.match(html,/\/terminal\?token=0x78f13072b0f6ebc7fd0b5359c9b4e09c6160cff8/);
+  assert.match(html,/mascot-interlude/);
   const banner=await fetch(app.url+'/assets/meerkat-banner-v2.png');
   assert.equal(banner.status,200);
   assert.equal(banner.headers.get('content-type'),'image/png');
@@ -103,9 +109,19 @@ test('terminal connects token and wallet modes to read-only evidence APIs',async
   assert.match(css,/\.fee-route/);
   assert.match(css,/overflow-wrap:anywhere/);
   assert.match(js,/scrollIntoView/);
+  for(const label of ['OVERVIEW & SCORE','FEE FLOW','RELATIONSHIPS','WALLETS & HOLDERS','TIMELINE'])assert.match(js,new RegExp(label.replace('&','&')));
+  assert.match(js,/\/api\/token\/timeline/);
+  assert.match(js,/LOAD 50 MORE/);
+  assert.match(js,/INDEXED REVENUE · PARTIAL/);
+  assert.match(js,/URLSearchParams\(location\.search\)/);
+  assert.match(js,/function centerRelationshipMap[\s\S]{0,260}requestAnimationFrame\(\(\)=>requestAnimationFrame/);
+  assert.match(css,/\.dossier-tabs/);
+  assert.match(css,/font-size:12px/);
   assert.match(js,/marker-end/);
   assert.doesNotMatch(js,/privateKey|sendTransaction|eth_sendTransaction/);
   const invalid=await fetch(app.url+'/api/wallet/dossier?address=bad');
   assert.equal(invalid.status,400);
+  const invalidTimeline=await fetch(app.url+'/api/token/timeline?token=bad');
+  assert.equal(invalidTimeline.status,400);
  }finally{await app.close();}
 });

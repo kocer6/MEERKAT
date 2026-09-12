@@ -10,7 +10,8 @@ The product is deliberately read-only. It has no private-key input, signer, appr
 2. Select **Token** or **Wallet**.
 3. Paste a valid EVM address and run the analysis.
 4. Keep the terminal open while a new token history indexes. Progress and errors are persisted locally.
-5. Open exact transaction evidence from the lifecycle instead of relying on the summary alone.
+5. Move between **Overview & Score**, **Fee Flow**, **Relationships**, **Wallets & Holders**, and **Timeline** without losing the active investigation.
+6. Open exact transaction evidence from the timeline instead of relying on the summary alone.
 
 ## Token mode
 
@@ -23,7 +24,7 @@ Token mode first proves that the address belongs to a Pons V2 launch. It reads t
 | Token contract | ERC-20 transfers |
 | Native ETH pool and Pons hook | Pool swaps and creator-fee sweeps when the pool identifier can be derived |
 
-While indexing runs, the result shows `CALIBRATING`, exact block coverage and any RPC error instead of a partial numeric score. Once the captured launch-to-head range is ready, the result begins with a token signal score, confidence and five visible components. It then includes direct Pons and explorer links, the token profile, indexing cursor, total event count, latest lifecycle events, and attributed curve participants. Exact event fields remain in the local SQLite database even though the browser receives only the latest 500 lifecycle events.
+While indexing runs, the result shows `CALIBRATING`, exact block coverage and any RPC error instead of a partial numeric score. Once the captured launch-to-head range is ready, the result begins with a token signal score, confidence and five visible components. Direct Pons and explorer links remain above five persistent dossier tabs. Exact event fields stay in local SQLite; the browser requests newest-first Timeline pages of at most 50 events only when that tab is opened. BUY, SELL, TRANSFER, and FEES filters run against the stored history and preserve an opaque pagination cursor.
 
 ### Relationship map
 
@@ -31,7 +32,7 @@ Token mode also builds a bounded visual map from the complete persisted history.
 
 ### Fee flow
 
-The fee panel totals the token-specific `FeesSwept`, `FeesRescued`, `PoolFeesSwept` and `PoolFeesRescued` creator amounts. It separates curve and pool revenue, shows the configured initial and current recipient, reconstructs completed recipient changes, and warns about a pending change. A route selected at launch is distinguished from a later redirect.
+The fee panel totals the token-specific `FeesSwept`, `FeesRescued`, `PoolFeesSwept` and `PoolFeesRescued` creator amounts. It separates curve and pool revenue, shows the configured initial and current recipient, reconstructs completed recipient changes, and warns about a pending change. A route selected at launch is distinguished from a later redirect. During indexing, the panel labels totals `INDEXED REVENUE · PARTIAL`; confirmed wording appears only after launch-to-head indexing is ready.
 
 The fee escrow's current balance is useful context but can aggregate revenue from several launches assigned to the same recipient. MEERKAT therefore never adds that balance to the token's confirmed revenue. Transfers after the recipient withdraws from escrow are ordinary wallet activity until a separate transaction trace proves their purpose.
 

@@ -98,6 +98,16 @@ test('wallet event lookup uses normalized address columns and returns only match
  store.chunk({profile,cursor:'2',status:'ready',error:null,updatedAt:1,indexVersion:2},1n,2n,[{...trade('buy',0),id:'match',initiator:wallet,actor:wallet,recipient:wallet},{...trade('buy',1),id:'other',initiator:other,actor:other,recipient:other}]);
  assert.deepEqual(store.walletEvents(wallet).map(value=>value.event.id),['match']);store.close();
 });
+test('timeline pages newest events with an opaque cursor and filters event families',()=>{
+ const token='0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',other='0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',store=new HistoryStore(':memory:');
+ const profile={token,name:'Token',symbol:'TKN',decimals:18,curve:other,deployer:other,pairToken:'0x0000000000000000000000000000000000000000',phase:0,birthBlock:'1',birthAt:0,head:'65',poolId:null,poolManager:other,totalSupply:'1000',deployerBalance:'0',creatorTaxBps:0,metadata:null,metadataError:null};
+ const events=Array.from({length:65},(_,index)=>({...trade(index%2?'sell':'buy',index),id:`event-${String(index+1).padStart(3,'0')}`,blockNumber:String(index+1)}));
+ store.chunk({profile,cursor:'65',status:'ready',error:null,updatedAt:1,indexVersion:2},1n,65n,events);
+ const first=store.timeline(token,{limit:50,types:[]});assert.equal(first.events.length,50);assert.equal(first.events[0]?.blockNumber,'65');assert.equal(first.events.at(-1)?.blockNumber,'16');assert.equal(first.total,65);assert.equal(first.hasMore,true);assert.ok(first.nextCursor);
+ const second=store.timeline(token,{limit:50,types:[],cursor:first.nextCursor!});assert.equal(second.events.length,15);assert.equal(second.events[0]?.blockNumber,'15');assert.equal(second.events.at(-1)?.blockNumber,'1');assert.equal(second.hasMore,false);
+ const buys=store.timeline(token,{limit:50,types:['buy']});assert.equal(buys.total,33);assert.ok(buys.events.every(event=>event.kind==='buy'));
+ assert.throws(()=>store.timeline(token,{limit:50,types:[],cursor:'not-a-cursor'}),/Invalid timeline cursor/);store.close();
+});
 test('token history result includes a bounded relationship graph from persisted evidence',async()=>{
  const token='0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',deployer='0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',buyer='0x1111111111111111111111111111111111111111';
  const store=new HistoryStore(':memory:'),profile={token,name:'Token',symbol:'TKN',decimals:18,curve:deployer,deployer,pairToken:'0x0000000000000000000000000000000000000000',phase:0,birthBlock:'10',birthAt:0,head:'20',poolId:null,poolManager:deployer,totalSupply:'1000',deployerBalance:'0',creatorTaxBps:0,metadata:null,metadataError:null};
@@ -107,5 +117,6 @@ test('token history result includes a bounded relationship graph from persisted 
  assert.equal(result.relationships?.edges.find(edge=>edge.kind==='curve buy')?.from,token);
  assert.equal(result.relationships?.edges.find(edge=>edge.kind==='curve buy')?.to,buyer);
  assert.equal(result.relationships?.summary.holdersComplete,true);
+ assert.deepEqual(result.events,[]);
  await history.close();
 });
