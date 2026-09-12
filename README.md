@@ -129,7 +129,7 @@ Every label is derived from an explicit rule. For example, an **early entry** is
 | Holder intelligence | **Live locally / improving** | Transfer-ledger balances and explicit partial state; known-contract exclusions remain next |
 | Pons market context | **Next** | Official-source freshness and independent timestamp gates |
 | Cases and alerts | **Next** | Saved investigations and local rule notifications |
-| Read-only API and exports | **Planned** | Versioned schema and portable evidence bundle |
+| Evidence API and exports | **Planned** | Versioned schema and portable evidence bundle |
 | Hosted terminal / more chains | **Later** | Operational and adapter validation before public claims |
 
 The detailed [public roadmap](ROADMAP.md) separates shipped behavior from future work and defines the evidence required to change each status.
@@ -144,7 +144,7 @@ The detailed [public roadmap](ROADMAP.md) separates shipped behavior from future
 | [Local setup](docs/LOCAL-SETUP.md) | Install, configure, update, back up and troubleshoot |
 | [Roadmap](ROADMAP.md) | Shipped, current, next and later work with acceptance gates |
 | [Token status](docs/TOKEN.md) | Official launch status and verification policy |
-| [Security policy](SECURITY.md) | Read-only model and responsible reporting |
+| [Security policy](SECURITY.md) | Non-custodial model and responsible reporting |
 | [Contributing](CONTRIBUTING.md) | Development workflow and pull request checks |
 | [Technical handoff](HANDOFF.md) | Exact current checkpoint, commands and known limits |
 | [Third-party notices](THIRD_PARTY_NOTICES.md) | Imported code and asset provenance |

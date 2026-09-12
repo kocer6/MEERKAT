@@ -4,7 +4,7 @@
 
 Security fixes target the latest commit on `main`. This is early software; pin a reviewed commit when using it in a sensitive research workflow.
 
-## Read-only security model
+## Non-custodial security model
 
 The active MEERKAT product accepts public token and wallet addresses. It does not request a seed phrase or private key, create a signer, build a transaction, request token approval, or broadcast to the chain.
 
@@ -27,4 +27,3 @@ Do not include private keys, seed phrases, access tokens, or unrelated personal 
 Reports are especially useful when they show remote code execution, unintended file access, RPC response injection into executable browser content, bypass of local request boundaries, corruption of persisted evidence, secret exposure, or a hidden transaction/signing path.
 
 Incorrect analytics without a security impact should use a normal bug report, with the exact block and transaction needed to reproduce the conclusion.
-

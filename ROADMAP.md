@@ -97,13 +97,13 @@ Acceptance gate: dense-token fixture above the provider log limit, restart proof
 
 ## Planned
 
-### Versioned read-only API
+### Versioned evidence API
 
 Publish stable schemas for the existing token summary, paginated timeline and wallet dossier endpoints, then add case and evidence-export endpoints.
 
 ### Hosted public terminal
 
-Package a public read-only deployment with RPC quotas, abuse controls, observability, cache policy, and a clear service status. The local install remains supported.
+Package a public analysis deployment with RPC quotas, abuse controls, observability, cache policy, and a clear service status. The local install remains supported.
 
 ### Comparative wallet cohorts
 

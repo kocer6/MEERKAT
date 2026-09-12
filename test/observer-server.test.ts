@@ -4,7 +4,7 @@ import {startObserver} from '../src/observer-server.js';
 test('primary product is observer-only, starts empty, protects controls and exposes no paper endpoints',async()=>{
  const app=await startObserver({port:0,database:':memory:'});
  try{
-  const html=await (await fetch(app.url+'/terminal')).text();assert.match(html,/private keys/);assert.doesNotMatch(html,/Run paper scenario|PAPER BALANCE/);
+  const html=await (await fetch(app.url+'/terminal')).text();assert.match(html,/NO PRIVATE KEY/);assert.doesNotMatch(html,/Run paper scenario|PAPER BALANCE/);
   const token=/name="control-token" content="([a-f0-9]+)"/.exec(html)![1]!;
   const state=await (await fetch(app.url+'/api/state')).json();assert.equal(state.mode,'observe');assert.deepEqual(state.watches,[]);assert.equal(state.account,undefined);
   assert.equal((await fetch(app.url+'/api/watch/add?token=bad',{method:'POST'})).status,403);
@@ -29,6 +29,11 @@ test('landing and terminal are separate product surfaces',async()=>{
   assert.match(terminal,/name="control-token" content="[a-f0-9]+"/);
   assert.match(terminal,/TOKEN/);
   assert.match(terminal,/WALLET/);
+  assert.doesNotMatch(landing,/READ[ -]ONLY/i);
+  assert.doesNotMatch(terminal,/READ[ -]ONLY/i);
+  assert.match(terminal,/NO PRIVATE KEY/);
+  assert.match(terminal,/NO SIGNER/);
+  assert.match(terminal,/NO TRANSACTION PATH/);
  }finally{await app.close();}
 });
 

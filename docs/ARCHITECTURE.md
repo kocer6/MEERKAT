@@ -22,7 +22,7 @@ flowchart TB
 | Component | Main source | Responsibility |
 | --- | --- | --- |
 | CLI | `src/cli.ts` | Starts the active observer product server |
-| Observer server | `src/observer-server.ts` | Static routes and local read-only APIs |
+| Observer server | `src/observer-server.ts` | Static routes and local evidence APIs |
 | Token history | `src/token-history.ts` | Profile verification, chunk reads, persistence and participant summaries |
 | Relationship graph | `src/relationship-graph.ts` | Bounded role/route aggregation with explicit attribution level |
 | Wallet dossier | `src/wallet-dossier.ts` | Cross-token aggregation over local histories |

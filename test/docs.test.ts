@@ -28,6 +28,8 @@ test('public GitHub documentation is present and linked from the README', () => 
     assert.match(readme, new RegExp(`docs/assets/${image.replace('.', '\\.')}`, 'i'), `README is missing the ${image} product screenshot`);
   }
   assert.match(roadmap, /docs\/assets\/relationship-map\.png/i, 'ROADMAP is missing the relationship evidence screenshot');
+  assert.doesNotMatch(readme, /read[ -]only/i, 'README still markets the product as read only');
+  assert.doesNotMatch(roadmap, /read[ -]only/i, 'ROADMAP still markets the product as read only');
   for (const image of ['docs/assets/terminal-overview.png', 'docs/assets/fee-flow.png', 'docs/assets/relationship-map.png', 'docs/assets/wallets-holders.png', 'docs/assets/timeline.png']) {
     assert.ok(existsSync(resolve(root, image)), `missing documentation image: ${image}`);
   }

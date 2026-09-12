@@ -2,7 +2,7 @@
 
 MEERKAT is a local scoring and investigation terminal for Pons V2 tokens on Robinhood Chain. It answers two practical questions first: how strong is the observed token signal, and does a wallet show repeated behavior inside the histories this installation has indexed? The lifecycle and relationship map expose the evidence behind those answers.
 
-The product is deliberately read-only. It has no private-key input, signer, approval flow, buy button, sell button, or transaction submission route.
+The product is deliberately non-custodial. It has no private-key input, signer, approval flow, buy button, sell button, or transaction submission route.
 
 ## Start an investigation
 

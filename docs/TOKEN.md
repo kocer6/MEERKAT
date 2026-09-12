@@ -19,11 +19,10 @@ When a launch happens, the verified network, contract address, launch transactio
 Before this status changes, the project should have:
 
 1. a stable local token and wallet workflow;
-2. a hosted read-only terminal or a clearly documented reason to remain local-only;
+2. a hosted public terminal or a clearly documented reason to remain local-first;
 3. published contract source and verified deployment details;
 4. transparent supply, allocation, liquidity and authority disclosures;
 5. security review appropriate to the deployed contracts;
 6. one canonical contract-address update in this file.
 
 The [public roadmap](../ROADMAP.md) tracks product work. It does not promise a token launch date, price, return, or exchange listing.
-
