@@ -21,6 +21,8 @@
   <a href="SECURITY.md">Security</a>
 </p>
 
+<p align="center"><sub>Developed with assistance from <a href="https://claude.ai/">Claude</a> and <a href="https://openai.com/codex/">OpenAI Codex</a>.</sub></p>
+
 > **Project status:** transparent token scoring, local wallet scoring, lifecycle reconstruction and the relationship map work locally today. Wallet coverage is limited to histories indexed by that installation. A hosted public terminal and a MEERKAT token have not launched.
 
 <p align="center">
