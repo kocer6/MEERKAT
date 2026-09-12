@@ -6,6 +6,7 @@
   <meta name="description" content="MEERKAT scores Pons V2 tokens and wallets from public Robinhood Chain evidence.">
   <title>MEERKAT — Token Intelligence</title>
   <link rel="stylesheet" href="/landing.css">
+  <script src="/landing.js" defer></script>
 </head>
 <body>
   <header class="site-header">
@@ -31,29 +32,46 @@
       </div>
     </section>
 
-    <section class="mascot-interlude watch-interlude" aria-label="MEERKAT watches the chain"><div><span>YOU SLEEP.</span><strong>MEERKAT WATCHES.</strong></div></section>
-
     <section class="product-preview" aria-labelledby="preview-title">
-      <div class="preview-copy"><p class="section-no">02 / TERMINAL PREVIEW</p><h2 id="preview-title">ONE ADDRESS.<br><em>FIVE EVIDENCE VIEWS.</em></h2><p>The terminal keeps the score, creator revenue, wallet relationships, holders and raw events in focused workspaces. Open only the layer you need.</p><a class="text-link" href="/terminal">OPEN THE LIVE TERMINAL →</a></div>
-      <div class="terminal-preview" aria-label="Static preview of the MEERKAT terminal">
-        <header><span>MEERKAT / HOPOUT</span><b>INDEX READY</b></header>
-        <nav><strong>OVERVIEW</strong><span>FEE FLOW</span><span>RELATIONSHIPS</span><span>WALLETS</span><span>TIMELINE</span></nav>
-        <div class="preview-body">
-          <div class="preview-score"><small>TOKEN SIGNAL SCORE</small><b>84</b><span>/ 100 · HIGH CONFIDENCE</span><i><em style="width:84%"></em></i><p>Every point is backed by indexed evidence.</p></div>
-          <div class="preview-signals"><small>OBSERVED SIGNALS</small><p><b>25/25</b> DEPLOYER EXPOSURE</p><p><b>20/25</b> PARTICIPANT BREADTH</p><p><b>15/15</b> CURRENT HOLDER BREADTH</p></div>
-          <div class="mini-graph"><small>MINI RELATIONSHIP GRAPH</small><svg viewBox="0 0 360 190" role="img" aria-label="Token connected to observed wallets"><path d="M180 95 L60 45 M180 95 L65 145 M180 95 L300 42 M180 95 L305 145"/><circle cx="180" cy="95" r="29" class="token"/><circle cx="60" cy="45" r="15"/><circle cx="65" cy="145" r="15"/><circle cx="300" cy="42" r="15"/><circle cx="305" cy="145" r="15"/><text x="180" y="100">TOKEN</text></svg></div>
+      <div class="preview-copy"><div><p class="section-no">02 / INTERACTIVE TERMINAL</p><h2 id="preview-title">OPEN THE EVIDENCE.</h2></div><div><p>A compact, clickable snapshot of the real dossier. Switch between the five views below, then open ZZZ in the live terminal.</p><a class="text-link" href="/terminal?token=0x7dbf38976f6D3b9c529e7D9484A71898B409eE6a">ANALYZE ZZZ LIVE →</a></div></div>
+      <div class="terminal-preview" data-preview-terminal aria-label="Interactive MEERKAT terminal preview">
+        <header><span><b>ZZZ</b> · 0x7dbf38976f6D3b9c529e7D9484A71898B409eE6a</span><em>VERIFIED SNAPSHOT</em></header>
+        <nav role="tablist" aria-label="ZZZ evidence preview">
+          <button type="button" role="tab" aria-selected="true" data-preview-tab="overview">OVERVIEW</button>
+          <button type="button" role="tab" aria-selected="false" data-preview-tab="fees">FEE FLOW</button>
+          <button type="button" role="tab" aria-selected="false" data-preview-tab="relationships">RELATIONSHIPS</button>
+          <button type="button" role="tab" aria-selected="false" data-preview-tab="wallets">WALLETS</button>
+          <button type="button" role="tab" aria-selected="false" data-preview-tab="timeline">TIMELINE</button>
+        </nav>
+        <div class="preview-stage">
+          <section class="preview-pane overview-pane" data-preview-pane="overview">
+            <div class="preview-score"><small>TOKEN SIGNAL SCORE</small><b>93</b><span>/ 100 · HIGH CONFIDENCE</span><i><em style="width:93%"></em></i><p>Completed captured-head snapshot. Every component opens into evidence in the full terminal.</p></div>
+            <div class="preview-signals"><small>SIGNAL COMPONENTS</small><p><b>25/25</b><span>DEPLOYER EXPOSURE</span></p><p><b>25/25</b><span>PARTICIPANT BREADTH</span></p><p><b>15/15</b><span>CURRENT HOLDER BREADTH</span></p><p><b>741,643</b><span>INDEXED EVENTS</span></p></div>
+          </section>
+          <section class="preview-pane fee-pane" data-preview-pane="fees" hidden>
+            <div class="preview-pane-head"><span>CREATOR REVENUE</span><b>PARTIAL LOCAL SNAPSHOT</b></div>
+            <div class="preview-metrics"><article><small>INDEXED PAYOUTS</small><strong>48</strong></article><article><small>OBSERVED REVENUE</small><strong>15.167988 ETH</strong></article><article><small>RECIPIENT CHANGES</small><strong>0</strong></article></div>
+            <div class="recipient-line"><span>CURRENT RECIPIENT</span><b>0x5f799f…6f0cf8</b><em>DIRECT ROUTE</em></div>
+            <p class="preview-note">Values cover the saved partial fee index. The live dossier refreshes coverage before it confirms revenue.</p>
+          </section>
+          <section class="preview-pane relationship-pane" data-preview-pane="relationships" hidden>
+            <div class="preview-graph-copy"><b>48 NODES · 96 ROUTES</b><span>Green enters the token, red exits it, amber tracks transfers, dashed gray marks unattributed pool callers.</span><div class="preview-legend"><i class="buy"></i>BUY<i class="sell"></i>SELL<i class="transfer"></i>TRANSFER<i class="pool"></i>POOL</div></div>
+            <svg viewBox="0 0 760 280" role="img" aria-label="ZZZ relationship routes preview"><defs><marker id="p-buy" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z"/></marker></defs><g class="preview-routes"><path class="buy" d="M92 58Q240 95 380 140"/><path class="buy" d="M100 216Q250 184 380 140"/><path class="sell" d="M380 140Q520 80 674 58"/><path class="sell" d="M380 140Q530 185 669 220"/><path class="transfer" d="M92 58Q75 135 100 216"/><path class="pool" d="M674 58Q720 135 669 220"/></g><g class="preview-nodes"><g class="token" transform="translate(380 140)"><circle r="40"/><text>ZZZ</text></g><g transform="translate(92 58)"><circle r="22"/><text>BUYER</text></g><g transform="translate(100 216)"><circle r="22"/><text>HOLDER</text></g><g transform="translate(674 58)"><circle r="22"/><text>SELLER</text></g><g transform="translate(669 220)"><circle r="22"/><text>POOL</text></g></g></svg>
+          </section>
+          <section class="preview-pane wallets-pane" data-preview-pane="wallets" hidden>
+            <div class="preview-metrics"><article><small>CURVE PARTICIPANTS</small><strong>29</strong></article><article><small>DISPLAYED HOLDERS</small><strong>16</strong></article><article><small>WALLET ROUTES</small><strong>36</strong></article></div>
+            <div class="preview-wallet-row"><span>ROLE</span><b>EARLY BUYER</b><em>BUY + HOLD</em></div><div class="preview-wallet-row"><span>ROLE</span><b>FAST EXIT</b><em>BUY + SELL</em></div><div class="preview-wallet-row"><span>ROLE</span><b>TRANSFER ROUTE</b><em>WALLET → WALLET</em></div>
+          </section>
+          <section class="preview-pane timeline-pane" data-preview-pane="timeline" hidden>
+            <div class="timeline-preview-head"><span>NEWEST FIRST</span><b>50 EVENTS / PAGE</b></div><div class="timeline-preview-row buy"><b>BUY</b><span>CURVE PARTICIPANT → ZZZ</span><em>EXACT TX ↗</em></div><div class="timeline-preview-row sell"><b>SELL</b><span>ZZZ → CURVE PARTICIPANT</span><em>EXACT TX ↗</em></div><div class="timeline-preview-row transfer"><b>TRANSFER</b><span>WALLET → WALLET</span><em>EXACT TX ↗</em></div><div class="timeline-filter-row"><b>BUY</b><b>SELL</b><b>TRANSFER</b><b>FEES</b></div>
+          </section>
         </div>
-        <footer><span>PUBLIC CHAIN DATA</span><span>NO SIGNER</span><span>LOCAL FIRST</span></footer>
+        <footer><span>CAPTURED CHAIN EVIDENCE</span><a href="/terminal?token=0x7dbf38976f6D3b9c529e7D9484A71898B409eE6a">OPEN FULL DOSSIER →</a></footer>
       </div>
     </section>
 
-    <section class="fee-feature">
-      <div><p class="section-no">03 / FEE FLOW · LIVE</p><h2>FOLLOW THE FEES.<br>FIND THE RECIPIENT.</h2><p>MEERKAT reconstructs exact creator payouts from curve and pool sweep events, shows recipient changes and links the payout wallet to its local dossier.</p><a class="primary" href="/terminal?token=0x78f13072b0f6ebc7fd0b5359c9b4e09c6160cff8">ANALYZE HOP OUT →</a></div>
-      <div class="fee-preview"><span>HOPOUT</span><i>→</i><span>CURVE + HOOK</span><i>→</i><span>FEE ESCROW</span><i>→</i><strong>0x7c8560…61a3cc</strong><small>1.177461 ETH · 26 INDEXED PAYOUTS</small></div>
-    </section>
-
     <section class="evidence" id="evidence">
-      <div class="evidence-head"><p class="section-no">04 / THE PROOF LAYER</p><h2>DON'T TRUST THE NUMBER.<br>OPEN THE DOSSIER.</h2><p>The score is the entry point. The full evidence trail is where MEERKAT becomes useful.</p></div>
+      <div class="evidence-head"><p class="section-no">03 / THE PROOF LAYER</p><h2>DON'T TRUST THE NUMBER.<br>OPEN THE DOSSIER.</h2><p>The score is the entry point. The full evidence trail is where MEERKAT becomes useful.</p></div>
       <div class="evidence-grid">
         <article><span>01</span><h3>ORIGIN</h3><p>Verified factory launch, deployer, pair, phase, supply and creator tax.</p></article>
         <article><span>02</span><h3>WALLETS</h3><p>Cross-token buys, sells, transfers, early entries and fast exits from local histories.</p></article>
@@ -63,10 +81,8 @@
       </div>
     </section>
 
-    <section class="mascot-interlude signal-interlude" aria-label="MEERKAT separates signal from noise"><div><span>HIGHER SIGNAL.</span><strong>LESS NOISE.</strong></div></section>
-
     <section class="roadmap" id="roadmap">
-      <div class="roadmap-copy"><p class="section-no">05 / FIELD LOG</p><h2>WHAT WORKS.<br>WHAT COMES NEXT.</h2><p>Statuses follow the repository. A feature moves to live only after its evidence and restart behavior are verified.</p></div>
+      <div class="roadmap-copy"><p class="section-no">04 / FIELD LOG</p><h2>WHAT WORKS.<br>WHAT COMES NEXT.</h2><p>Statuses follow the repository. A feature moves to live only after its evidence and restart behavior are verified.</p></div>
       <ol class="roadmap-list">
         <li><b>01</b><span><strong>TOKEN SIGNAL SCORE</strong><small>Transparent components and confidence</small></span><em class="live">[ LIVE ]</em></li>
         <li><b>02</b><span><strong>LOCAL WALLET SCORE</strong><small>Behavior across indexed histories</small></span><em class="live">[ LIVE ]</em></li>

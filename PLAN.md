@@ -40,7 +40,7 @@ MEERKAT scores Pons V2 tokens and locally evidenced wallet behavior, then expose
 - [x] Split token dossiers into five persistent evidence tabs and retain the active tab while indexing refreshes.
 - [x] Move raw lifecycle events to a cursor-paginated endpoint with 50-event pages and BUY/SELL/TRANSFER/FEES filters.
 - [x] Mark Fee Flow revenue partial until launch-to-head indexing is ready.
-- [x] Add a real terminal preview, mini graph, Fee Flow proof route, two mascot scenes and an auto-running HOP OUT example to the landing page.
+- [x] Add a fixed-height interactive ZZZ terminal preview with working Overview, Fee Flow, Relationships, Wallets and Timeline tabs plus a direct full-dossier route.
 
 ## Next acceptance gates
 

@@ -32,10 +32,10 @@ test('landing and terminal are separate product surfaces',async()=>{
  }finally{await app.close();}
 });
 
-test('landing carries the approved brand, roadmap truth and accessible motion contract',async()=>{
+test('landing carries the approved brand, interactive ZZZ preview and roadmap truth',async()=>{
  const app=await startObserver({port:0,database:':memory:'});
  try{
-  const [html,css]=await Promise.all([fetch(app.url+'/').then(r=>r.text()),fetch(app.url+'/landing.css').then(r=>r.text())]);
+  const [html,css,js]=await Promise.all([fetch(app.url+'/').then(r=>r.text()),fetch(app.url+'/landing.css').then(r=>r.text()),fetch(app.url+'/landing.js').then(r=>r.text())]);
   assert.match(css,/meerkat-banner-v2\.png/);
   assert.match(html,/OPEN SOURCE · COMMUNITY DRIVEN/);
   assert.match(html,/\[ LIVE \]/);
@@ -50,12 +50,18 @@ test('landing carries the approved brand, roadmap truth and accessible motion co
   assert.match(html,/class="pons-link"[^>]+https:\/\/www\.ponsfamily\.com\//);
   assert.match(html,/TOKEN HOLDER INTELLIGENCE/);
   assert.match(html,/EVIDENCE EXPORT/);
-  assert.match(html,/TERMINAL PREVIEW/);
-  assert.match(html,/FEE FLOW · LIVE/);
-  assert.match(html,/MINI RELATIONSHIP GRAPH/);
-  assert.match(html,/ANALYZE HOP OUT/);
-  assert.match(html,/\/terminal\?token=0x78f13072b0f6ebc7fd0b5359c9b4e09c6160cff8/);
-  assert.match(html,/mascot-interlude/);
+  assert.match(html,/INTERACTIVE TERMINAL/);
+  assert.match(html,/0x7dbf38976f6D3b9c529e7D9484A71898B409eE6a/);
+  for(const tab of ['overview','fees','relationships','wallets','timeline']){
+   assert.match(html,new RegExp(`data-preview-tab="${tab}"`));
+   assert.match(html,new RegExp(`data-preview-pane="${tab}"`));
+  }
+  assert.match(html,/\/terminal\?token=0x7dbf38976f6D3b9c529e7D9484A71898B409eE6a/);
+  assert.match(html,/src="\/landing\.js"/);
+  assert.match(js,/aria-selected/);
+  assert.match(js,/data-preview-pane/);
+  assert.match(css,/\.preview-stage\{height:/);
+  assert.doesNotMatch(html,/mascot-interlude|fee-feature|ANALYZE HOP OUT/);
   const banner=await fetch(app.url+'/assets/meerkat-banner-v2.png');
   assert.equal(banner.status,200);
   assert.equal(banner.headers.get('content-type'),'image/png');

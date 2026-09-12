@@ -25,7 +25,7 @@ Acceptance evidence: tests, build, browser QA, and the bounded COPY integration 
 
 ### Local product shell
 
-- branded public landing page with a real terminal preview, mini relationship graph, Fee Flow example and direct HOP OUT analysis route;
+- branded public landing page with a compact interactive ZZZ dossier preview, five working evidence tabs and a direct ZZZ analysis route;
 - token and wallet address modes plus five persistent token dossier tabs;
 - lazy Timeline pages of 50 events with BUY, SELL, TRANSFER and FEES filters;
 - local SQLite persistence;

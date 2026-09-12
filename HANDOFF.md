@@ -10,7 +10,7 @@ The current `main` checkpoint includes the tabbed dossier, paginated Timeline an
 
 `public/terminal.*`: explicit Token/Wallet address modes. A transparent 0–100 score, confidence, component points and evidence reasons appear first. Token dossiers use five persistent tabs: Overview & Score, Fee Flow, Relationships, Wallets & Holders, and Timeline. BUY is green, SELL is red, Transfer is amber and unattributed evidence is gray. The active tab survives indexing refreshes and the mobile relationship canvas opens centered.
 
-`public/landing.*`: the existing MEERKAT hero is followed by two distinct mascot scenes, a real terminal preview, mini relationship graph, dedicated Fee Flow proof section, and an `ANALYZE HOP OUT` route that opens `/terminal?token=...` and starts analysis automatically.
+`public/landing.*`: the MEERKAT hero leads into a fixed-height interactive ZZZ dossier preview. Its Overview, Fee Flow, Relationships, Wallets and Timeline tabs switch in place and the ZZZ route opens `/terminal?token=...` for live analysis. Decorative mascot spacers and the standalone Fee Flow diagram were removed so every landing section carries product information.
 
 The relationship workspace has three persistent modes. Trade Flow points token to buyer and seller to token. Current Holders ranks balances reconstructed from indexed Transfer events and says whether the index is complete or partial. Wallet Routes contains direct address-to-address transfers only. Selecting a wallet opens its roles, trade counts, token amounts, balance, supply share and block range, then links to the full Wallet dossier. Mode, selection and zoom survive the three-second indexing refresh for the same token.
 
@@ -50,7 +50,7 @@ Token index coverage is now a readiness gate rather than a source of score point
 - Mobile terminal QA after the fixes: at 390 px the page and fee zone both stayed within 390/306 px respectively; the 720 px relationship canvas remained locally scrollable, initialized at its center, and kept the TOKEN node visible. Wallet analysis scrolled the result heading to the top.
 - Tabbed terminal QA at 390 × 844: the document stayed inside a 375 px layout width; the dossier tab rail scrolled locally; Relationship Map measured 720/311 px and opened at scrollLeft 205; graph metadata rendered at 12 px. A ready HOP OUT Timeline loaded 50 of 6,390 rows, Load More reached 100, and FEES returned the exact 26 fee events.
 - Response-size QA: HOP OUT summary/timeline responses measured 70,044/38,867 bytes; ZZZ measured 62,903/38,169 bytes. Both Timeline responses contained 50 rows with a next cursor. This replaces the previous roughly 423–451 KB summary response that embedded lifecycle events.
-- Landing QA at desktop and 390 × 844: hero actions, terminal preview, mini graph, two mascot interludes, Fee Flow proof and the auto-running HOP OUT link were present; the mobile document stayed inside the viewport.
+- Landing QA at desktop and 390 × 844: all five ZZZ preview tabs switched inside a fixed 380/390 px stage, the relationship legend and graph remained visible, the exact ZZZ live-analysis route was present, and the document stayed inside the viewport.
 
 ## Immediate next task
 

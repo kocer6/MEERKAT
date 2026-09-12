@@ -61,7 +61,7 @@
 - Test: `test/observer-server.test.ts`
 
 **Interfaces:**
-- Produces: a static terminal preview, mini relationship graph, dedicated live Fee Flow presentation, mascot interludes, and an Analyze HOP OUT example.
+- Produces: a fixed-height interactive ZZZ preview whose five tabs mirror the terminal workspaces, plus a direct route into the full ZZZ dossier. Decorative mascot spacers and the standalone Fee Flow diagram were removed after landing-page review.
 
 - [x] Write failing landing contract tests for the new product sections and example link.
 - [x] Run the focused tests and confirm failure.
