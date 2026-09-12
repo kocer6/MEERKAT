@@ -61,6 +61,9 @@ test('landing carries the approved brand, interactive ZZZ preview and roadmap tr
   assert.match(js,/aria-selected/);
   assert.match(js,/data-preview-pane/);
   assert.match(css,/\.preview-stage\{height:/);
+  assert.match(css,/\.hero-wrap\{max-width:none;/);
+  assert.match(css,/\.score-intro,\.roadmap\{max-width:none;/);
+  assert.match(css,/\.product-preview\{max-width:none;/);
   assert.doesNotMatch(html,/mascot-interlude|fee-feature|ANALYZE HOP OUT/);
   const banner=await fetch(app.url+'/assets/meerkat-banner-v2.png');
   assert.equal(banner.status,200);
@@ -87,6 +90,7 @@ test('terminal connects token and wallet modes to read-only evidence APIs',async
   assert.match(js,/\/api\/wallet\/dossier/);
   assert.match(html,/RELATIONSHIP MAP/);
   assert.match(css,/\.relationship-map/);
+  assert.match(css,/\.terminal-shell\{max-width:none;margin:18px;/);
   assert.match(css,/\.relationship-section \.section-heading/);
   assert.match(js,/data\.relationships/);
   assert.match(js,/renderScore/);

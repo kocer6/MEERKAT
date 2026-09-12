@@ -6,6 +6,7 @@ import {test} from 'node:test';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const readme = readFileSync(resolve(root, 'README.md'), 'utf8');
+const roadmap = readFileSync(resolve(root, 'ROADMAP.md'), 'utf8');
 const requiredPublicDocs = [
   'ROADMAP.md',
   'SECURITY.md',
@@ -23,6 +24,11 @@ test('public GitHub documentation is present and linked from the README', () => 
     assert.match(readme, new RegExp(`\\(${path.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&')}\\)`), `README does not link ${path}`);
   }
   assert.match(readme, /<img[^>]+public\/assets\/meerkat-banner-v2\.png/i, 'README is missing the wide MEERKAT hero');
+  assert.match(readme, /docs\/assets\/terminal-overview\.png/i, 'README is missing the product screenshot');
+  assert.match(roadmap, /docs\/assets\/relationship-map\.png/i, 'ROADMAP is missing the relationship evidence screenshot');
+  for (const image of ['docs/assets/terminal-overview.png', 'docs/assets/relationship-map.png']) {
+    assert.ok(existsSync(resolve(root, image)), `missing documentation image: ${image}`);
+  }
 });
 
 test('every relative Markdown link in the README points to a repository file', () => {

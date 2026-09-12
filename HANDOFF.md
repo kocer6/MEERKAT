@@ -4,6 +4,8 @@ The active product is a local read-only Pons V2 scoring and intelligence termina
 
 The current `main` checkpoint includes the tabbed dossier, paginated Timeline and the product-proof landing sections described below.
 
+The landing sections now span the available desktop width instead of stopping at 1,500–1,800 px, and the terminal shell uses the full viewport with an 18 px working gutter. The mobile shell keeps its existing 10 px gutter and no page-level horizontal overflow. `docs/assets/terminal-overview.png` and `docs/assets/relationship-map.png` are current HOP OUT product captures used by the README and roadmap.
+
 ## Implemented checkpoint
 
 `public/landing.*`: original field-board landing centered on token and wallet scoring, with terminal/source actions inside a wide information-rich hero. It uses `public/assets/meerkat-banner-v2.png`, removes the scan-line/marquee treatment and does not repeat a cropped hero at the bottom.
@@ -52,6 +54,7 @@ Token index coverage is now a readiness gate rather than a source of score point
 - Response-size QA: HOP OUT summary/timeline responses measured 70,044/38,867 bytes; ZZZ measured 62,903/38,169 bytes. Both Timeline responses contained 50 rows with a next cursor. This replaces the previous roughly 423–451 KB summary response that embedded lifecycle events.
 - Landing QA at desktop and 390 × 844: all five ZZZ preview tabs switched inside a fixed 380/390 px stage, the relationship legend and graph remained visible, the exact ZZZ live-analysis route was present, and the document stayed inside the viewport.
 - Terminal refinement QA: HOP OUT rendered 13 BUY wallets and 13 SELL wallets independently around the token; Current Holders and Wallet Routes displayed B/S counts. Timeline loaded 50 of 6,390 events and the FEES filter returned 26 of 26. Checksummed ZZZ input loaded 50 of 282,220 currently indexed events while indexing continued. The right utility column was absent and the result workspace expanded to use its width.
+- Wide-layout QA: at 2,560 px the landing spans all 2,560 px and the terminal shell spans 2,524 px with 18 px gutters. At 390 px both documents remain 390 px wide; the terminal shell uses 10 px gutters. The committed README and roadmap captures were rendered from the packaged HOP OUT dossier.
 - RPC throughput probe: a real 250,000-block HOP OUT range completed all parallel evidence reads in 1.814 seconds and returned 165 decoded events. Production commits every 50,000 blocks so dense tokens expose progress more frequently while adaptive splitting handles provider limits.
 
 ## Immediate next task

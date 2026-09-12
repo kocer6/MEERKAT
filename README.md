@@ -23,6 +23,12 @@
 
 > **Project status:** transparent token scoring, local wallet scoring, lifecycle reconstruction and the relationship map work locally today. Wallet coverage is limited to histories indexed by that installation. A hosted public terminal and a MEERKAT token have not launched.
 
+<p align="center">
+  <img src="docs/assets/terminal-overview.png" alt="MEERKAT local terminal showing the HOP OUT token score and evidence overview" width="100%">
+</p>
+
+<p align="center"><em>A real HOP OUT dossier: transparent score, index state, market activity and direct source links in one local workspace.</em></p>
+
 ## What MEERKAT does
 
 Paste a Pons V2 token or public wallet address into `/terminal`. MEERKAT returns a 0–100 evidence score first, shows confidence and every scoring component, then opens the underlying dossier:

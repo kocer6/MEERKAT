@@ -43,6 +43,8 @@ MEERKAT scores Pons V2 tokens and locally evidenced wallet behavior, then expose
 - [x] Add a fixed-height interactive ZZZ terminal preview with working Overview, Fee Flow, Relationships, Wallets and Timeline tabs plus a direct full-dossier route.
 - [x] Split Trade Flow into BUY and SELL views, arrange wallets around the token, and show per-wallet buy/sell counts in every graph mode.
 - [x] Preserve and load Timeline pages across index refreshes, including checksummed token input, and remove the unused terminal utility column.
+- [x] Expand landing and terminal workspaces across wide displays while retaining compact edge gutters and zero page-level overflow on mobile.
+- [x] Add current product screenshots to the GitHub README and public roadmap.
 
 ## Next acceptance gates
 

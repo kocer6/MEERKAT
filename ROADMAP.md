@@ -40,6 +40,10 @@ Acceptance evidence: tests, build, browser QA, and the bounded COPY integration 
 - bounds large histories to 48 nodes / 96 routes and shows the top 18 nodes in the browser;
 - opens a local wallet dossier from an address node.
 
+![MEERKAT relationship map showing the BUY flow around a Pons V2 token](docs/assets/relationship-map.png)
+
+The shipped map keeps BUY and SELL investigations separate, places the observed wallets around the token and opens the evidence behind a selected address.
+
 The full COPY checkpoint reached the captured head after an interrupted restart. Exact results are recorded in `docs/evidence/copy-backfill-relationship-2026-09-11.md`.
 
 ### Creator fee flow
