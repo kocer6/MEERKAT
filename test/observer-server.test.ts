@@ -84,6 +84,7 @@ test('landing carries the approved brand, interactive ZZZ preview and roadmap tr
   assert.match(js,/data-preview-pane/);
   assert.match(css,/\.preview-stage\{height:/);
   assert.match(css,/\.hero-wrap\{max-width:none;/);
+  assert.match(css,/\.hero-board,\.trust-rail\{width:min\(100%,2280px\);margin-inline:auto\}/);
   assert.match(css,/\.score-intro,\.roadmap\{max-width:none;/);
   assert.match(css,/\.product-preview\{max-width:none;/);
   assert.doesNotMatch(css,/\.site-header nav\{display:none\}/);
