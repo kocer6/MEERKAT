@@ -35,6 +35,8 @@ export async function startObserver(options:ObserverOptions){
   ['/landing.js',{type:'text/javascript',body:readFileSync(new URL('../public/landing.js',import.meta.url),'utf8')}],
   ['/terminal.css',{type:'text/css',body:readFileSync(new URL('../public/terminal.css',import.meta.url),'utf8')}],
   ['/terminal.js',{type:'text/javascript',body:readFileSync(new URL('../public/terminal.js',import.meta.url),'utf8')}],
+  ['/favicon.ico',{type:'image/x-icon',body:readFileSync(new URL('../public/favicon.ico',import.meta.url))}],
+  ['/assets/meerkat-icon.png',{type:'image/png',body:readFileSync(new URL('../public/assets/meerkat-icon.png',import.meta.url))}],
   ['/assets/meerkat-desert.png',{type:'image/png',body:readFileSync(new URL('../public/assets/meerkat-desert.png',import.meta.url))}],
   ['/assets/meerkat-banner-v2.png',{type:'image/png',body:readFileSync(new URL('../public/assets/meerkat-banner-v2.png',import.meta.url))}],
   ['/assets/press-start-2p.ttf',{type:'font/ttf',body:readFileSync(new URL('../public/assets/press-start-2p.ttf',import.meta.url))}],

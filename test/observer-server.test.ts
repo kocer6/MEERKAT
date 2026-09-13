@@ -34,6 +34,8 @@ test('landing and terminal are separate product surfaces',async()=>{
   const landing=await (await fetch(app.url+'/')).text();
   const terminal=await (await fetch(app.url+'/terminal')).text();
   assert.match(landing,/<title>MEERKAT — Token Intelligence<\/title>/);
+  assert.match(landing,/<link rel="icon" href="\/favicon\.ico" sizes="any">/);
+  assert.match(landing,/<link rel="apple-touch-icon" href="\/assets\/meerkat-icon\.png">/);
   assert.match(landing,/SCORE FIRST/);
   assert.match(landing,/OPEN TERMINAL/);
   assert.match(landing,/TOKEN LIFECYCLE/);
@@ -41,6 +43,8 @@ test('landing and terminal are separate product surfaces',async()=>{
   assert.match(landing,/RELATIONSHIP MAP/);
   assert.doesNotMatch(landing,/name="control-token"/);
   assert.match(terminal,/<title>Terminal — MEERKAT<\/title>/);
+  assert.match(terminal,/<link rel="icon" href="\/favicon\.ico" sizes="any">/);
+  assert.match(terminal,/<link rel="apple-touch-icon" href="\/assets\/meerkat-icon\.png">/);
   assert.match(terminal,/name="control-token" content="[a-f0-9]+"/);
   assert.match(terminal,/TOKEN/);
   assert.match(terminal,/WALLET/);
@@ -49,6 +53,13 @@ test('landing and terminal are separate product surfaces',async()=>{
   assert.match(terminal,/NO PRIVATE KEY/);
   assert.match(terminal,/NO SIGNER/);
   assert.match(terminal,/NO TRANSACTION PATH/);
+  const favicon=await fetch(app.url+'/favicon.ico');
+  assert.equal(favicon.status,200);
+  assert.equal(favicon.headers.get('content-type'),'image/x-icon');
+  assert.ok((await favicon.arrayBuffer()).byteLength>1000);
+  const touchIcon=await fetch(app.url+'/assets/meerkat-icon.png');
+  assert.equal(touchIcon.status,200);
+  assert.equal(touchIcon.headers.get('content-type'),'image/png');
  }finally{await app.close();}
 });
 
