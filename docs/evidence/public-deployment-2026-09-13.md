@@ -4,7 +4,7 @@ This checkpoint records the first verified MEERKAT deployment at [meerkat.my](ht
 
 ## Release and process boundary
 
-- deployed Git commit: `52566c2`;
+- deployed and verified Git commit: `88b048b`;
 - Ubuntu 22.04 VPS with the application running as the unprivileged `meerkat` user;
 - checksum-verified Node.js `24.21.0` installed under `/opt/meerkat/node` without replacing the host's system Node.js;
 - application listener restricted to `127.0.0.1:4664`;
