@@ -50,7 +50,7 @@ cd /tmp/meerkat-bootstrap
 bash deploy/install.sh
 ```
 
-The installer upgrades security packages; installs Node.js 24, Caddy, SQLite, UFW, and unattended upgrades; creates the unprivileged `meerkat` user; builds the current `origin/main`; installs systemd units; and opens only SSH, HTTP, and HTTPS in UFW.
+The installer places a checksum-verified Node.js 24 runtime under `/opt/meerkat/node`, installs Caddy, SQLite, UFW, and unattended upgrades, creates the unprivileged `meerkat` user, builds the current `origin/main`, installs systemd units, and opens SSH, HTTP, and HTTPS in UFW. It does not replace the system Node.js runtime used by other services.
 
 The active configuration is `/etc/meerkat/meerkat.env`. It must remain mode `0640`, owned by `root:meerkat`. MEERKAT needs no private key or wallet secret.
 
