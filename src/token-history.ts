@@ -69,6 +69,7 @@ export class HistoryStore {
   this.db.exec('CREATE INDEX IF NOT EXISTS token_events_token_block_id ON token_events(token,block,id); CREATE INDEX IF NOT EXISTS token_events_initiator ON token_events(initiator,token,block,id); CREATE INDEX IF NOT EXISTS token_events_actor ON token_events(actor,token,block,id); CREATE INDEX IF NOT EXISTS token_events_recipient ON token_events(recipient,token,block,id); CREATE INDEX IF NOT EXISTS token_events_kind ON token_events(token,kind,block,id);');
  }
  close(){this.db.close();}
+ health(){return (this.db.prepare('SELECT 1 AS ok').get() as {ok:number}).ok===1;}
  state(token:string):HistoryState|undefined{const r=this.db.prepare('SELECT value FROM token_history WHERE token=?').get(token) as {value:string}|undefined;return r?JSON.parse(r.value):undefined;}
  states():HistoryState[]{return (this.db.prepare('SELECT value FROM token_history ORDER BY token').all() as {value:string}[]).map(row=>JSON.parse(row.value));}
  tokens():string[]{return (this.db.prepare('SELECT token FROM token_history ORDER BY token').all() as {token:string}[]).map(row=>row.token);}
@@ -118,8 +119,9 @@ export function historyReader(){
 export class TokenHistory {
  private pending=new Map<string,Promise<void>>();private stopped=false;
  constructor(readonly store:HistoryStore,private reader=historyReader()){}
- start(raw:string){if(!isAddress(raw))throw new Error('Invalid token address');const token=raw.toLowerCase();if(this.stopped)throw new Error('History service stopped');if(this.pending.has(token))return;
+ start(raw:string):Promise<void>{if(!isAddress(raw))throw new Error('Invalid token address');const token=raw.toLowerCase();if(this.stopped)throw new Error('History service stopped');const active=this.pending.get(token);if(active)return active;
   if(this.pending.size>=2)throw new Error('Two history jobs already running');this.failures.delete(token);const existing=this.store.state(token);if(existing&&existing.indexVersion!==historyIndexVersion)this.store.restart({...existing,status:'indexing',error:null,updatedAt:Date.now()});const work=this.run(token).finally(()=>this.pending.delete(token));this.pending.set(token,work);
+  return work;
  }
  result(token:string){token=token.toLowerCase();const state=this.store.state(token);const events=this.store.events(token),current=state?.indexVersion===historyIndexVersion,remaining=state?BigInt(state.profile.head)-(state.cursor?BigInt(state.cursor):BigInt(state.profile.birthBlock)-1n):0n;return {state:state??null,running:this.pending.has(token),indexing:{rangeBlocks:Number(historyRangeSize),remainingRanges:remaining>0n?Number((remaining+historyRangeSize-1n)/historyRangeSize):0},events:[] as TokenEvent[],totalEvents:events.length,wallets:state?summarizeWallets(events,state.profile.birthAt,state.profile.birthBlock):[],score:state?scoreToken(state,events):null,relationships:state?buildRelationshipGraph(state.profile,events,{complete:state.status==='ready'&&current}):null,feeFlow:state&&current?buildFeeFlow(state.profile,events):null,coverage:'Curve trades, native ETH pool swaps, token transfers, factory phases and creator-fee sweeps. Curve buyer/seller addresses are attributed; pool swaps remain unattributed without trace evidence. Events use exact blocks and transactions; per-event timestamps are not fetched from the rate-limited public RPC. Up to cursor only; timeline pages load separately in batches of 50.'};}
  activity(token:string){token=token.toLowerCase();return {running:this.pending.has(token),error:this.failures.get(token)??null};}

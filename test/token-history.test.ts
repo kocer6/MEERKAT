@@ -128,3 +128,19 @@ test('token history result includes a bounded relationship graph from persisted 
  assert.deepEqual(result.events,[]);
  await history.close();
 });
+
+test('history start returns the active job and settles after persistence',async()=>{
+ const token='0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',other='0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
+ const profile={token,name:'Token',symbol:'TKN',decimals:18,curve:other,deployer:other,pairToken:'0x0000000000000000000000000000000000000000',phase:0,birthBlock:'1',birthAt:0,head:'1',poolId:null,poolManager:other,totalSupply:'1000',deployerBalance:'0',creatorTaxBps:0,metadata:null,metadataError:null};
+ const store=new HistoryStore(':memory:'),history=new TokenHistory(store,{profile:async()=>profile,chunk:async()=>[]});
+ const first=history.start(token),duplicate=history.start(token);
+ assert.equal(first,duplicate);
+ await first;
+ assert.equal(store.state(token)?.status,'ready');
+ await history.close();
+});
+
+test('history store health executes a SQLite probe',()=>{
+ const store=new HistoryStore(':memory:');
+ try{assert.equal(store.health(),true);}finally{store.close();}
+});
