@@ -49,6 +49,7 @@ MEERKAT scores Pons V2 tokens and locally evidenced wallet behavior, then expose
 - [x] Add a tested public server mode with no browser control token, bounded index admission, hidden operator routes and SQLite health checks.
 - [x] Add a production kit for loopback Node, Caddy HTTPS, systemd, UFW, unattended security updates and verified online SQLite backups.
 - [x] Detect dense token Transfer histories and read 10,000-block windows with bounded concurrency while retaining wide reads for sparse ranges.
+- [x] Serve indexing progress from a lightweight event count so repeated terminal polling does not rebuild a growing score and relationship dossier.
 
 ## Next acceptance gates
 

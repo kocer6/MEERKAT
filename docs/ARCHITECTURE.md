@@ -52,6 +52,8 @@ Interrupted/error jobs reuse the already verified saved profile and captured hea
 
 RPC rate-limit retries are bounded. Transfer history probes each token for log density: dense ranges use ordered 10,000-block windows with concurrency capped at two, while sparse ranges keep the wider adaptive request. Failure changes the state to `error`; it does not erase already committed chunks or silently switch data sources.
 
+While a backfill is active, `/api/token/history` returns state, cursor, remaining ranges and an indexed event count without loading every event into a score/graph worker. Timeline pages remain available from persisted rows. The complete score, fee flow, holders and relationship graph are built when the captured head is ready.
+
 ## Local APIs
 
 The current browser uses:

@@ -159,3 +159,16 @@ test('history store health executes a SQLite probe',()=>{
  const store=new HistoryStore(':memory:');
  try{assert.equal(store.health(),true);}finally{store.close();}
 });
+test('index progress counts persisted events without loading the growing dossier',async()=>{
+ const token='0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',other='0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',store=new HistoryStore(':memory:');
+ const profile={token,name:'Token',symbol:'TKN',decimals:18,curve:other,deployer:other,pairToken:'0x0000000000000000000000000000000000000000',phase:0,birthBlock:'1',birthAt:0,head:'100',poolId:null,poolManager:other,totalSupply:'1000',deployerBalance:'0',creatorTaxBps:0,metadata:null,metadataError:null};
+ store.chunk({profile,cursor:'50',status:'indexing',error:null,updatedAt:1,indexVersion:2},1n,50n,[{...trade('buy',0),id:'saved'}]);
+ const history=new TokenHistory(store,{profile:async()=>profile,chunk:async()=>[]}) as TokenHistory&{progress?:(token:string)=>ReturnType<TokenHistory['result']>};
+ assert.equal(typeof history.progress,'function');
+ store.events=()=>{throw new Error('progress must not load event rows');};
+ const progress=history.progress!(token);
+ assert.equal(progress.totalEvents,1);
+ assert.equal(progress.score?.value,null);
+ assert.equal(progress.relationships,null);
+ await history.close();
+});
