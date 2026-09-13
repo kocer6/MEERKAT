@@ -158,6 +158,13 @@ test('terminal connects token and wallet modes to read-only evidence APIs',async
   assert.match(js,/LOADING ON-CHAIN DATA/);
   assert.match(js,/Loading trades, wallets, holders and fee flow/);
   assert.match(js,/loading-orbit/);
+  assert.match(js,/function renderLaunchDiscovery/);
+  assert.match(js,/FINDING VERIFIED LAUNCH/);
+  assert.match(js,/Checking the Pons factory and preparing the token history index/);
+  assert.match(js,/STEP 1 OF 2/);
+  assert.match(css,/\.launch-loader/);
+  assert.match(css,/\.discovery-progress/);
+  assert.match(css,/\.loading-steps/);
   assert.doesNotMatch(js,/'CALIBRATING'/);
   assert.match(css,/\.loading-orbit/);
   assert.doesNotMatch(js,/version:null/);

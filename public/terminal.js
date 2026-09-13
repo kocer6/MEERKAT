@@ -16,6 +16,14 @@ function metric(label,value){const box=el('div',undefined,'metric');box.append(e
 function heading(title,note){const row=el('div',undefined,'section-heading');row.append(el('h3',title),el('small',note));return row;}
 function externalLink(label,url){const link=el('a',label+' ↗');link.href=url;link.target='_blank';link.rel='noreferrer';return link;}
 function infoZone(title,subtitle,cls){const section=el('section',undefined,`info-zone ${cls}`),head=el('header');head.append(el('h3',title),el('p',subtitle));section.append(head);return section;}
+function renderLaunchDiscovery(){
+ const panel=el('section',undefined,'launch-loader');panel.setAttribute('role','status');panel.setAttribute('aria-live','polite');
+ const visual=el('div',undefined,'launch-loader-visual');visual.append(el('span',undefined,'loading-orbit'),el('strong','STEP 1 OF 2'));
+ const copy=el('div',undefined,'launch-loader-copy'),progress=el('div',undefined,'discovery-progress');progress.append(el('i'));
+ const steps=el('div',undefined,'loading-steps');steps.append(el('span','01  VERIFY TOKEN + FACTORY','active'),el('span','02  LOAD FULL CHAIN HISTORY'));
+ copy.append(el('small','TOKEN DATA LOADING','eyebrow'),el('h3','FINDING VERIFIED LAUNCH'),el('p','Checking the Pons factory and preparing the token history index. The exact percentage appears as soon as the launch block and current chain head are verified.'),progress,steps);
+ panel.append(visual,copy);return panel;
+}
 function renderScore(score,title){
  const card=el('section',undefined,'score-card zone-score'),dial=el('div',undefined,'score-dial'),body=el('div',undefined,'score-body');
  const loading=score.value===null&&score.status!=='error';
@@ -85,9 +93,9 @@ function renderTimeline(){const pane=document.querySelector('[data-dossier-pane=
 async function loadTimeline(append){if(!activeToken||timelineState.busy)return;timelineState.busy=true;timelineState.error=null;renderTimeline();try{const params={token:activeToken,limit:'50'};if(timelineState.types.size)params.types=[...timelineState.types].join(',');if(append&&timelineState.cursor)params.cursor=timelineState.cursor;const page=await get('/api/token/timeline',params);timelineState.events=append?[...timelineState.events,...page.events]:page.events;timelineState.cursor=page.nextCursor;timelineState.total=page.total;timelineState.hasMore=page.hasMore;}catch(error){timelineState.error=error.message;}finally{timelineState.busy=false;renderTimeline();}}
 function buildTimelinePane(token,totalEvents){if(timelineState.token!==token)timelineState={token,types:new Set(),events:[],cursor:null,total:0,hasMore:false,busy:false,error:null};const pane=dossierPane('timeline'),zone=infoZone('TIMELINE',`Browse ${totalEvents.toLocaleString()} indexed events without loading the full history.`, 'zone-lifecycle'),controls=el('div',undefined,'timeline-controls'),filters=el('div',undefined,'timeline-filters');for(const type of ['BUY','SELL','TRANSFER','FEES']){const button=el('button',type);button.dataset.timelineType=type.toLowerCase();button.classList.toggle('active',timelineState.types.has(button.dataset.timelineType));button.addEventListener('click',()=>{const value=button.dataset.timelineType;timelineState.types.has(value)?timelineState.types.delete(value):timelineState.types.add(value);timelineState.events=[];timelineState.cursor=null;timelineState.hasMore=false;timelineState.error=null;for(const candidate of filters.children)candidate.classList.toggle('active',timelineState.types.has(candidate.dataset.timelineType));void loadTimeline(false);});filters.append(button);}const status=el('span',timelineState.events.length?`${timelineState.events.length.toLocaleString()} OF ${timelineState.total.toLocaleString()} MATCHING EVENTS`:'LOADS WHEN OPENED','timeline-status');controls.append(filters,status);const list=el('div',undefined,'event-list');list.append(...timelineState.events.map(timelineRow));const more=el('button','LOAD 50 MORE','timeline-more');more.hidden=!timelineState.hasMore;more.addEventListener('click',()=>void loadTimeline(true));zone.append(controls,list,more);pane.append(zone);return pane;}
 function renderToken(data){
- const state=data.state;showResult('TOKEN DOSSIER',data.running?'INDEXING':state?.status?.toUpperCase()||'NO DATA');const root=$('result-content');
+ const state=data.state;showResult('TOKEN DOSSIER',state?(data.running?'INDEXING':state.status?.toUpperCase()||'READY'):'DISCOVERING');const root=$('result-content');
  if(data.error)root.append(el('p',data.error,'notice error'));
- if(!state){root.append(el('div','Locating the verified launch and preparing the fast adaptive index.','notice'));scheduleToken();return;}
+ if(!state){root.append(renderLaunchDiscovery());scheduleToken();return;}
  if(state.error)root.append(el('p',`Indexing stopped: ${state.error}. Run analysis again to resume from the saved cursor.`,'notice error'));
  const p=state.profile;if(dossierToken!==p.token){dossierToken=p.token;activeDossierTab='overview';timelineState={token:p.token,types:new Set(),events:[],cursor:null,total:0,hasMore:false,busy:false,error:null};}
  const hero=el('div',undefined,'dossier-hero'),links=el('div',undefined,'dossier-links');links.append(externalLink('OPEN ON PONS',`https://www.ponsfamily.com/launchpad/${p.token}`),externalLink('TOKEN EXPLORER',`https://robinhoodchain.blockscout.com/token/${p.token}`));hero.append(el('small','VERIFIED PONS V2 TOKEN','eyebrow'),el('h2',`${p.name} / ${p.symbol}`),el('p',p.token,'address'),links);root.append(hero);
@@ -100,7 +108,7 @@ function renderToken(data){
 }
 function scheduleToken(){if(pollTimer)clearTimeout(pollTimer);pollTimer=setTimeout(()=>{if(activeToken)void loadToken(activeToken);},3000);}
 async function loadToken(token){try{renderToken(await get('/api/token/history',{token}));}catch(error){$('query-status').textContent=error.message;$('query-status').className='error';}}
-async function inspectToken(token){activeToken=token.toLowerCase();showResult('TOKEN DOSSIER','STARTING');$('result-content').append(el('p','Locating verified launch and starting the fast adaptive index…','notice'));await post('/api/token/index',{token:activeToken});await loadToken(activeToken);}
+async function inspectToken(token){activeToken=token.toLowerCase();showResult('TOKEN DOSSIER','DISCOVERING');$('result-content').append(renderLaunchDiscovery());await post('/api/token/index',{token:activeToken});await loadToken(activeToken);}
 
 async function inspectWallet(address){
  showResult('WALLET DOSSIER','LOCAL INDEX');const root=$('result-content');const data=await get('/api/wallet/dossier',{address});const hero=el('div',undefined,'dossier-hero'),links=el('div',undefined,'dossier-links');links.append(externalLink('BLOCKSCOUT TRANSACTIONS',`https://robinhoodchain.blockscout.com/address/${data.address}`),externalLink('PONS PROFILE',`https://www.ponsfamily.com/profile/${data.address}`));hero.append(el('small','PUBLIC ADDRESS / LOCAL EVIDENCE','eyebrow'),el('h2',short(data.address)),el('p',data.address,'address'),links);root.append(hero,renderScore(data.score,'WALLET BEHAVIOR SCORE'));
