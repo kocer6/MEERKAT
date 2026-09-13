@@ -46,8 +46,12 @@ MEERKAT scores Pons V2 tokens and locally evidenced wallet behavior, then expose
 - [x] Expand landing and terminal workspaces across wide displays while retaining compact edge gutters and zero page-level overflow on mobile.
 - [x] Add current product screenshots to the GitHub README and public roadmap.
 - [x] Turn the README into a visual product tour covering score, fee flow, relationships, holders and paginated lifecycle evidence with real HOP OUT captures.
+- [x] Add a tested public server mode with no browser control token, bounded index admission, hidden operator routes and SQLite health checks.
+- [x] Add a production kit for loopback Node, Caddy HTTPS, systemd, UFW, unattended security updates and verified online SQLite backups.
 
 ## Next acceptance gates
+
+- [ ] Deploy the reviewed public mode to `meerkat.my` and record TLS, restart, persisted-cursor, backup-restore and mobile/desktop evidence.
 
 - [x] Complete a launch-to-head backfill through the packaged server and record duration, cursor, event count, and restart/resume evidence.
 - [x] Add a relationship graph for deployer, curve buyers/sellers, transfer recipients, and explicitly marked pool callers.

@@ -1,0 +1,31 @@
+[Unit]
+Description=MEERKAT token intelligence terminal
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=meerkat
+Group=meerkat
+WorkingDirectory=/opt/meerkat/app
+EnvironmentFile=/etc/meerkat/meerkat.env
+ExecStart=/usr/bin/node /opt/meerkat/app/dist/src/cli.js serve
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=120
+UMask=0027
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+ReadWritePaths=/var/lib/meerkat
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

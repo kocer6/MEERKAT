@@ -2,6 +2,8 @@
 
 MEERKAT runs as one local Node.js 24 process. It serves the website and terminal, reads Robinhood Chain through JSON-RPC, indexes evidence, and stores state in SQLite.
 
+The same process can run in public mode behind a loopback reverse proxy. Public mode removes the browser control token, exposes bounded token-index admission, adds a SQLite health endpoint, and hides local watch, monitor, scanner, state, and export routes. The production topology and operations are documented in [Public deployment](DEPLOYMENT.md).
+
 ```mermaid
 flowchart TB
   Browser[Landing and terminal] -->|local HTTP| Server[Observer server]
@@ -64,6 +66,8 @@ The current browser uses:
 | `POST /api/watch/*`, `/api/monitor/*`, `/api/scanner/*` | Operate local supporting tools |
 
 These endpoints are not yet a versioned public API. Their schemas may change before the roadmap API gate is complete.
+
+In public mode, only token history, token timeline, wallet dossier, bounded token-index admission, and `/healthz` are exposed. The local operator endpoints above return `404`.
 
 ## Trust boundary
 

@@ -1,0 +1,10 @@
+[Unit]
+Description=Back up the MEERKAT SQLite database
+After=meerkat.service
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+UMask=0077
+ExecStart=/usr/local/sbin/meerkat-backup

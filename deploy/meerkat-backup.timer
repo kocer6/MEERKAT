@@ -1,0 +1,11 @@
+[Unit]
+Description=Run the MEERKAT SQLite backup daily
+
+[Timer]
+OnCalendar=daily
+Persistent=true
+RandomizedDelaySec=15m
+Unit=meerkat-backup.service
+
+[Install]
+WantedBy=timers.target

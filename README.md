@@ -18,6 +18,7 @@
   <a href="ROADMAP.md">Roadmap</a> ·
   <a href="docs/TOKEN.md">Token status</a> ·
   <a href="docs/LOCAL-SETUP.md">Run locally</a> ·
+  <a href="docs/DEPLOYMENT.md">Deploy</a> ·
   <a href="SECURITY.md">Security</a>
 </p>
 
@@ -142,6 +143,7 @@ The detailed [public roadmap](ROADMAP.md) separates shipped behavior from future
 | [Analysis contract](docs/ANALYSIS.md) | Events, labels, attribution, scoring boundaries and data gaps |
 | [Architecture](docs/ARCHITECTURE.md) | Components, persistence, APIs and trust boundaries |
 | [Local setup](docs/LOCAL-SETUP.md) | Install, configure, update, back up and troubleshoot |
+| [Public deployment](docs/DEPLOYMENT.md) | Publish behind Caddy with HTTPS, systemd, backups and rollback |
 | [Roadmap](ROADMAP.md) | Shipped, current, next and later work with acceptance gates |
 | [Token status](docs/TOKEN.md) | Official launch status and verification policy |
 | [Security policy](SECURITY.md) | Non-custodial model and responsible reporting |

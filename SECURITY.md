@@ -10,6 +10,8 @@ The active MEERKAT product accepts public token and wallet addresses. It does no
 
 Local data is stored in the configured SQLite file. It may reveal which public addresses and tokens the operator researched, so protect backups according to that privacy need. The configured RPC provider can observe requests made to it.
 
+The hosted configuration keeps Node on loopback behind Caddy. Public mode removes the browser control token, rate-limits and queues token indexing, and returns `404` for local watch, scanner, monitor, state, and export routes. Deployment details and recovery commands are in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+
 ## Report a vulnerability
 
 Use GitHub's private vulnerability reporting for this repository when available. Include:

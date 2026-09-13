@@ -15,6 +15,7 @@ const requiredPublicDocs = [
   'docs/ANALYSIS.md',
   'docs/ARCHITECTURE.md',
   'docs/LOCAL-SETUP.md',
+  'docs/DEPLOYMENT.md',
   'docs/TOKEN.md',
 ];
 
@@ -42,4 +43,11 @@ test('every relative Markdown link in the README points to a repository file', (
     const path = decodeURIComponent(link.split('#')[0]!);
     assert.ok(existsSync(resolve(root, path)), `broken README link: ${link}`);
   }
+});
+
+test('production deployment kit contains the required service boundaries',()=>{
+ for(const file of ['deploy/Caddyfile','deploy/meerkat.service','deploy/meerkat.env.example','deploy/meerkat-backup','deploy/meerkat-backup.service','deploy/meerkat-backup.timer','deploy/install.sh'])assert.equal(existsSync(resolve(root,file)),true,`${file} must exist`);
+ const unit=readFileSync(resolve(root,'deploy/meerkat.service'),'utf8');assert.match(unit,/User=meerkat/);assert.match(unit,/ReadWritePaths=\/var\/lib\/meerkat/);assert.doesNotMatch(unit,/PRIVATE_KEY|SEED|MNEMONIC/);
+ const caddy=readFileSync(resolve(root,'deploy/Caddyfile'),'utf8');assert.match(caddy,/meerkat\.my/);assert.match(caddy,/reverse_proxy 127\.0\.0\.1:4664/);
+ const environment=readFileSync(resolve(root,'deploy/meerkat.env.example'),'utf8');assert.match(environment,/MEERKAT_PUBLIC=1/);assert.match(environment,/MEERKAT_DB=\/var\/lib\/meerkat\/observer\.sqlite/);assert.doesNotMatch(environment,/PRIVATE_KEY|SEED|MNEMONIC/);
 });

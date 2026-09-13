@@ -28,6 +28,8 @@ All variables are optional.
 | `MEERKAT_RPC_URL` | `https://rpc.mainnet.chain.robinhood.com` | Robinhood Chain JSON-RPC endpoint |
 | `MEERKAT_DB` | `data/observer.sqlite` | Local SQLite database path |
 
+The public-only variables `MEERKAT_PUBLIC`, `MEERKAT_PUBLIC_ORIGIN`, and `MEERKAT_TRUSTED_HOSTS` are intentionally omitted from normal local startup. Use the reviewed [public deployment guide](DEPLOYMENT.md) when publishing the service; setting only one of these values is not a supported deployment.
+
 PowerShell example:
 
 ```powershell
@@ -78,4 +80,3 @@ Stop MEERKAT before copying or removing the database. To back up, copy `observer
 **The port is in use.** Set another `PORT`, restart, and open that port in the browser.
 
 **A conclusion matters financially.** Follow the displayed transaction link and verify it against an independent chain data source. MEERKAT is evidence tooling, not financial advice.
-

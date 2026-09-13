@@ -1,0 +1,11 @@
+www.meerkat.my {
+	redir https://meerkat.my{uri} permanent
+}
+
+meerkat.my {
+	request_body {
+		max_size 16KB
+	}
+	header Strict-Transport-Security "max-age=31536000; includeSubDomains"
+	reverse_proxy 127.0.0.1:4664
+}

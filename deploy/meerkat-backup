@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+source_db=/var/lib/meerkat/observer.sqlite
+backup_dir=/var/backups/meerkat
+stamp=$(date -u +%Y%m%dT%H%M%SZ)
+backup="$backup_dir/observer-$stamp.sqlite"
+
+install -d -m 0700 -o root -g root "$backup_dir"
+if [[ ! -f "$source_db" ]]; then
+  echo "MEERKAT database does not exist: $source_db" >&2
+  exit 1
+fi
+
+trap 'rm -f "$backup"' ERR
+sqlite3 "$source_db" ".timeout 5000" ".backup '$backup'"
+check=$(sqlite3 "$backup" 'PRAGMA quick_check;')
+if [[ "$check" != "ok" ]]; then
+  echo "MEERKAT backup integrity check failed" >&2
+  exit 1
+fi
+sqlite3 "$backup" 'SELECT count(*) FROM token_history;' >/dev/null
+chmod 0600 "$backup"
+find "$backup_dir" -type f -name 'observer-*.sqlite' -mtime +7 -delete
+trap - ERR
+printf 'MEERKAT backup verified: %s (%s bytes)\n' "$backup" "$(stat -c %s "$backup")"
