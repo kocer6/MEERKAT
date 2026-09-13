@@ -1,6 +1,6 @@
 # MEERKAT product plan
 
-Updated 2026-09-11. The user approved a branded landing page plus a separate read-only token/wallet terminal.
+Updated 2026-09-13. The user approved a branded landing page plus a separate token/wallet evidence terminal.
 
 ## Product contract
 
@@ -51,7 +51,7 @@ MEERKAT scores Pons V2 tokens and locally evidenced wallet behavior, then expose
 
 ## Next acceptance gates
 
-- [ ] Deploy the reviewed public mode to `meerkat.my` and record TLS, restart, persisted-cursor, backup-restore and mobile/desktop evidence.
+- [x] Deploy the reviewed public mode to `meerkat.my` and record DNS, TLS, restart, persisted-cursor and backup-restore evidence.
 
 - [x] Complete a launch-to-head backfill through the packaged server and record duration, cursor, event count, and restart/resume evidence.
 - [x] Add a relationship graph for deployer, curve buyers/sellers, transfer recipients, and explicitly marked pool callers.

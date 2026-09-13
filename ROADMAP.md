@@ -1,8 +1,8 @@
 # MEERKAT public roadmap
 
-This roadmap records product capability, not marketing dates. A feature moves to **Live locally** only after its acceptance gate is demonstrated in the repository.
+This roadmap records product capability, not marketing dates. A feature moves to **Live** only after its acceptance gate is demonstrated in the repository and, where relevant, on the hosted terminal.
 
-## Live locally
+## Live
 
 ### Transparent scores
 
@@ -31,6 +31,16 @@ Acceptance evidence: tests, build, browser QA, and the bounded COPY integration 
 - BUY/SELL-specific radial Trade Flow views and per-wallet trade counts in holder and transfer-route maps;
 - local SQLite persistence;
 - no signer or transaction route.
+
+### Hosted public terminal
+
+- live at [meerkat.my](https://meerkat.my/terminal) behind automatic HTTPS;
+- bounds public indexing through per-client admission limits and a global work queue;
+- keeps operator routes unavailable from the public surface;
+- persists index cursors in SQLite and resumes an interrupted token after restart;
+- creates scheduled online backups with a tested SQLite recovery check.
+
+Acceptance evidence: the DNS, TLS, restart, HOP OUT resume and backup checks in `docs/evidence/public-deployment-2026-09-13.md`.
 
 ### Relationship map
 
@@ -100,10 +110,6 @@ Acceptance gate: dense-token fixture above the provider log limit, restart proof
 ### Versioned evidence API
 
 Publish stable schemas for the existing token summary, paginated timeline and wallet dossier endpoints, then add case and evidence-export endpoints.
-
-### Hosted public terminal
-
-Package a public analysis deployment with RPC quotas, abuse controls, observability, cache policy, and a clear service status. The local install remains supported.
 
 ### Comparative wallet cohorts
 

@@ -148,6 +148,8 @@ test('terminal connects token and wallet modes to read-only evidence APIs',async
   assert.match(js,/scrollIntoView/);
   for(const label of ['OVERVIEW & SCORE','FEE FLOW','RELATIONSHIPS','WALLETS & HOLDERS','TIMELINE'])assert.match(js,new RegExp(label.replace('&','&')));
   assert.match(js,/\/api\/token\/timeline/);
+  assert.match(js,/get\('\/healthz'\)/);
+  assert.doesNotMatch(js,/get\('\/api\/state'\)/);
   assert.match(js,/LOAD 50 MORE/);
   assert.match(js,/LOADING 50 EVENTS/);
   assert.match(js,/Fast adaptive index/);

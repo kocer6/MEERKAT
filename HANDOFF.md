@@ -1,10 +1,10 @@
-# MEERKAT handoff — tabbed evidence terminal + product landing (2026-09-12)
+# MEERKAT handoff — public evidence terminal (2026-09-13)
 
-The active product is a local read-only Pons V2 scoring and intelligence terminal. Token and wallet scores are the primary product surface; lifecycle and relationship views are the evidence layer. Never restore the paper-first UI or add a signer/transaction path.
+The active product is a public and locally installable Pons V2 scoring and intelligence terminal. Token and wallet scores are the primary product surface; lifecycle and relationship views are the evidence layer. Never restore the paper-first UI or add a signer/transaction path.
 
 The current `main` checkpoint includes the tabbed dossier, paginated Timeline and the product-proof landing sections described below.
 
-Public hosting is implemented in code but is not marked live until external verification passes. `MEERKAT_PUBLIC=1` removes the control token from terminal HTML, exposes token indexing through a bounded in-process admission queue, adds `/healthz`, and hides local operator routes. The reviewed Caddy, systemd, firewall, backup, install, rollback and recovery workflow is in `deploy/` and `docs/DEPLOYMENT.md`.
+Public hosting is live at `https://meerkat.my`. `MEERKAT_PUBLIC=1` removes the control token from terminal HTML, exposes token indexing through a bounded in-process admission queue, adds `/healthz`, and hides local operator routes. The Caddy, systemd, firewall, backup, install, rollback and recovery workflow is in `deploy/` and `docs/DEPLOYMENT.md`; production evidence is recorded in `docs/evidence/public-deployment-2026-09-13.md`.
 
 The landing sections now span the available desktop width instead of stopping at 1,500–1,800 px, and the terminal shell uses the full viewport with an 18 px working gutter. The mobile shell keeps its existing 10 px gutter and no page-level horizontal overflow. The README now presents a visual product tour using current HOP OUT captures for Overview, Fee Flow, Relationship Map, Current Holders and Timeline; the roadmap reuses the focused relationship evidence capture.
 
@@ -38,8 +38,13 @@ Token index coverage is now a readiness gate rather than a source of score point
 
 ## Verification
 
+- Public deployment: `meerkat.my` and `www.meerkat.my` resolve to the VPS; HTTP and `www` redirect to the canonical HTTPS apex; landing, terminal and `/healthz` return `200`; the private `/api/state` route returns `404` publicly.
+- Production process: commit `52566c2` runs under the unprivileged `meerkat` account with isolated Node.js 24 on loopback `127.0.0.1:4664`; Caddy is the only public web listener.
+- Recovery: the systemd backup job produced a SQLite snapshot whose `PRAGMA quick_check` returned `ok`; the live database also returned `ok`.
+- Live HOP OUT resume: the persisted index resumed after restart and reached captured head `61,975,786` with `6,486` events, `73` reconstructed non-core holders and a ready `84/100` high-confidence score.
+
 - `npm run typecheck`: pass.
-- `npm test`: 115 tests passed, 0 failed, including wide adaptive index ranges, timeline cursor/filter coverage, landing/terminal contracts, fee-recipient roles, current-holder scoring, migration gating and retry recovery.
+- `npm test`: 124 tests passed, 0 failed, including public-mode boundaries, index admission, wide adaptive ranges, timeline cursor/filter coverage, landing/terminal contracts, fee-recipient roles, current-holder scoring, migration gating and retry recovery.
 - `npm run build`: pass.
 - Browser: the rebuilt `/` and `/terminal` were inspected at desktop and 390x844. The landing has no page-level mobile overflow; the wide hero, embedded actions and score-first sections remain readable. Token dossiers render all five score components before relationship and lifecycle evidence.
 - Real RPC: COPY `0xac79255f6f404eba14f316e8669d76573a2d7b1e` resolved to symbol COPY, launch block `59283454`; chunk `59283454..59288453` returned 3,170 events and 25 attributed curve participants in 5.3 seconds after RPC pacing fixes.

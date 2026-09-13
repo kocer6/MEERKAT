@@ -122,10 +122,10 @@ cd /opt/meerkat/app
 git rev-parse HEAD
 sudo -u meerkat git fetch origin main
 sudo -u meerkat git merge --ff-only origin/main
-sudo -u meerkat npm ci
-sudo -u meerkat npm run typecheck
-sudo -u meerkat npm test
-sudo -u meerkat npm run build
+sudo -u meerkat env PATH=/opt/meerkat/node/bin:/usr/bin:/bin npm ci
+sudo -u meerkat env PATH=/opt/meerkat/node/bin:/usr/bin:/bin npm run typecheck
+sudo -u meerkat env PATH=/opt/meerkat/node/bin:/usr/bin:/bin npm test
+sudo -u meerkat env PATH=/opt/meerkat/node/bin:/usr/bin:/bin npm run build
 systemctl start meerkat-backup.service
 systemctl restart meerkat.service
 curl -fsS -H 'Host: meerkat.my' http://127.0.0.1:4664/healthz
@@ -139,8 +139,8 @@ Use the exact previously recorded commit. This release introduces no destructive
 systemctl stop meerkat.service
 cd /opt/meerkat/app
 sudo -u meerkat git checkout PREVIOUS_VERIFIED_COMMIT
-sudo -u meerkat npm ci
-sudo -u meerkat npm run build
+sudo -u meerkat env PATH=/opt/meerkat/node/bin:/usr/bin:/bin npm ci
+sudo -u meerkat env PATH=/opt/meerkat/node/bin:/usr/bin:/bin npm run build
 systemctl start meerkat.service
 curl -fsS -H 'Host: meerkat.my' http://127.0.0.1:4664/healthz
 ```

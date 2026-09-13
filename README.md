@@ -24,7 +24,7 @@
 
 <p align="center"><sub>Developed with assistance from <a href="https://claude.ai/">Claude</a> and <a href="https://openai.com/codex/">OpenAI Codex</a>.</sub></p>
 
-> **Project status:** transparent token scoring, local wallet scoring, lifecycle reconstruction and the relationship map work locally today. Wallet coverage is limited to histories indexed by that installation. A hosted public terminal and a MEERKAT token have not launched.
+> **Project status:** the public evidence terminal is live at [meerkat.my](https://meerkat.my/terminal). Transparent token scoring, installation-scoped wallet scoring, lifecycle reconstruction, fee flow and relationship views run against Robinhood Chain today. The MEERKAT token has not launched.
 
 ## What it looks like
 
@@ -78,7 +78,7 @@ npm ci
 npm start
 ```
 
-Open [http://127.0.0.1:4664/](http://127.0.0.1:4664/), select **Open terminal**, and paste a token or wallet address. The default RPC and database path work without adding secrets. See the [local setup guide](docs/LOCAL-SETUP.md) for configuration and troubleshooting.
+Use the [public terminal](https://meerkat.my/terminal), or open [http://127.0.0.1:4664/](http://127.0.0.1:4664/) after a local install. Select **Open terminal** and paste a token or wallet address. The default RPC and database path work without adding secrets. See the [local setup guide](docs/LOCAL-SETUP.md) for configuration and troubleshooting.
 
 ## Two investigation modes
 
@@ -128,10 +128,11 @@ Every label is derived from an explicit rule. For example, an **early entry** is
 | Relationship map | **Live locally** | Trade Flow, Current Holders and Wallet Routes with a selected-wallet inspector |
 | Creator fee flow | **Live locally** | Exact curve/pool sweeps, current route and recipient-change evidence |
 | Holder intelligence | **Live locally / improving** | Transfer-ledger balances and explicit partial state; known-contract exclusions remain next |
+| Hosted public terminal | **Live** | HTTPS, bounded public indexing, persistent SQLite and tested backups |
 | Pons market context | **Next** | Official-source freshness and independent timestamp gates |
 | Cases and alerts | **Next** | Saved investigations and local rule notifications |
 | Evidence API and exports | **Planned** | Versioned schema and portable evidence bundle |
-| Hosted terminal / more chains | **Later** | Operational and adapter validation before public claims |
+| More chains | **Later** | Deployment and ABI adapters must be validated before public claims |
 
 The detailed [public roadmap](ROADMAP.md) separates shipped behavior from future work and defines the evidence required to change each status.
 
@@ -153,6 +154,7 @@ The detailed [public roadmap](ROADMAP.md) separates shipped behavior from future
 
 The full COPY backfill and restart evidence is recorded in the [lifecycle checkpoint](docs/evidence/copy-backfill-relationship-2026-09-11.md).
 Dense-token recovery above the RPC's 10,000-log limit is recorded in the [ZZZ checkpoint](docs/evidence/zzz-dense-index-2026-09-11.md).
+The live domain, TLS, restart, persisted-index and backup recovery checks are recorded in the [public deployment checkpoint](docs/evidence/public-deployment-2026-09-13.md).
 
 ## Development checks
 

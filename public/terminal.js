@@ -111,6 +111,6 @@ async function inspectWallet(address){
 
 $('inspect-form').addEventListener('submit',async event=>{event.preventDefault();const address=$('inspect-address').value.trim();$('inspect-button').disabled=true;$('query-status').textContent=mode==='token'?'Starting token reconstruction…':'Reading local wallet evidence…';$('query-status').className='';try{await openAddress(mode,address);$('query-status').textContent='Analysis loaded.';$('query-status').className='good';if(matchMedia('(max-width:760px)').matches)$('result-title').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion:reduce)').matches?'auto':'smooth',block:'start'});}catch(error){$('query-status').textContent=error.message;$('query-status').className='error';showResult('DOSSIER','ERROR');$('result-content').append(el('p',error.message,'notice error'));}finally{$('inspect-button').disabled=false;}});
 
-void get('/api/state').then(()=>{$('session-status').textContent='CONNECTED';}).catch(()=>{$('session-status').textContent='OFFLINE';$('session-status').className='error';});
+void get('/healthz').then(()=>{$('session-status').textContent='CONNECTED';}).catch(()=>{$('session-status').textContent='OFFLINE';$('session-status').className='error';});
 const initialToken=new URLSearchParams(location.search).get('token');
 if(initialToken){$('inspect-address').value=initialToken;void openAddress('token',initialToken,false);}
