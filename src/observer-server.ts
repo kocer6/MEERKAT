@@ -48,6 +48,10 @@ export async function startObserver(options:ObserverOptions){
   if(!requestHost||!allowedHosts.has(requestHost)||(req.headers.origin&&req.headers.origin!==(publicMode?publicOrigin:url))){send(res,403,{error:'Untrusted origin'});return;}
   const request=new URL(req.url??'/',url),path=request.pathname,p=request.searchParams;
   try{
+   if(req.method==='HEAD'){
+    if(path==='/healthz'){res.writeHead(historyStore.health()?200:503,{'content-type':'application/json'});res.end();return;}
+    const asset=assets.get(path);if(asset){res.writeHead(200,{'content-type':asset.type});res.end();return;}
+   }
    if(req.method==='GET'){
     if(path==='/healthz'){send(res,historyStore.health()?200:503,{status:historyStore.health()?'ok':'unavailable'});return;}
     const asset=assets.get(path);if(asset){res.writeHead(200,{'content-type':asset.type});res.end(asset.body);return;}

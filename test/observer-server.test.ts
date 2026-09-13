@@ -25,6 +25,12 @@ test('primary product is observer-only, starts empty, protects controls and expo
 test('landing and terminal are separate product surfaces',async()=>{
  const app=await startObserver({port:0,database:':memory:'});
  try{
+  const headLanding=await fetch(app.url+'/',{method:'HEAD'});
+  const headTerminal=await fetch(app.url+'/terminal',{method:'HEAD'});
+  assert.equal(headLanding.status,200);
+  assert.equal(headLanding.headers.get('content-type'),'text/html; charset=utf-8');
+  assert.equal(await headLanding.text(),'');
+  assert.equal(headTerminal.status,200);
   const landing=await (await fetch(app.url+'/')).text();
   const terminal=await (await fetch(app.url+'/terminal')).text();
   assert.match(landing,/<title>MEERKAT — Token Intelligence<\/title>/);

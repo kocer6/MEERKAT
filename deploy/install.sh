@@ -95,4 +95,4 @@ ufw --force enable
 
 systemctl is-active --quiet meerkat.service
 curl -fsS -H 'Host: meerkat.my' http://127.0.0.1:4664/healthz
-printf '\nMEERKAT installed at commit %s\n' "$(git -C /opt/meerkat/app rev-parse HEAD)"
+printf '\nMEERKAT installed at commit %s\n' "$(runuser -u meerkat -- git -C /opt/meerkat/app rev-parse HEAD)"
