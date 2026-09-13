@@ -155,6 +155,11 @@ test('terminal connects token and wallet modes to read-only evidence APIs',async
   assert.match(js,/LOADING 50 EVENTS/);
   assert.match(js,/Fast adaptive index/);
   assert.match(js,/INDEXING CONTINUES IN THE BACKGROUND/);
+  assert.match(js,/LOADING ON-CHAIN DATA/);
+  assert.match(js,/Loading trades, wallets, holders and fee flow/);
+  assert.match(js,/loading-orbit/);
+  assert.doesNotMatch(js,/'CALIBRATING'/);
+  assert.match(css,/\.loading-orbit/);
   assert.doesNotMatch(js,/version:null/);
   assert.match(js,/INDEXED REVENUE · PARTIAL/);
   assert.match(js,/URLSearchParams\(location\.search\)/);
