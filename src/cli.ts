@@ -9,7 +9,9 @@ if (process.argv[2] === 'demo') {
   const snapshot = await new PonsDiscovery(rpcReader()).refresh();
   console.log(encode(snapshot)); if (snapshot.status !== 'connected') process.exitCode = 1;
 } else if (process.argv[2] === 'serve') {
-  const app = await startObserver({ port: Number(process.env.PORT ?? 4664), database: process.env.MEERKAT_DB ?? 'data/observer.sqlite' });
+  const port=Number(process.env.PORT??4664);if(!Number.isInteger(port)||port<0||port>65535)throw new Error('PORT must be an integer from 0 to 65535');
+  const publicMode=process.env.MEERKAT_PUBLIC==='1';
+  const app = await startObserver({port,database:process.env.MEERKAT_DB??'data/observer.sqlite',publicMode,publicOrigin:publicMode?process.env.MEERKAT_PUBLIC_ORIGIN:undefined,trustedHosts:publicMode?(process.env.MEERKAT_TRUSTED_HOSTS??'').split(',').map(value=>value.trim()).filter(Boolean):undefined});
   console.log(`MEERKAT market watch: ${app.url}`);
   const stop = () => { void app.close().then(() => process.exit(0)); };
   process.once('SIGINT', stop); process.once('SIGTERM', stop);

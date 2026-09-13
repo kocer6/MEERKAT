@@ -1,6 +1,15 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
+import {request as httpRequest} from 'node:http';
 import {startObserver} from '../src/observer-server.js';
+const publicFetch=(app:{url:string},path:string,init:RequestInit={})=>new Promise<Response>((resolve,reject)=>{
+ const request=httpRequest(new URL(path,app.url),{method:init.method,headers:{host:'meerkat.my','x-forwarded-for':'198.51.100.10',...(init.headers as Record<string,string>|undefined)}},response=>{
+  const chunks:Buffer[]=[];response.on('data',chunk=>chunks.push(Buffer.from(chunk)));response.once('error',reject);response.once('end',()=>{
+   const headers=new Headers();for(const [name,value] of Object.entries(response.headers))if(value!==undefined)headers.set(name,Array.isArray(value)?value.join(', '):value);
+   resolve(new Response(Buffer.concat(chunks),{status:response.statusCode,headers}));
+  });
+ });request.once('error',reject);request.end();
+});
 test('primary product is observer-only, starts empty, protects controls and exposes no paper endpoints',async()=>{
  const app=await startObserver({port:0,database:':memory:'});
  try{
@@ -150,5 +159,30 @@ test('terminal connects token and wallet modes to read-only evidence APIs',async
   assert.equal(invalid.status,400);
   const invalidTimeline=await fetch(app.url+'/api/token/timeline?token=bad');
   assert.equal(invalidTimeline.status,400);
+ }finally{await app.close();}
+});
+
+test('public mode exposes analysis without leaking local controls',async()=>{
+ const app=await startObserver({port:0,database:':memory:',publicMode:true,publicOrigin:'https://meerkat.my',trustedHosts:['meerkat.my','www.meerkat.my']});
+ try{
+  const terminal=await (await publicFetch(app,'/terminal')).text();
+  assert.doesNotMatch(terminal,/control-token|__CONTROL_TOKEN__/);
+  const health=await publicFetch(app,'/healthz');assert.equal(health.status,200);assert.deepEqual(await health.json(),{status:'ok'});
+  assert.equal((await publicFetch(app,'/api/state')).status,404);
+  assert.equal((await publicFetch(app,'/api/watch/add?token=bad',{method:'POST'})).status,404);
+  assert.equal((await publicFetch(app,'/api/token/index?token=bad',{method:'POST'})).status,400);
+  assert.equal((await publicFetch(app,'/',{headers:{host:'evil.example'}})).status,403);
+  assert.equal((await publicFetch(app,'/',{headers:{origin:'https://evil.example'}})).status,403);
+  assert.equal((await publicFetch(app,'/',{headers:{host:'www.meerkat.my'}})).status,200);
+ }finally{await app.close();}
+});
+
+test('public index endpoint applies per-client admission limits',async()=>{
+ const token='0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',second='0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',other='0xcccccccccccccccccccccccccccccccccccccccc';
+ const profile={token,name:'Token',symbol:'TKN',decimals:18,curve:other,deployer:other,pairToken:'0x0000000000000000000000000000000000000000',phase:0,birthBlock:'1',birthAt:0,head:'1',poolId:null,poolManager:other,totalSupply:'1000',deployerBalance:'0',creatorTaxBps:0,metadata:null,metadataError:null};
+ const app=await startObserver({port:0,database:':memory:',publicMode:true,publicOrigin:'https://meerkat.my',trustedHosts:['meerkat.my'],historyReader:{profile:async raw=>({...profile,token:raw.toLowerCase()}),chunk:async()=>[]},indexLimits:{maxActive:2,maxQueued:20,maxPerWindow:1,windowMs:600_000}});
+ try{
+  const accepted=await publicFetch(app,`/api/token/index?token=${token}`,{method:'POST'});assert.equal(accepted.status,202);assert.equal((await accepted.json()).state,'started');
+  const limited=await publicFetch(app,`/api/token/index?token=${second}`,{method:'POST'});assert.equal(limited.status,429);assert.equal(limited.headers.get('retry-after'),'600');
  }finally{await app.close();}
 });

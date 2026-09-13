@@ -1,4 +1,4 @@
-const $=id=>document.getElementById(id),control=document.querySelector('meta[name="control-token"]').content;
+const $=id=>document.getElementById(id),control=document.querySelector('meta[name="control-token"]')?.content||'';
 const el=(tag,text,cls)=>{const node=document.createElement(tag);if(text!==undefined)node.textContent=text;if(cls)node.className=cls;return node;};
 const short=value=>value?value.slice(0,8)+'…'+value.slice(-6):'—';
 const graphShort=value=>value?value.slice(0,5)+'…'+value.slice(-3):'—';
@@ -10,7 +10,7 @@ const transactionClass=kind=>kind==='buy'?'tx-buy':kind==='sell'?'tx-sell':kind.
 const marketSummary=(wallets,pairToken)=>({buys:wallets.reduce((sum,wallet)=>sum+wallet.buys,0),sells:wallets.reduce((sum,wallet)=>sum+wallet.sells,0),participants:wallets.length,spent:wallets.reduce((sum,wallet)=>sum+BigInt(wallet.spent),0n),received:wallets.reduce((sum,wallet)=>sum+BigInt(wallet.received),0n),pairToken});
 let mode='token',activeToken=null,pollTimer=null,currentView=null,navigationHistory=[],activeDossierTab='overview',dossierToken=null,timelineState={token:null,types:new Set(),events:[],cursor:null,total:0,hasMore:false,busy:false,error:null},relationshipState={token:null,mode:'trade',tradeSide:'buy',selected:null,scale:1,panX:0,panY:0};
 
-async function post(path,params={}){const response=await fetch(path+'?'+new URLSearchParams(params),{method:'POST',headers:{'x-control-token':control}});const body=await response.json();if(!response.ok)throw new Error(body.error||'Request failed');return body;}
+async function post(path,params={}){const headers=control?{'x-control-token':control}:{};const response=await fetch(path+'?'+new URLSearchParams(params),{method:'POST',headers});const body=await response.json();if(!response.ok)throw new Error(body.error||'Request failed');return body;}
 async function get(path,params={}){const response=await fetch(path+'?'+new URLSearchParams(params));const body=await response.json();if(!response.ok)throw new Error(body.error||'Request failed');return body;}
 function metric(label,value){const box=el('div',undefined,'metric');box.append(el('small',label),el('strong',String(value)));return box;}
 function heading(title,note){const row=el('div',undefined,'section-heading');row.append(el('h3',title),el('small',note));return row;}
