@@ -50,7 +50,7 @@ The history reader verifies one factory launch event, captures the current head,
 
 Interrupted/error jobs reuse the already verified saved profile and captured head. This avoids repeating the expensive genesis-to-head launch lookup during recovery. A completed `ready` history performs a fresh profile/head read when the user explicitly refreshes it.
 
-RPC rate-limit retries are bounded. Failure changes the state to `error`; it does not erase already committed chunks or silently switch data sources.
+RPC rate-limit retries are bounded. Transfer history probes each token for log density: dense ranges use ordered 10,000-block windows with concurrency capped at two, while sparse ranges keep the wider adaptive request. Failure changes the state to `error`; it does not erase already committed chunks or silently switch data sources.
 
 ## Local APIs
 

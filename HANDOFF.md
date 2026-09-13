@@ -42,6 +42,7 @@ Token index coverage is now a readiness gate rather than a source of score point
 - Production process: commit `88b048b` was verified under the unprivileged `meerkat` account with isolated Node.js 24 on loopback `127.0.0.1:4664`; Caddy was the only public web listener.
 - Recovery: the systemd backup job produced a SQLite snapshot whose `PRAGMA quick_check` returned `ok`; the live database also returned `ok`.
 - Live HOP OUT resume: the persisted index resumed after restart and reached captured head `61,975,786` with `6,486` events, `73` reconstructed non-core holders and a ready `84/100` high-confidence score.
+- Dense-index performance: the first 50,000 ZZZ blocks returned the same `105,616` events in `19.535s` after density-aware Transfer windowing, down from `44.708s` with the previous single-range reader. The bounded concurrency of two was faster than three in the same live-RPC probe.
 
 - `npm run typecheck`: pass.
 - `npm test`: 124 tests passed, 0 failed, including public-mode boundaries, index admission, wide adaptive ranges, timeline cursor/filter coverage, landing/terminal contracts, fee-recipient roles, current-holder scoring, migration gating and retry recovery.

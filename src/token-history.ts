@@ -37,6 +37,14 @@ export async function readLogsAdaptive<T>(from:bigint,to:bigint,read:(from:bigin
  return [...await readLogsAdaptive(from,middle,read),...await readLogsAdaptive(middle+1n,to,read)];
  }
 }
+export async function readLogsDensityAware<T>(from:bigint,to:bigint,mode:'unknown'|'dense'|'sparse',read:(from:bigint,to:bigint)=>Promise<T[]>,options={windowSize:10_000n,denseThreshold:20_000,concurrency:2}):Promise<{logs:T[];dense:boolean}>{
+ const windowed=async(start:bigint,end:bigint)=>{const ranges:Array<[bigint,bigint]>=[];for(let cursor=start;cursor<=end;cursor+=options.windowSize)ranges.push([cursor,cursor+options.windowSize-1n<end?cursor+options.windowSize-1n:end]);const pages:T[][]=Array.from({length:ranges.length}),workers=Array.from({length:Math.min(options.concurrency,ranges.length)},async(_,worker)=>{for(let index=worker;index<ranges.length;index+=options.concurrency){const [rangeFrom,rangeTo]=ranges[index]!;pages[index]=await readLogsAdaptive(rangeFrom,rangeTo,read);}});await Promise.all(workers);return pages.flat();};
+ let logs:T[];
+ if(mode==='dense')logs=await windowed(from,to);
+ else if(mode==='sparse')logs=await readLogsAdaptive(from,to,read);
+ else{const probeTo=from+options.windowSize-1n<to?from+options.windowSize-1n:to,probe=await readLogsAdaptive(from,probeTo,read);if(probeTo===to)logs=probe;else logs=[...probe,...(probe.length>=options.denseThreshold?await windowed(probeTo+1n,to):await readLogsAdaptive(probeTo+1n,to,read))];}
+ return {logs,dense:logs.length>=options.denseThreshold};
+}
 export function decodedLogToTokenEvent(l:DecodedEventLog):TokenEvent|null{
  if(l.blockNumber===null||!l.blockHash||!l.transactionHash||l.logIndex===null||!l.eventName)return null;
  const block=l.blockNumber.toString(),args=l.args??{},name=l.eventName,trade=name==='CurveBuy'||name==='CurveSell'||name==='Swap';
@@ -89,6 +97,7 @@ export class HistoryStore {
 }
 export function historyReader(){
  const client=createPublicClient({transport:http(process.env.MEERKAT_RPC_URL??'https://rpc.mainnet.chain.robinhood.com',{timeout:15000,retryCount:1})});
+ const transferDensity=new Map<string,'dense'|'sparse'>();
  return {
  async profile(token:string):Promise<TokenProfile>{
   if(!isAddress(token)||token===zero)throw new Error('Invalid token');const read=async<T>(fn:()=>Promise<T>)=>{await new Promise(resolve=>setTimeout(resolve,100));return rpcReadWithRetry(fn);};if(await read(()=>client.getChainId())!==4663)throw new Error('Wrong RPC chain, expected 4663');const address=token as Address;
@@ -102,14 +111,16 @@ export function historyReader(){
  },
   async chunk(p:TokenProfile,from:bigint,to:bigint):Promise<TokenEvent[]>{
    const read=async<T>(fn:()=>Promise<T>)=>{await new Promise(resolve=>setTimeout(resolve,100));return rpcReadWithRetry(fn);};
-   const [curve,phaseLogs,transfers,pool,poolFeesSwept,poolFeesRescued]=await Promise.all([
+   const transferRead=(fromBlock:bigint,toBlock:bigint)=>read(()=>client.getLogs({address:p.token as Address,event:transferEvent,fromBlock,toBlock,strict:true}));
+   const [curve,phaseLogs,transferResult,pool,poolFeesSwept,poolFeesRescued]=await Promise.all([
     readLogsAdaptive(from,to,(fromBlock,toBlock)=>read(()=>client.getLogs({address:p.curve as Address,events:curveEvents,fromBlock,toBlock,strict:true}))),
     readLogsAdaptive(from,to,(fromBlock,toBlock)=>read(()=>client.getLogs({address:factory,events:factoryEvents,fromBlock,toBlock,strict:true}))),
-    readLogsAdaptive(from,to,(fromBlock,toBlock)=>read(()=>client.getLogs({address:p.token as Address,event:transferEvent,fromBlock,toBlock,strict:true}))),
+    readLogsDensityAware(from,to,transferDensity.get(p.token)??'unknown',transferRead),
     p.poolId?readLogsAdaptive(from,to,(fromBlock,toBlock)=>read(()=>client.getLogs({address:p.poolManager as Address,event:poolEvent,args:{id:p.poolId as Hex},fromBlock,toBlock,strict:true}))):Promise.resolve([]),
     p.poolId&&p.memeHook?readLogsAdaptive(from,to,(fromBlock,toBlock)=>read(()=>client.getLogs({address:p.memeHook as Address,event:poolFeesSweptEvent,args:{poolId:p.poolId as Hex},fromBlock,toBlock,strict:true}))):Promise.resolve([]),
     p.poolId&&p.memeHook?readLogsAdaptive(from,to,(fromBlock,toBlock)=>read(()=>client.getLogs({address:p.memeHook as Address,event:poolFeesRescuedEvent,args:{poolId:p.poolId as Hex},fromBlock,toBlock,strict:true}))):Promise.resolve([]),
    ]);
+   transferDensity.set(p.token,transferResult.dense?'dense':'sparse');const transfers=transferResult.logs;
    const phases=phaseLogs.filter(l=>l.args.token?.toLowerCase()===p.token),poolFees=[...poolFeesSwept,...poolFeesRescued];
   const logs=[...curve,...phases,...transfers,...pool,...poolFees].filter(l=>!l.removed);
   return logs.map(log=>decodedLogToTokenEvent(log as DecodedEventLog)).filter((event):event is TokenEvent=>event!==null);

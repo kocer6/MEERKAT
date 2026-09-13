@@ -48,6 +48,7 @@ MEERKAT scores Pons V2 tokens and locally evidenced wallet behavior, then expose
 - [x] Turn the README into a visual product tour covering score, fee flow, relationships, holders and paginated lifecycle evidence with real HOP OUT captures.
 - [x] Add a tested public server mode with no browser control token, bounded index admission, hidden operator routes and SQLite health checks.
 - [x] Add a production kit for loopback Node, Caddy HTTPS, systemd, UFW, unattended security updates and verified online SQLite backups.
+- [x] Detect dense token Transfer histories and read 10,000-block windows with bounded concurrency while retaining wide reads for sparse ranges.
 
 ## Next acceptance gates
 

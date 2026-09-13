@@ -51,6 +51,21 @@ test('dense log ranges split recursively instead of failing the entire token ind
  assert.deepEqual(logs,[0,1,2,3,4,5,6,7]);
  assert.ok(calls.some(([from,to])=>from===0n&&to===3n));
 });
+test('density-aware log reads probe once, bound dense concurrency and preserve block order',async()=>{
+ const api=await import('../src/token-history.js') as typeof import('../src/token-history.js')&{readLogsDensityAware?:<T>(from:bigint,to:bigint,mode:'unknown'|'dense'|'sparse',read:(from:bigint,to:bigint)=>Promise<T[]>,options:{windowSize:bigint;denseThreshold:number;concurrency:number})=>Promise<{logs:T[];dense:boolean}>};
+ assert.equal(typeof api.readLogsDensityAware,'function');
+ let active=0,maxActive=0;const denseCalls:Array<[bigint,bigint]>=[];
+ const dense=await api.readLogsDensityAware!(0n,9n,'unknown',async(from,to)=>{denseCalls.push([from,to]);active++;maxActive=Math.max(maxActive,active);await new Promise(resolve=>setTimeout(resolve,2));active--;return from===0n?['0a','0b']:[from.toString()];},{windowSize:2n,denseThreshold:2,concurrency:2});
+ assert.deepEqual(denseCalls[0],[0n,1n]);
+ assert.equal(maxActive,2);
+ assert.deepEqual(dense.logs,['0a','0b','2','4','6','8']);
+ assert.equal(dense.dense,true);
+ const sparseCalls:Array<[bigint,bigint]>=[];
+ const sparse=await api.readLogsDensityAware!(0n,9n,'unknown',async(from,to)=>{sparseCalls.push([from,to]);return [from.toString()];},{windowSize:2n,denseThreshold:3,concurrency:2});
+ assert.deepEqual(sparseCalls,[[0n,1n],[2n,9n]]);
+ assert.deepEqual(sparse.logs,['0','2']);
+ assert.equal(sparse.dense,false);
+});
 test('wallet behavior falls back to exact block distance when event timestamps are unavailable',()=>{
  const buy={...trade('buy',101000),at:null,blockNumber:'11'},sell={...trade('sell',150000),at:null,blockNumber:'20'};
  const wallet=summarizeWallets([buy,sell],100000,'10')[0]!;
