@@ -58,10 +58,11 @@ export class RadarStore {
  }
 
  replaceLaunchRange(name:string,from:bigint,to:bigint,cursor:bigint,launches:RadarLaunch[],cursorHash:string|null=null){
+  const retained=launches.map(row=>{const incoming=this.normalizeLaunch(row),existing=this.launchByToken(incoming.token);return existing&&existing.curve===incoming.curve&&existing.profile?{...incoming,state:existing.state,profile:existing.profile,profileError:existing.profileError,updatedAt:existing.updatedAt}:incoming;});
   this.transaction(()=>{
    this.db.prepare('DELETE FROM radar_launches WHERE block>=? AND block<=?').run(Number(from),Number(to));
    const insert=this.db.prepare('INSERT INTO radar_launches(token,curve,block,value) VALUES (?,?,?,?)');
-   for(const row of launches){const launch=this.normalizeLaunch(row);insert.run(launch.token,launch.curve,Number(launch.launchBlock),JSON.stringify(launch));}
+   for(const launch of retained)insert.run(launch.token,launch.curve,Number(launch.launchBlock),JSON.stringify(launch));
    this.saveCursor(name,cursor,cursorHash);
   });
  }

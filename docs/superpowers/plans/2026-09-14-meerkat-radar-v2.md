@@ -251,7 +251,7 @@ git commit -m "feat: index global Pons market activity"
 - Consumes: `RadarReader.profile`, launch rows, market events, and indexer status from Tasks 1–2.
 - Produces: `RadarService.status()`, `RadarService.launches(cursor)`, and `RadarService.signals({feed:'fresh'|'launches',window,cursor})` using SQLite only.
 
-- [ ] **Step 1: Write progressive-state and no-RPC-on-read tests**
+- [x] **Step 1: Write progressive-state and no-RPC-on-read tests**
 
 ```ts
 test('fresh feed exposes progressive launch states from cached rows',()=>{
@@ -265,13 +265,13 @@ test('fresh feed exposes progressive launch states from cached rows',()=>{
 });
 ```
 
-- [ ] **Step 2: Run the test and verify it fails before the service exists**
+- [x] **Step 2: Run the test and verify it fails before the service exists**
 
 Run: `node --import tsx --test test/radar-service.test.ts`
 
 Expected: FAIL with missing `RadarService`.
 
-- [ ] **Step 3: Persist bounded profile results and transitions**
+- [x] **Step 3: Persist bounded profile results and transitions**
 
 Populate the exact `RadarProfile` fields defined in Task 1. The indexer moves `discovered → profiled → tracking`; it uses a two-slot queue, prioritizes newest and visible tokens, and records a sanitized `profileError` while retaining the launch.
 
@@ -286,11 +286,11 @@ private async profileLaunch(row:RadarLaunch,head:bigint){
 }
 ```
 
-- [ ] **Step 4: Implement bounded cached feed queries**
+- [x] **Step 4: Implement bounded cached feed queries**
 
 `RadarService.signals` accepts only `signals`, `fresh`, `exits`, `launches`, or `wallets`; validates `24h`, `7d`, `30d`, or `all`; returns at most 50 rows; and uses the persisted block/id cursor. Fresh rows include identity, stage, age, phase, participant count, observed buy/sell flow, and missing inputs.
 
-- [ ] **Step 5: Verify and commit**
+- [x] **Step 5: Verify and commit**
 
 Run: `node --import tsx --test test/radar-service.test.ts test/radar-indexer.test.ts && npm run typecheck`
 
