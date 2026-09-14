@@ -12,10 +12,11 @@ test('terminal exposes four destinations and no Analyze navigation',()=>{
  assert.match(html,/id="global-search"/);
 });
 
-test('terminal client has six route handlers and explicit wallet fallback',()=>{
+test('terminal client has six route handlers and explicit address fallback',()=>{
  const js=readFileSync('public/terminal.js','utf8');
  for(const route of ['radar','leaderboard','watchlist','activity','token','wallet'])assert.ok(js.includes(`/terminal/${route}`));
  assert.match(js,/OPEN AS WALLET/);
+ assert.match(js,/OPEN AS TOKEN/);
  assert.match(js,/popstate/);
  assert.match(js,/captureViewState/);
 });

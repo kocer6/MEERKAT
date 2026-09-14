@@ -36,7 +36,7 @@ export class RadarService {
 
  search(raw:string){
   const query=raw.trim();if(!query)throw new Error('Search query is required');
-  if(isAddress(query)){const address=query.toLowerCase(),launch=this.store.launchByToken(address);return launch?{kind:'token' as const,address,route:`/terminal/token/${address}`}:{kind:'unclassified' as const,address,choices:['wallet'] as const};}
+  if(isAddress(query)){const address=query.toLowerCase(),launch=this.store.launchByToken(address);return launch?{kind:'token' as const,address,route:`/terminal/token/${address}`}:{kind:'unclassified' as const,address,choices:['token','wallet'] as const};}
   const needle=query.toLowerCase(),matches=this.store.launches().filter(row=>row.profile&&(row.profile.symbol.toLowerCase()===needle||row.profile.name.toLowerCase().includes(needle))).slice(0,10).map(row=>({kind:'token' as const,address:row.token,name:row.profile!.name,symbol:row.profile!.symbol,route:`/terminal/token/${row.token}`}));
   return {kind:'results' as const,query,items:matches};
  }

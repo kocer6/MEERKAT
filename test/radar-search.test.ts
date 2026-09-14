@@ -28,7 +28,7 @@ test('does not silently classify an unknown contract-shaped address as a wallet'
  const app=await startObserver({port:0,database:':memory:',radarReader:reader,radarAutoStart:false});
  try{
   const result=await (await fetch(app.url+`/api/radar/search?q=${wallet}`)).json();
-  assert.deepEqual(result,{kind:'unclassified',address:wallet,choices:['wallet']});
+  assert.deepEqual(result,{kind:'unclassified',address:wallet,choices:['token','wallet']});
  }finally{await app.close();}
 });
 
