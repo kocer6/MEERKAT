@@ -8,6 +8,8 @@ MEERKAT scores Pons V2 tokens and locally evidenced wallet behavior, then expose
 
 ## Completed
 
+- [x] Connect token history discovery to Radar's persisted launch block, verify the hinted factory event before use, and fall back on a stale hint. Batch independent profile reads; show cached Radar participants while full history loads. Local verification: 181 tests, typecheck/build and JS syntax.
+
 - [x] Fix Radar metadata queue starvation: reserve half the batch for fresh launches, back off failed profiles, keep metadata patches independent of the full-view refresh clock, and refresh the open feed every ten seconds. Regression tests reproduce all three scheduler failures.
 - [x] Index wallet/token and token/position reads, batch score writes, and group leaderboard outcomes/infrastructure once per window. Local verification: 179 tests (including retry-clock isolation), typecheck, build; production cycle and FRESH verification follows deployment.
 

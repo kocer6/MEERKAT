@@ -111,7 +111,7 @@ function renderRadarTape(summary,profile,scores){const zone=infoZone('THE TAPE',
 function renderToken(data,radar=null){
  const state=data.state;showResult('TOKEN DOSSIER',state?(data.running?'INDEXING':state.status?.toUpperCase()||'READY'):'DISCOVERING');const root=$('result-content');
  if(data.error)root.append(el('p',data.error,'notice error'));
- if(!state){root.append(renderLaunchDiscovery());scheduleToken();return;}
+ if(!state){if(radar?.launch?.profile){const p={...radar.launch.profile,token:radar.launch.token,pairToken:radar.launch.pairToken},hero=el('div',undefined,'dossier-hero');hero.append(el('small','VERIFIED PONS V2 TOKEN / CACHED RADAR DATA','eyebrow'),el('h2',`${p.name} / ${p.symbol}`,scoreTone(radar.radarStrength?.value)),el('p',p.token,'address'),externalLink('OPEN ON PONS',`https://www.ponsfamily.com/launchpad/${p.token}`));root.append(hero,el('p','Showing indexed market activity while the complete token history loads.','notice'));if(radar.radarStrength)root.append(renderScore(displayRadarScore(radar.radarStrength),'RADAR STRENGTH'));root.append(radarParticipants(radar,p));}root.append(renderLaunchDiscovery());scheduleToken();return;}
  if(state.error)root.append(el('p',`Indexing stopped: ${state.error}. Run analysis again to resume from the saved cursor.`,'notice error'));
  const p=state.profile;if(dossierToken!==p.token){dossierToken=p.token;activeDossierTab='overview';timelineState={token:p.token,types:new Set(),events:[],cursor:null,total:0,hasMore:false,busy:false,error:null};}
  const tokenScore=radar?.radarStrength?.value??null,hero=el('div',undefined,'dossier-hero'),links=el('div',undefined,'dossier-links');links.append(externalLink('OPEN ON PONS',`https://www.ponsfamily.com/launchpad/${p.token}`),externalLink('TOKEN EXPLORER',`https://robinhoodchain.blockscout.com/token/${p.token}`),watchButton('token',p.token));hero.append(el('small','VERIFIED PONS V2 TOKEN','eyebrow'),el('h2',`${p.name} / ${p.symbol}`,scoreTone(tokenScore)),el('p',p.token,'address'),links);root.append(hero);
@@ -123,7 +123,7 @@ function renderToken(data,radar=null){
  activateDossierTab(activeDossierTab,root);if(data.running)scheduleToken();
 }
 function scheduleToken(){if(pollTimer)clearTimeout(pollTimer);pollTimer=setTimeout(()=>{if(activeToken)void loadToken(activeToken);},3000);}
-async function loadToken(token){try{const [historyData,radar]=await Promise.all([get('/api/token/history',{token}),get(`/api/radar/token/${token}/summary`).catch(()=>null)]);renderToken(historyData,radar);}catch(error){$('query-status').textContent=error.message;$('query-status').className='error';}}
+async function loadToken(token){try{const [historyData,radar]=await Promise.all([get('/api/token/history',{token}),get(`/api/radar/token/${token}/summary`).catch(()=>null)]);if(location.pathname!==`/terminal/token/${token}`)return;renderToken(historyData,radar);}catch(error){$('query-status').textContent=error.message;$('query-status').className='error';}}
 async function inspectToken(token){activeToken=token.toLowerCase();showResult('TOKEN DOSSIER','DISCOVERING');$('result-content').append(renderLaunchDiscovery());await post('/api/token/index',{token:activeToken});await loadToken(activeToken);}
 
 async function inspectWallet(address){

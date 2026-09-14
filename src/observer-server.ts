@@ -20,8 +20,9 @@ export async function startObserver(options:ObserverOptions){
  const publicMode=options.publicMode??false,publicOrigin=options.publicOrigin?.replace(/\/$/,'');
  if(publicMode){if(!publicOrigin||new URL(publicOrigin).protocol!=='https:'||new URL(publicOrigin).origin!==publicOrigin)throw new Error('Public mode requires an HTTPS public origin');if(!options.trustedHosts?.length)throw new Error('Public mode requires trusted hosts');}
  const trustedHosts=new Set((options.trustedHosts??[]).map(host=>host.trim().toLowerCase()).filter(Boolean));
- const historyStore=new HistoryStore(options.database);const history=new TokenHistory(historyStore,options.historyReader);
- const radarStore=new RadarStore(options.database),radarIndexer=new RadarIndexer(radarStore,options.radarReader??radarReader(),{rangeBlocks:options.radarOptions?.rangeBlocks??2000n,pollMs:options.radarOptions?.pollMs??30000,profileConcurrency:options.radarOptions?.profileConcurrency??2,historyStartBlock:options.radarOptions?.historyStartBlock??0n}),radar=new RadarService(radarStore,()=>radarStore.view<ReturnType<RadarIndexer['status']>>('indexer-status')?.value??radarIndexer.status(),options.radarAutoStart!==false);
+ const radarStore=new RadarStore(options.database);
+ const historyStore=new HistoryStore(options.database);const history=new TokenHistory(historyStore,options.historyReader??historyReader(token=>{const launch=radarStore.launchByToken(token);return launch?BigInt(launch.launchBlock):undefined;}));
+ const radarIndexer=new RadarIndexer(radarStore,options.radarReader??radarReader(),{rangeBlocks:options.radarOptions?.rangeBlocks??2000n,pollMs:options.radarOptions?.pollMs??30000,profileConcurrency:options.radarOptions?.profileConcurrency??2,historyStartBlock:options.radarOptions?.historyStartBlock??0n}),radar=new RadarService(radarStore,()=>radarStore.view<ReturnType<RadarIndexer['status']>>('indexer-status')?.value??radarIndexer.status(),options.radarAutoStart!==false);
  const store=new WatchStore(options.database);const service=new WatchService(store,options.market??marketReader());
  const discovery=options.discovery??new PonsDiscovery(rpcReader(),{load:()=>store.loadDiscovery(),save:s=>store.saveDiscovery(s)});
  const monitor=new PositionMonitor(()=>store.items().map(w=>({id:w.token,source:'chain',status:'open'})),token=>service.refresh(token));

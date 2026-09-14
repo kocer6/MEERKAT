@@ -33,6 +33,18 @@ test('launch lookup rejects a missing or ambiguous factory event',async()=>{
  await assert.rejects(()=>findLaunchBlock(10n,async()=>[]),/could not be verified/);
  await assert.rejects(()=>findLaunchBlock(10n,async()=>[{blockNumber:1n},{blockNumber:2n}]),/could not be verified/);
 });
+
+test('a Radar launch hint verifies one block instead of rescanning genesis',async()=>{
+ const calls:Array<[bigint,bigint]>=[];
+ const block=await findLaunchBlock(60_000_000n,async(from,to)=>{calls.push([from,to]);return [{blockNumber:59_283_454n}];},59_283_454n);
+ assert.equal(block,59_283_454n);assert.deepEqual(calls,[[59_283_454n,59_283_454n]]);
+});
+
+test('a stale Radar launch hint falls back to verified discovery',async()=>{
+ const calls:Array<[bigint,bigint]>=[];
+ const block=await findLaunchBlock(100n,async(from,to)=>{calls.push([from,to]);return from===to?[]:[{blockNumber:80n}];},70n);
+ assert.equal(block,80n);assert.deepEqual(calls,[[70n,70n],[0n,100n]]);
+});
 test('launch lookup adaptively splits RPC ranges that exceed provider limits',async()=>{
  const calls:Array<[bigint,bigint]>=[];
  const block=await findLaunchBlock(15n,async(from,to)=>{calls.push([from,to]);if(to-from>3n)throw new Error('maximum block range exceeded');return from<=9n&&to>=9n?[{blockNumber:9n}]:[];});
