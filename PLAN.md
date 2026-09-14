@@ -1,3 +1,5 @@
+Split pipeline production acceptance (2026-09-14): deployed through 447ecf3; 195 tests pass on VPS, typecheck/build pass. All four services active. Collector recovered after RPC isolation and bounded catch-up, advanced to captured head 63069677 with lag 0/error null; last cycles 1.8-1.9 s. Final sample: Signals 50/50 named and 42/50 priced; Fresh 50/50 named and 40/50 priced; leaderboard 100 rows. Cached feed/leaderboard reads sampled 0.156 s. Evidence: docs/evidence/radar-split-pipeline-2026-09-14.md. This supersedes earlier pending-deployment notes below. Remaining work: reduce the approximately 3300-profile historical backlog within provider capacity; missing external fields remain unavailable and five-minute eligibility is not a freshness guarantee.
+
 # MEERKAT product plan
 
 Updated 2026-09-13. The user approved a branded landing page plus a separate token/wallet evidence terminal.
