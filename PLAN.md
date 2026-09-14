@@ -57,6 +57,10 @@ MEERKAT scores Pons V2 tokens and locally evidenced wallet behavior, then expose
 - [x] Split Radar indexing from HTTP, publish materialized feed/leaderboard views, add RPC failover configuration, and harden terminal response parsing.
 - [x] Make Radar score updates incremental and refresh complete feed/leaderboard snapshots at most once every five minutes.
 - [x] Batch concurrent Radar contract reads to accelerate token metadata profiling on rate-limited RPC.
+- [x] Repair missing token profiles in score order and patch recovered metadata into the visible Radar feed immediately.
+- [x] Add red/amber/green score identity to Radar tokens, leaderboard wallets, dossier headings and linked entities.
+- [x] Expand token dossiers with market metrics, scored buyers, current holders, evidenced P/L and a transaction-linked tape.
+- [x] Show profitable, losing and break-even outcomes immediately in Wallet Dossier and W/L in Leaderboard.
 
 - [x] Complete a launch-to-head backfill through the packaged server and record duration, cursor, event count, and restart/resume evidence.
 - [x] Add a relationship graph for deployer, curve buyers/sellers, transfer recipients, and explicitly marked pool callers.

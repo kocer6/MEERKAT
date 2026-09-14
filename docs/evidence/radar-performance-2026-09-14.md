@@ -36,3 +36,21 @@ The first post-batching cycle profiled 40 tokens in about one minute and complet
 - indexer journal after deployment: no application errors;
 - browser: Leaderboard rendered ranked PnL rows, Radar rendered cached signals with `METADATA PENDING` instead of a false token name, and a token link opened the animated two-step indexing state without the previous empty-JSON failure.
 
+## Expanded intelligence and metadata repair
+
+Commit `21c2f32dfd7dfe30bf1695c1cdd9072478ea0605` is deployed to both production services. Missing profiles are now selected in the same descending Radar-score order used by Signals, and each completed profile patches name, symbol and phase into the current cached feed immediately.
+
+The expanded terminal adds one score color scale across tokens and wallets, W/L counts in Leaderboard, profitable/losing/break-even totals in Wallet Dossier, and a six-tab Token Dossier. Its Market Intelligence tab contains eight headline metrics, scored buyer and holder tables, evidenced P/L and a transaction-linked tape. The tape reports exact blocks because individual Radar event timestamps are not indexed yet.
+
+Production verification during active indexing:
+
+- top Signals page: 50/50 rows had real token symbols after the first repair wave;
+- `/healthz`: `200` in 165 ms;
+- `/api/radar/signals`: `200` in 111 ms;
+- `/api/radar/leaderboard`: `200` in 135 ms and 100 rows;
+- PIXR Radar token summary: `200` in 96 ms, 16 positions, 31 events and 16 participant scores;
+- top-wallet summary: `200` in 177 ms, 50 completed outcomes, 33 profitable, 17 losing and 0 break-even;
+- local and production `npm run typecheck`: pass;
+- local and production `npm test`: 174 passed, 0 failed;
+- local and production `npm run build`: pass;
+- browser: Radar, PIXR Token Dossier, Leaderboard and the top Wallet Dossier rendered with the new data and navigation.
