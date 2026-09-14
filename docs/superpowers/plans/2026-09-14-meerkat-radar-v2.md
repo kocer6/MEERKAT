@@ -57,7 +57,7 @@
 - Consumes: `Launch` from `src/chain/discovery.ts` and JSON encoding conventions from `src/types.ts`.
 - Produces: `RadarStore`, `RadarLaunch`, `RadarEvent`, `WalletTokenPosition`, `ScoreSnapshot`, `RadarCursor`, `Page<T>`, and `WatchlistItem` for all later tasks.
 
-- [ ] **Step 1: Write the failing persistence and overlap tests**
+- [x] **Step 1: Write the failing persistence and overlap tests**
 
 ```ts
 import assert from 'node:assert/strict';
@@ -80,13 +80,13 @@ test('overlap replacement removes orphaned events and keeps the cursor atomicall
 });
 ```
 
-- [ ] **Step 2: Run the focused test and verify the missing module failure**
+- [x] **Step 2: Run the focused test and verify the missing module failure**
 
 Run: `node --import tsx --test test/radar-store.test.ts`
 
 Expected: FAIL with `Cannot find module '../src/radar/store.js'`.
 
-- [ ] **Step 3: Add exact shared contracts**
+- [x] **Step 3: Add exact shared contracts**
 
 ```ts
 export type RadarStage='discovered'|'profiled'|'tracking'|'scored'|'error';
@@ -103,7 +103,7 @@ export interface WatchlistItem {kind:'token'|'wallet';address:string;createdAt:n
 export interface Page<T> {items:T[];nextCursor:string|null}
 ```
 
-- [ ] **Step 4: Implement the store with versioned schema and range transactions**
+- [x] **Step 4: Implement the store with versioned schema and range transactions**
 
 ```ts
 export class RadarStore {
@@ -138,7 +138,7 @@ export class RadarStore {
 
 Implement `replaceLaunchRange`, `cursor`, `launchByToken`, `launchByCurve`, `eventsForToken`, `eventsForWallet`, position/score upserts, bounded cursor pages, activity queries, watchlist CRUD, `health`, and `close` using prepared statements. Cursor tokens are base64url JSON objects containing the final `(block,id)` pair and reject malformed input.
 
-- [ ] **Step 5: Run store tests, typecheck, and commit**
+- [x] **Step 5: Run store tests, typecheck, and commit**
 
 Run: `node --import tsx --test test/radar-store.test.ts && npm run typecheck`
 
