@@ -76,6 +76,7 @@ export interface WalletTokenPosition {
  totalPnl?:string|null;
  returnBps?:number|null;
  markedAtBlock?:string|null;
+ markAttemptAt?:number;
 }
 
 export interface WalletOutcome {

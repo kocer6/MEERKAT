@@ -150,3 +150,36 @@ test('materialized views refresh at most once inside the configured interval',as
  const store=new RadarStore(':memory:'),indexer=new RadarIndexer(store,reader,{rangeBlocks:200n,pollMs:30000,profileConcurrency:2,historyStartBlock:100n,viewRefreshMs:300000});await indexer.tick();const first=store.view('feed-rows')?.updatedAt;await indexer.tick();
  assert.equal(store.view('feed-rows')?.updatedAt,first);await indexer.close();store.close();
 });
+
+test('collector advances events while metadata RPC is stalled; projector survives enrichment failure',{timeout:3000},async()=>{
+ const store=new RadarStore(':memory:');let release!:()=>void,entered!:()=>void;
+ const waiting=new Promise<void>(resolve=>{entered=resolve;}),gate=new Promise<void>(resolve=>{release=resolve;});
+ const reader:RadarReader={chainId:async()=>4663,head:async()=>500n,block:async number=>({number,hash:`0x${number}`,timestamp:number}),factoryDeployment:async()=>100n,launches:async()=>[launch],trades:async()=>[buy],profile:async()=>{entered();await gate;throw new Error('metadata unavailable');},quoteSell:async()=>null};
+ store.replaceLaunchRange('factory',400n,500n,500n,[launch]);store.replaceEventRange('market',400n,500n,500n,[]);
+ const options={rangeBlocks:200n,pollMs:30000,profileConcurrency:1,historyStartBlock:100n};
+ const enrichment=new RadarIndexer(store,reader,{...options,mode:'enrich'}),collector=new RadarIndexer(store,reader,{...options,mode:'collect'}),projector=new RadarIndexer(store,reader,{...options,mode:'project'});
+ const work=enrichment.tick();await waiting;
+ try{await collector.tick();assert.equal(store.cursor('market')?.blockNumber,'500');assert.equal(store.eventsForToken(token).length,1);await projector.tick();assert.equal(projector.status().state,'ready');assert.equal(store.view<any[]>('feed-rows')?.value[0]?.token,token);assert.equal(store.pendingProjections(10).length,0);}finally{release();await work;await Promise.all([collector.close(),enrichment.close(),projector.close()]);store.close();}
+});
+
+test('durable projection revisions cannot acknowledge newer collected work',()=>{
+ const store=new RadarStore(':memory:');store.queueProjection(token);const [first]=store.pendingProjections(10);store.queueProjection(token);store.finishProjection(first!);assert.equal(store.pendingProjections(10).length,1);store.finishProjection(store.pendingProjections(10)[0]!);assert.equal(store.pendingProjections(10).length,0);store.close();
+});
+
+test('a late quote cannot overwrite a position changed by the collector',()=>{
+ const store=new RadarStore(':memory:');store.saveLaunch(launch);store.replaceEventRange('market',400n,500n,500n,[{...buy,token}]);const before=store.position(wallet,token)!;
+ store.replaceEventRange('market',400n,500n,500n,[{...buy,token,tokens:'200',quote:'20'}]);
+ assert.equal(store.savePositionIfUnchanged(before,{...before,currentValue:'99'}),false);assert.equal(store.position(wallet,token)?.tokenBalance,'200');store.close();
+});
+
+test('enrichment refreshes an existing profile without downgrading its scored state',async()=>{
+ const store=new RadarStore(':memory:');store.replaceLaunchRange('factory',400n,500n,500n,[{...launch,state:'scored',profile}]);store.replaceEventRange('market',400n,500n,500n,[]);
+ const reader={chainId:async()=>4663,profile:async()=>({...profile,phase:1,profiledAt:Date.now()}),quoteSell:async()=>null} as unknown as RadarReader;
+ const worker=new RadarIndexer(store,reader,{mode:'enrich',rangeBlocks:200n,pollMs:30000,profileConcurrency:1,historyStartBlock:100n});await worker.tick();assert.equal(store.launchByToken(token)?.profile?.phase,1);assert.equal(store.launchByToken(token)?.state,'scored');assert.equal(store.pendingProjections(10).length,1);await worker.close();store.close();
+});
+
+test('late metadata cannot resurrect a launch removed by overlap correction',async()=>{
+ const store=new RadarStore(':memory:');store.replaceLaunchRange('factory',400n,500n,500n,[launch]);store.replaceEventRange('market',400n,500n,500n,[]);let entered!:()=>void,release!:()=>void;const started=new Promise<void>(resolve=>{entered=resolve;}),gate=new Promise<void>(resolve=>{release=resolve;});
+ const reader={chainId:async()=>4663,profile:async()=>{entered();await gate;return profile;},quoteSell:async()=>null} as unknown as RadarReader;
+ const worker=new RadarIndexer(store,reader,{mode:'enrich',rangeBlocks:200n,pollMs:30000,profileConcurrency:1,historyStartBlock:100n});const work=worker.tick();await started;store.replaceLaunchRange('factory',400n,500n,500n,[]);release();await work;assert.equal(store.launchByToken(token),undefined);await worker.close();store.close();
+});

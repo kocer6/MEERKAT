@@ -186,3 +186,18 @@ curl -fsS -H 'Host: meerkat.my' http://127.0.0.1:4664/healthz
 ```
 
 Keep `observer.sqlite.before-restore` until the restored service and representative dossiers have been checked.
+
+
+## Separated Radar workers (2026-09-14)
+
+Production uses one SQLite WAL database and three independent services:
+
+- `meerkat-indexer.service` runs `radar-collect`: factory/market log collection, cursor commits and indexed position accounting. It makes no metadata or quote calls and does not build leaderboards.
+- `meerkat-enrich.service` runs `radar-enrich`: bounded contract profiles, curve position quotes and public GeckoTerminal/DexScreener batches. Existing profiles and market snapshots become eligible for refresh after five minutes; queue capacity and source availability determine actual freshness. Each field keeps its source/time and missing values remain missing.
+- `meerkat-project.service` runs `radar-project`: drains versioned token work, recomputes evidence scores and patches the feed every five seconds when capacity permits. Full leaderboards refresh on a five-minute clock. It does not call RPC or external market APIs.
+
+`radar_projection_queue` is committed with collected events and successful enrichment. Versioned acknowledgements prevent newer work being lost; interrupted processing is retried. Metadata results verify the launch still exists; quote writes compare the original position before updating. API `/api/radar/status` exposes each worker's status and pending projections. Web remains read-only with `MEERKAT_RADAR=0`.
+
+Market batches contain at most 30 token addresses on Robinhood Chain. GeckoTerminal is first; DexScreener is the fallback. Token identity and chain must match. Market cap and FDV are separate, and indicative USD snapshots never replace executable curve quotes or invent wallet P/L. Source failures preserve the last successful snapshot and are retried after the cooldown.
+
+Upgrade: pull/build/test, install all three units from `deploy/`, run `systemctl daemon-reload`, restart the existing collector and web, and enable/start `meerkat-enrich.service meerkat-project.service`. Stop the old combined indexer before starting the split workers. `radar-index` remains a combined local compatibility command; do not run it against the production database alongside the split workers. Rollback: stop enrichment/projection, restore the previous code/unit and restart the previous indexer; additive queue/market tables can remain.

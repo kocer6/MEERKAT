@@ -60,7 +60,8 @@ test('production deployment kit contains the required service boundaries',()=>{
 test('production runs the web server and Radar indexer as separate services',()=>{
  const web=readFileSync('deploy/meerkat.service','utf8'),worker=readFileSync('deploy/meerkat-indexer.service','utf8'),install=readFileSync('deploy/install.sh','utf8'),env=readFileSync('deploy/meerkat.env.example','utf8');
  assert.match(web,/MEERKAT_RADAR=0/);
- assert.match(worker,/radar-index/);
+ assert.match(worker,/radar-collect/);
+ for(const role of ['enrich','project']){const unit=readFileSync(`deploy/meerkat-${role}.service`,'utf8');assert.match(unit,new RegExp(`radar-${role}`));assert.match(unit,/User=meerkat/);}
  assert.match(install,/meerkat-indexer\.service/);
  assert.match(env,/MEERKAT_RPC_URLS=/);
 });

@@ -1,3 +1,4 @@
+import type {RadarMarket} from './market.js';
 import type {RadarReader} from './reader.js';
 import {RadarStore} from './store.js';
 import type {RadarEvent,RadarLaunch} from './types.js';
@@ -6,6 +7,8 @@ import {markPosition} from './positions.js';
 import {RadarService} from './service.js';
 
 export interface RadarIndexerOptions {
+ marketRead?:(tokens:string[])=>Promise<RadarMarket[]>;
+ mode?:'combined'|'collect'|'enrich'|'project';
  rangeBlocks:bigint;
  pollMs:number;
  profileConcurrency:number;
@@ -39,7 +42,7 @@ export class RadarIndexer {
  tick():Promise<void>{
   if(this.pending)return this.pending;
   if(this.stopped)return Promise.resolve();
-  const work=this.runCycle();
+  const work=this.options.mode==='enrich'||this.options.mode==='project'?this.runDerivedCycle():this.runCycle();
   this.pending=work.finally(()=>{this.pending=null;});
   return this.pending;
  }
@@ -59,7 +62,7 @@ export class RadarIndexer {
    const factoryBlock=await this.reader.block(factoryRange.to);
    this.store.replaceLaunchRange('factory',factoryRange.from,factoryRange.to,factoryRange.to,launches,factoryBlock.hash);
    timing('discovery');
-   const views=new RadarService(this.store,()=>this.status()),profiled=await this.profileLaunches(head);views.refreshFeedProfiles(profiled);
+   const collecting=this.options.mode==='collect',views=new RadarService(this.store,()=>this.status()),profiled=collecting?[]:await this.profileLaunches(head);if(!collecting)views.refreshFeedProfiles(profiled);
    timing(`profiles (${profiled.length})`);
    const marketRange=this.range('market',head,this.options.historyStartBlock>deployment?this.options.historyStartBlock:deployment),raw=await this.reader.trades(marketRange.from,marketRange.to),events:RadarEvent[]=[];
    for(const event of raw){const launch=this.store.launchByCurve(event.curve);if(launch)events.push({...event,token:launch.token});}
@@ -67,22 +70,59 @@ export class RadarIndexer {
    this.store.replaceEventRange('market',marketRange.from,marketRange.to,marketRange.to,events,marketBlock.hash);
    timing(`market (${events.length} events)`);
    for(const token of new Set(events.map(event=>event.token))){const launch=this.store.launchByToken(token);if(launch?.profile&&launch.state==='profiled')this.store.saveLaunch({...launch,state:'tracking',updatedAt:Date.now()});}
+   if(!collecting){
    await this.markPositions(head,[...new Set(events.map(event=>event.token))]);
    timing('marks');
    const changed=[...new Set([...profiled,...events.map(event=>event.token)])];this.store.transaction(()=>this.recomputeScores(head,changed));
    timing('scores');
    const lastView=this.store.view('leaderboard-all')?.updatedAt;if(!lastView||Date.now()-lastView>=(this.options.viewRefreshMs??300000))views.refreshViews();
-   timing('views');console.info(`Radar cycle: ${Date.now()-started}ms`);
+   timing('views');}
+   console.info(`Radar cycle: ${Date.now()-started}ms`);
    const cursor=this.store.cursor('market')!;
    this.snapshot={state:'ready',headBlock:head.toString(),lastIndexedBlock:cursor.blockNumber,lagBlocks:(head-BigInt(cursor.blockNumber)).toString(),updatedAt:Date.now(),queueDepth:this.store.launches().filter(row=>!row.profile).length,error:null};this.publishStatus();
   }catch(error){this.snapshot={...this.snapshot,state:'error',updatedAt:Date.now(),error:sanitize(error)};this.publishStatus();}
  }
 
- private async markPositions(head:bigint,tokens:string[]){
-  const jobs=tokens.flatMap(token=>this.store.positionsForToken(token).map(position=>({token,position}))).sort((a,b)=>BigInt(a.position.markedAtBlock??0)<BigInt(b.position.markedAtBlock??0)?-1:BigInt(a.position.markedAtBlock??0)>BigInt(b.position.markedAtBlock??0)?1:a.position.wallet.localeCompare(b.position.wallet)).slice(0,4),workers=Math.min(4,jobs.length);let cursor=0;
-  const work=async()=>{while(cursor<jobs.length){const job=jobs[cursor++];if(!job)continue;const balance=BigInt(job.position.tokenBalance);if(!job.position.complete){this.store.savePosition({...job.position,currentValue:null,openPnl:null,totalPnl:null,returnBps:null,markedAtBlock:head.toString()});continue;}const quote=balance===0n?0n:await this.reader.quoteSell(job.token,balance,head);if(quote===null){this.store.savePosition({...job.position,currentValue:null,openPnl:null,totalPnl:null,returnBps:null,markedAtBlock:head.toString()});continue;}this.store.savePosition({...job.position,...markPosition(job.position,quote),markedAtBlock:head.toString()});}};
-  await Promise.all(Array.from({length:workers},()=>work()));
+ private async runDerivedCycle(){
+  const started=Date.now(),mode=this.options.mode!;this.snapshot={...this.snapshot,state:'indexing',error:null};this.publishStatus();
+  try{
+   const cursor=this.store.cursor('market');if(!cursor){this.snapshot={...this.snapshot,state:'idle'};this.publishStatus();return;}
+   const head=BigInt(cursor.blockNumber),views=new RadarService(this.store,()=>this.status());
+   if(mode==='enrich'){
+    if(await this.reader.chainId()!==4663)throw new Error('wrong enrichment chain; expected 4663');
+    const results=await Promise.allSettled([this.profileLaunches(head),this.markPositions(head,[]),this.enrichMarket()]);
+    const failed=results.find(result=>result.status==='rejected');if(failed?.status==='rejected')throw failed.reason;
+   }else{
+    const jobs=this.store.pendingProjections(12);
+    // Read committed events, score, publish and acknowledge together. No network inside this transaction.
+    this.store.transaction(()=>{const changed=this.recomputeScores(head,jobs.map(job=>job.token));views.refreshFeedTokens(changed);for(const job of jobs)this.store.finishProjection(job);});
+    const last= this.store.view('leaderboard-all')?.updatedAt;
+    if(!last||Date.now()-last>=(this.options.viewRefreshMs??300000))views.refreshViews();
+   }
+   this.snapshot={state:'ready',headBlock:head.toString(),lastIndexedBlock:cursor.blockNumber,lagBlocks:null,updatedAt:Date.now(),queueDepth:mode==='project'?this.store.projectionCount():this.store.launches().filter(row=>!row.profile).length,error:null};
+   console.info(`Radar ${mode} cycle: ${Date.now()-started}ms; pending ${this.snapshot.queueDepth}`);
+  }catch(error){this.snapshot={...this.snapshot,state:'error',updatedAt:Date.now(),error:sanitize(error)};}
+  this.publishStatus();
  }
+
+ private async enrichMarket(){
+  if(!this.options.marketRead)return;const tokens=this.store.marketCandidates();if(!tokens.length)return;
+  try{const rows=await this.options.marketRead(tokens),byToken=new Map(rows.map(row=>[row.token,row]));this.store.transaction(()=>{for(const token of tokens){this.store.saveMarket(token,byToken.get(token)??null);this.store.queueProjection(token);}});}
+  catch(error){this.store.transaction(()=>{for(const token of tokens)this.store.saveMarket(token,null,sanitize(error));});console.warn(`Radar market deferred: ${sanitize(error)}`);}
+ }
+
+ private async markPositions(head:bigint,tokens:string[]){
+  const candidates=this.options.mode==='enrich'?this.store.markCandidates(4):tokens.flatMap(token=>this.store.positionsForToken(token));
+  const jobs=candidates.sort((a,b)=>Number(BigInt(a.markedAtBlock??0)-BigInt(b.markedAtBlock??0))||a.wallet.localeCompare(b.wallet)).slice(0,4);let cursor=0;
+  const work=async()=>{while(cursor<jobs.length){const position=jobs[cursor++];if(!position)continue;
+   try{const balance=BigInt(position.tokenBalance),quote=!position.complete?null:balance===0n?0n:await this.reader.quoteSell(position.token,balance,head);
+    const marked={...position,...(quote===null?{currentValue:null,openPnl:null,totalPnl:null,returnBps:null}:markPosition(position,quote)),markedAtBlock:head.toString(),markAttemptAt:Date.now()};
+    this.store.transaction(()=>{if(this.store.savePositionIfUnchanged(position,marked))this.store.queueProjection(position.token);});
+   }catch(error){this.store.savePositionIfUnchanged(position,{...position,markAttemptAt:Date.now()});console.warn(`Radar quote deferred: ${sanitize(error)}`);}
+  }};
+  await Promise.all(Array.from({length:Math.min(4,jobs.length)},()=>work()));
+ }
+
 
  private recomputeScores(head:bigint,tokens:string[]){
   const tokenSet=new Set(tokens),wallets=new Set<string>();
@@ -103,6 +143,7 @@ export class RadarIndexer {
    const radarScore=scoreRadarStrength({subject:launch.token,asOfBlock:head.toString(),verified:true,recentMarketIndexed:true,nonInfrastructureEvents:events.length,qualifiedConviction:qualified.length?qualified.reduce((sum,value)=>sum+value**2/100,0)/qualified.length:null,qualifiedBreadth:qualified.length?Math.min(100,qualified.length*12):null,flowAcceleration:events.length>=5?Math.min(100,events.length*4):null,netBuyPressure:totalFlow>0n?Number(buyFlow*100n/totalFlow):null,freshness:events.length?100:null,launchQuality:launchQuality?.value??null,holderRetention:launch.profile?.holderCount===null||!launch.profile?null:Math.min(100,launch.profile.holderCount*4),riskPenalty:sellFlow>buyFlow&&totalFlow>0n?Math.min(25,Number((sellFlow-buyFlow)*25n/totalFlow)):0});
    this.persistScore(radarScore,head);if(radarScore.value!==null)this.store.saveLaunch({...launch,state:'scored',updatedAt:Date.now()});
   }
+ return [...tokenSet];
  }
 
  private persistScore(score:ReturnType<typeof scoreLaunchQuality>,head:bigint){
@@ -117,8 +158,15 @@ export class RadarIndexer {
   const visibleFresh=cached.filter(row=>row.launchBlock!==undefined).sort((a,b)=>Number(BigInt(b.launchBlock!)-BigInt(a.launchBlock!))||a.token.localeCompare(b.token)).slice(0,50).map(row=>byToken.get(row.token)).filter(eligible),fresh=launches.filter(eligible),preferred=[...cached].filter(row=>row.radarStrength!==null).sort((a,b)=>(b.radarStrength??-1)-(a.radarStrength??-1)||a.token.localeCompare(b.token)).map(row=>byToken.get(row.token)).filter(eligible),seen=new Set<string>(),queue:RadarLaunch[]=[];
   const add=(rows:RadarLaunch[],capacity:number)=>{for(const row of rows)if(queue.length<capacity&&!seen.has(row.token)){seen.add(row.token);queue.push(row);}};
   add(visibleFresh,Math.floor(limit/4));add(fresh,Math.floor(limit/2));add(preferred,Math.max(1,Math.ceil(limit*0.75)));add(this.store.profileCandidates(limit),limit);add(fresh,limit);
+  if(this.options.mode==='enrich')add(this.store.staleProfiles(Math.max(1,Math.floor(limit/4))),queue.length+Math.max(1,Math.floor(limit/4)));
   let cursor=0;const profiled:string[]=[];
-  const worker=async()=>{while(cursor<queue.length){const row=queue[cursor++];if(!row)continue;try{const profile=await this.reader.profile(row.token,head);this.store.saveLaunch({...row,state:'profiled',profile,profileError:null,profileAttemptAt:Date.now(),updatedAt:Date.now()});profiled.push(row.token);}catch(error){this.store.saveLaunch({...row,state:'error',profileError:sanitize(error),profileAttemptAt:Date.now(),updatedAt:Date.now()});}}};
+  const worker=async()=>{while(cursor<queue.length){const row=queue[cursor++];if(!row)continue;
+   try{const profile=await this.reader.profile(row.token,head);this.store.transaction(()=>{
+    const latest=this.store.launchByToken(row.token);if(!latest||latest.curve!==row.curve||latest.txHash!==row.txHash)return;
+    this.store.saveLaunch({...latest,state:latest.state==='scored'||latest.state==='tracking'?latest.state:'profiled',profile,profileError:null,profileAttemptAt:Date.now(),updatedAt:Date.now()});this.store.queueProjection(row.token);profiled.push(row.token);
+   });}catch(error){this.store.transaction(()=>{const latest=this.store.launchByToken(row.token);if(!latest||latest.curve!==row.curve||latest.txHash!==row.txHash)return;this.store.saveLaunch({...latest,state:latest.profile?latest.state:'error',profileError:sanitize(error),profileAttemptAt:Date.now(),updatedAt:Date.now()});});}
+  }};
+
   await Promise.all(Array.from({length:Math.min(this.options.profileConcurrency,queue.length)},()=>worker()));
   return profiled;
  }
@@ -129,5 +177,5 @@ export class RadarIndexer {
   const from=saved>63n?saved-63n:0n;return {from:from>floor?from:floor,to:head};
  }
 
- private publishStatus(){this.store.saveView('indexer-status',this.snapshot,this.snapshot.updatedAt??Date.now());}
+ private publishStatus(){this.store.saveView(this.options.mode==='enrich'?'enrich-status':this.options.mode==='project'?'project-status':'indexer-status',this.snapshot,this.snapshot.updatedAt??Date.now());}
 }

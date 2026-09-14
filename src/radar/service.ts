@@ -12,7 +12,7 @@ export interface RadarFeedRow {
  pairToken:string;
  launchBlock:string;ageMs:number|null;phase:number|null;participants:number;
  buys:number;sells:number;buyFlow:string;sellFlow:string;missingInputs:string[];
- updatedAt:number;radarStrength:number|null;
+ updatedAt:number;radarStrength:number|null;market?:ReturnType<RadarStore['market']>;
 }
 export type LeaderboardSort='total-pnl'|'realized'|'open'|'win-rate'|'reputation';
 export type LeaderboardStatus='eligible'|'provisional'|'all';
@@ -32,7 +32,7 @@ const windowMs:Record<Exclude<RadarWindow,'all'>,number>={
 export class RadarService {
  constructor(private store:RadarStore,private indexStatus:()=>RadarIndexerStatus,private allowExpensiveFallback=true){}
 
- status(){return {...this.indexStatus(),...this.store.counts()};}
+ status(){return {...this.indexStatus(),...this.store.counts(),workers:{collection:this.store.view('indexer-status')?.value??null,enrichment:this.store.view('enrich-status')?.value??null,projection:this.store.view('project-status')?.value??null},pendingProjections:this.store.projectionCount()};}
  launches(cursor:string|null){return this.signals({feed:'launches',window:'all',cursor});}
 
  search(raw:string){
@@ -45,7 +45,7 @@ export class RadarService {
  tokenSummary(address:string){
   if(!isAddress(address))throw new Error('Invalid token address');const token=address.toLowerCase(),launch=this.store.launchByToken(token);if(!launch)throw new Error('Token is not registered in the Radar index');
   const positions=this.store.positionsForToken(token),events=this.store.eventsForToken(token),participantScores=positions.map(row=>{const score=this.store.score(row.wallet,'wallet-reputation');return {wallet:row.wallet,reputation:score?.value??null,confidence:score?.confidence??'provisional'};});
-  return {launch,launchQuality:this.store.score(token,'launch-quality')??null,radarStrength:this.store.score(token,'radar-strength')??null,positions,events,participantScores};
+  return {launch,market:this.store.market(token),launchQuality:this.store.score(token,'launch-quality')??null,radarStrength:this.store.score(token,'radar-strength')??null,positions,events,participantScores};
  }
 
  walletSummary(address:string){
@@ -63,6 +63,12 @@ export class RadarService {
  refreshViews(updatedAt=Date.now()){
   const now=Date.now(),feed=this.store.launches().map(row=>this.feedRow(row,now));this.store.saveView('feed-rows',feed,updatedAt);
   for(const window of ['24h','7d','30d','all'] as const)this.store.saveView(`leaderboard-${window}`,this.buildLeaderboardRows(window),updatedAt);
+ }
+
+ refreshFeedTokens(tokens:string[],updatedAt=Date.now()){
+  const rows=new Map((this.store.view<RadarFeedRow[]>('feed-rows')?.value??[]).map(row=>[row.token,row]));
+  for(const token of tokens){const launch=this.store.launchByToken(token);if(launch)rows.set(token,this.feedRow(launch,updatedAt));else rows.delete(token);}
+  this.store.saveView('feed-rows',[...rows.values()],updatedAt);
  }
 
  refreshFeedProfiles(tokens:string[],updatedAt=Date.now()){
@@ -111,7 +117,8 @@ export class RadarService {
   if(!launch.profile)missingInputs.push('token profile');
   if(!events.length)missingInputs.push('market activity');
   if(launch.profile?.holderCount===null)missingInputs.push('holder breadth');
-  return {token:launch.token,curve:launch.curve,name:launch.profile?.name??null,symbol:launch.profile?.symbol??null,state:launch.state,pairToken:launch.pairToken,launchBlock:launch.launchBlock,ageMs:Math.max(0,now-launch.updatedAt),phase:launch.profile?.phase??null,participants:wallets.size,buys:buys.length,sells:sells.length,buyFlow:sum(buys),sellFlow:sum(sells),missingInputs,updatedAt:launch.updatedAt,radarStrength:this.store.score(launch.token,'radar-strength')?.value??null};
+  const market=this.store.market(launch.token);
+  return {token:launch.token,curve:launch.curve,market,name:launch.profile?.name??market?.data?.name??null,symbol:launch.profile?.symbol??market?.data?.symbol??null,state:launch.state,pairToken:launch.pairToken,launchBlock:launch.launchBlock,ageMs:Math.max(0,now-launch.updatedAt),phase:launch.profile?.phase??null,participants:wallets.size,buys:buys.length,sells:sells.length,buyFlow:sum(buys),sellFlow:sum(sells),missingInputs,updatedAt:launch.updatedAt,radarStrength:this.store.score(launch.token,'radar-strength')?.value??null};
  }
 
  private eligibilityReasons(wallet:string,outcomes:ReturnType<RadarStore['outcomesForWallet']>,positions:ReturnType<RadarStore['positionsForWallet']>,infrastructure=this.store.launches().some(row=>[row.token,row.curve,row.deployer].includes(wallet))){

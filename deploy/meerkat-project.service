@@ -1,5 +1,5 @@
 [Unit]
-Description=MEERKAT Radar event collector
+Description=MEERKAT Radar project worker
 Wants=network-online.target
 After=network-online.target
 
@@ -9,7 +9,7 @@ User=meerkat
 Group=meerkat
 WorkingDirectory=/opt/meerkat/app
 EnvironmentFile=/etc/meerkat/meerkat.env
-ExecStart=/opt/meerkat/node/bin/node /opt/meerkat/app/dist/src/cli.js radar-collect
+ExecStart=/opt/meerkat/node/bin/node /opt/meerkat/app/dist/src/cli.js radar-project
 Restart=on-failure
 RestartSec=5
 TimeoutStopSec=120

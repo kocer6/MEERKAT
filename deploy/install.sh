@@ -71,6 +71,8 @@ fi
 runuser -u meerkat -- env PATH=/opt/meerkat/node/bin:/usr/bin:/bin bash -lc 'cd /opt/meerkat/app && npm ci && npm run typecheck && npm test && npm run build'
 install -m 0644 /opt/meerkat/app/deploy/meerkat.service /etc/systemd/system/meerkat.service
 install -m 0644 /opt/meerkat/app/deploy/meerkat-indexer.service /etc/systemd/system/meerkat-indexer.service
+install -m 0644 /opt/meerkat/app/deploy/meerkat-enrich.service /etc/systemd/system/meerkat-enrich.service
+install -m 0644 /opt/meerkat/app/deploy/meerkat-project.service /etc/systemd/system/meerkat-project.service
 install -m 0755 /opt/meerkat/app/deploy/meerkat-backup /usr/local/sbin/meerkat-backup
 install -m 0644 /opt/meerkat/app/deploy/meerkat-backup.service /etc/systemd/system/meerkat-backup.service
 install -m 0644 /opt/meerkat/app/deploy/meerkat-backup.timer /etc/systemd/system/meerkat-backup.timer
@@ -85,7 +87,7 @@ systemctl daemon-reload
 caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
 systemctl enable --now unattended-upgrades.service
 systemctl enable --now meerkat.service
-systemctl enable --now meerkat-indexer.service
+systemctl enable --now meerkat-indexer.service meerkat-enrich.service meerkat-project.service
 systemctl enable --now caddy.service
 systemctl reload caddy.service
 systemctl enable --now meerkat-backup.timer

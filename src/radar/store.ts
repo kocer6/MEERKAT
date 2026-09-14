@@ -1,6 +1,8 @@
+import {randomUUID} from 'node:crypto';
 import {mkdirSync} from 'node:fs';
 import {dirname} from 'node:path';
 import {DatabaseSync} from 'node:sqlite';
+import type {RadarMarket} from './market.js';
 import {applyPositionEvent,emptyPosition} from './positions.js';
 import type {Page,RadarActivity,RadarCursor,RadarEvent,RadarLaunch,ScoreSnapshot,WalletOutcome,WalletTokenPosition,WatchKind,WatchlistItem} from './types.js';
 
@@ -21,7 +23,7 @@ export class RadarStore {
   if(file!==':memory:')mkdirSync(dirname(file),{recursive:true});
   this.db=new DatabaseSync(file);
   this.db.exec(`PRAGMA journal_mode=WAL;
-   PRAGMA busy_timeout=3000;
+   PRAGMA busy_timeout=15000;
    PRAGMA user_version=1;
    CREATE TABLE IF NOT EXISTS radar_cursors(name TEXT PRIMARY KEY,block_number INTEGER NOT NULL,block_hash TEXT,updated_at INTEGER NOT NULL);
    CREATE TABLE IF NOT EXISTS radar_launches(token TEXT PRIMARY KEY,curve TEXT UNIQUE NOT NULL,block INTEGER NOT NULL,value TEXT NOT NULL);
@@ -32,6 +34,8 @@ export class RadarStore {
    CREATE TABLE IF NOT EXISTS token_signal_snapshots(token TEXT NOT NULL,kind TEXT NOT NULL,value TEXT NOT NULL,PRIMARY KEY(token,kind));
    CREATE TABLE IF NOT EXISTS radar_activity(id TEXT PRIMARY KEY,block INTEGER NOT NULL,value TEXT NOT NULL);
    CREATE TABLE IF NOT EXISTS watchlist_items(kind TEXT NOT NULL,address TEXT NOT NULL,created_at INTEGER NOT NULL,PRIMARY KEY(kind,address));
+   CREATE TABLE IF NOT EXISTS radar_market(token TEXT PRIMARY KEY,checked_at INTEGER NOT NULL,value TEXT,error TEXT);
+   CREATE TABLE IF NOT EXISTS radar_projection_queue(token TEXT PRIMARY KEY,revision TEXT NOT NULL,queued_at INTEGER NOT NULL);
    CREATE TABLE IF NOT EXISTS radar_views(name TEXT PRIMARY KEY,updated_at INTEGER NOT NULL,value TEXT NOT NULL);
    CREATE INDEX IF NOT EXISTS radar_events_token_block ON radar_events(token,block,id);
    CREATE INDEX IF NOT EXISTS radar_events_wallet_block ON radar_events(wallet,block,id);
@@ -67,11 +71,12 @@ export class RadarStore {
  }
 
  replaceLaunchRange(name:string,from:bigint,to:bigint,cursor:bigint,launches:RadarLaunch[],cursorHash:string|null=null){
-  const retained=launches.map(row=>{const incoming=this.normalizeLaunch(row),existing=this.launchByToken(incoming.token);return existing&&existing.curve===incoming.curve?{...incoming,state:existing.state,profile:existing.profile,profileError:existing.profileError,profileAttemptAt:existing.profileAttemptAt,updatedAt:existing.updatedAt}:incoming;});
   this.transaction(()=>{
+  const retained=launches.map(row=>{const incoming=this.normalizeLaunch(row),existing=this.launchByToken(incoming.token);return existing&&existing.curve===incoming.curve?{...incoming,state:existing.state,profile:existing.profile,profileError:existing.profileError,profileAttemptAt:existing.profileAttemptAt,updatedAt:existing.updatedAt}:incoming;});
+   for(const row of this.db.prepare('SELECT token FROM radar_launches WHERE block>=? AND block<=?').all(Number(from),Number(to)) as {token:string}[])this.queueProjection(row.token);
    this.db.prepare('DELETE FROM radar_launches WHERE block>=? AND block<=?').run(Number(from),Number(to));
    const insert=this.db.prepare('INSERT INTO radar_launches(token,curve,block,value) VALUES (?,?,?,?)');
-   for(const launch of retained)insert.run(launch.token,launch.curve,Number(launch.launchBlock),JSON.stringify(launch));
+   for(const launch of retained){insert.run(launch.token,launch.curve,Number(launch.launchBlock),JSON.stringify(launch));this.queueProjection(launch.token);}
    this.saveCursor(name,cursor,cursorHash);
   });
  }
@@ -82,10 +87,30 @@ export class RadarStore {
    this.db.prepare('DELETE FROM radar_events WHERE block>=? AND block<=?').run(Number(from),Number(to));
    const insert=this.db.prepare('INSERT INTO radar_events(id,token,curve,wallet,kind,block,value) VALUES (?,?,?,?,?,?,?)');
    for(const row of events){const event=this.normalizeEvent(row);insert.run(event.id,event.token,event.curve,event.wallet,event.kind,Number(event.blockNumber),JSON.stringify(event));if(event.wallet)affected.add(`${event.wallet}:${event.token}`);}
-   for(const key of affected){const split=key.indexOf(':0x'),wallet=key.slice(0,split),token=key.slice(split+1);this.rebuildPosition(wallet,token);}
+   for(const key of affected){const split=key.indexOf(':0x'),wallet=key.slice(0,split),token=key.slice(split+1);this.rebuildPosition(wallet,token);this.queueProjection(token);}
    this.saveCursor(name,cursor,cursorHash);
   });
  }
+
+ market(token:string){const row=this.db.prepare('SELECT value,checked_at,error FROM radar_market WHERE token=?').get(normalized(token)) as {value:string|null;checked_at:number;error:string|null}|undefined;return row?{data:row.value?JSON.parse(row.value) as RadarMarket:null,checkedAt:row.checked_at,error:row.error}:null;}
+ saveMarket(token:string,value:RadarMarket|null,error:string|null=null){this.db.prepare('INSERT INTO radar_market(token,checked_at,value,error) VALUES (?,?,?,?) ON CONFLICT(token) DO UPDATE SET checked_at=excluded.checked_at,value=COALESCE(excluded.value,radar_market.value),error=excluded.error').run(normalized(token),Date.now(),value?JSON.stringify(value):null,error);}
+ marketCandidates(limit=30){
+  const eligible=(token:string)=>!this.market(token)||this.market(token)!.checkedAt<Date.now()-300000;
+  const cached=this.view<Array<{token:string;radarStrength:number|null;launchBlock:string}>>('feed-rows')?.value??[],queue:string[]=[];
+  const add=(tokens:string[],cap:number)=>{for(const token of tokens)if(queue.length<cap&&!queue.includes(token)&&eligible(token))queue.push(token);};
+  add([...cached].sort((a,b)=>Number(BigInt(b.launchBlock)-BigInt(a.launchBlock))).slice(0,50).map(row=>row.token),Math.floor(limit/3));
+  add([...cached].sort((a,b)=>(b.radarStrength??-1)-(a.radarStrength??-1)).slice(0,50).map(row=>row.token),Math.floor(limit*2/3));
+  const oldest=this.db.prepare('SELECT l.token FROM radar_launches l LEFT JOIN radar_market m ON m.token=l.token WHERE m.checked_at IS NULL OR m.checked_at<? ORDER BY COALESCE(m.checked_at,0),l.block DESC LIMIT ?').all(Date.now()-300000,limit) as {token:string}[];
+  add(oldest.map(row=>row.token),limit);return queue;
+ }
+
+ queueProjection(token:string){this.db.prepare('INSERT INTO radar_projection_queue(token,revision,queued_at) VALUES (?,?,?) ON CONFLICT(token) DO UPDATE SET revision=excluded.revision').run(normalized(token),randomUUID(),Date.now());}
+ pendingProjections(limit:number){return this.db.prepare('SELECT token,revision FROM radar_projection_queue ORDER BY queued_at,token LIMIT ?').all(limit) as {token:string;revision:string}[];}
+ finishProjection(job:{token:string;revision:string}){this.db.prepare('DELETE FROM radar_projection_queue WHERE token=? AND revision=?').run(job.token,job.revision);}
+ projectionCount(){return (this.db.prepare('SELECT COUNT(*) AS count FROM radar_projection_queue').get() as {count:number}).count;}
+ staleProfiles(limit:number){return (this.db.prepare("SELECT value FROM radar_launches WHERE json_extract(value,'$.profile') IS NOT NULL AND COALESCE(json_extract(value,'$.profileAttemptAt'),json_extract(value,'$.profile.profiledAt'),0)<? ORDER BY COALESCE(json_extract(value,'$.profileAttemptAt'),json_extract(value,'$.profile.profiledAt'),0),block DESC LIMIT ?").all(Date.now()-300000,limit) as ValueRow[]).map(row=>JSON.parse(row.value) as RadarLaunch);}
+ markCandidates(limit:number){return (this.db.prepare("SELECT value FROM wallet_token_positions WHERE json_extract(value,'$.tokenBalance')!='0' ORDER BY COALESCE(json_extract(value,'$.markAttemptAt'),0),wallet,token LIMIT ?").all(limit) as ValueRow[]).map(row=>JSON.parse(row.value) as WalletTokenPosition);}
+ savePositionIfUnchanged(before:WalletTokenPosition,after:WalletTokenPosition){return this.db.prepare('UPDATE wallet_token_positions SET value=? WHERE wallet=? AND token=? AND value=?').run(JSON.stringify(after),before.wallet,before.token,JSON.stringify(before)).changes===1;}
 
  saveLaunch(row:RadarLaunch){
   const launch=this.normalizeLaunch(row);
@@ -116,11 +141,11 @@ export class RadarStore {
 
  private rebuildPosition(wallet:string,token:string){
   const previous=this.position(wallet,token),launch=this.launchByToken(token),events=this.eventsForPosition(wallet,token);
-  if(!launch||!events.length||wallet===launch.curve||wallet===launch.token||wallet==='0x0000000000000000000000000000000000000000'){this.deletePosition(wallet,token);return;}
+  if(!launch||!events.length||wallet===launch.curve||wallet===launch.token||wallet==='0x0000000000000000000000000000000000000000'){this.deletePosition(wallet,token);this.db.prepare('DELETE FROM wallet_outcomes WHERE wallet=? AND token=?').run(wallet,token);return;}
   let position=emptyPosition(wallet,token,launch.pairToken);
   for(const event of events)position=applyPositionEvent(position,event);
   const unchanged=previous&&['pairToken','tokenBalance','remainingCost','realizedPnl','observedProceeds','buys','sells','firstBuyBlock','lastTradeBlock','complete'].every(key=>previous[key as keyof WalletTokenPosition]===position[key as keyof WalletTokenPosition]);
-  this.savePosition({...position,currentValue:unchanged?previous.currentValue??null:null,openPnl:unchanged?previous.openPnl??null:null,totalPnl:unchanged?previous.totalPnl??null:null,returnBps:unchanged?previous.returnBps??null:null,markedAtBlock:unchanged?previous.markedAtBlock??null:null});
+  this.savePosition({...position,currentValue:unchanged?previous.currentValue??null:null,openPnl:unchanged?previous.openPnl??null:null,totalPnl:unchanged?previous.totalPnl??null:null,returnBps:unchanged?previous.returnBps??null:null,markedAtBlock:unchanged?previous.markedAtBlock??null:null,markAttemptAt:unchanged?previous.markAttemptAt:undefined});
   if(position.complete&&position.tokenBalance==='0'&&position.buys>0&&position.sells>0){
    const proceeds=BigInt(position.observedProceeds),pnl=BigInt(position.realizedPnl),cost=proceeds-pnl,last=events.at(-1)!;
    this.saveOutcome({wallet,token,closedAt:last.at??0,cost:cost.toString(),proceeds:proceeds.toString(),pnl:pnl.toString(),returnBps:cost>0n?Number(pnl*10000n/cost):null,complete:true});

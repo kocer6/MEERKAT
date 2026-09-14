@@ -1,5 +1,7 @@
 # MEERKAT handoff — public evidence terminal (2026-09-13)
 
+Split-pipeline checkpoint (2026-09-14): production kit now runs `radar-collect`, `radar-enrich`, `radar-project` separately. Durable projection work, stale-profile refresh, position CAS and additive market cache are implemented. GeckoTerminal (30 addresses) then DexScreener supply source/time-labelled price, liquidity, 24h volume, market cap and FDV. Radar and Token Dossier display cached market fields. 191 tests pass locally, including blocked enrichment/continued collection, queue reopen, stale quote rejection, source fallback and late metadata after reorg removal. VPS GeckoTerminal probe returned HTTP 200 for GOLDGOOSE. Next task SPLIT-DEPLOY: deploy units, verify independent cursors/status, bounded backlog, real enriched tokens and API/browser responsiveness. No claim of deployment until recorded below.
+
 The active product is a public and locally installable Pons V2 scoring and intelligence terminal. Token and wallet scores are the primary product surface; lifecycle and relationship views are the evidence layer. Never restore the paper-first UI or add a signer/transaction path.
 
 The current `main` checkpoint includes the expanded Radar, score-colored token and wallet entities, six-tab token dossier, profitable/losing wallet outcomes, paginated Timeline and the product-proof landing sections described below.

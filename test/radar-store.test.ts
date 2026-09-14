@@ -78,3 +78,13 @@ test('profile queue repairs scored launches whose metadata is missing',()=>{
  assert.deepEqual(store.profileCandidates(10).map(row=>row.token),[launch.token]);
  store.close();
 });
+import {mkdtempSync,rmSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+
+test('queued enrichment projections and last good market data survive reopening the database',()=>{
+ const directory=mkdtempSync(join(tmpdir(),'meerkat-split-')),file=join(directory,'radar.sqlite');let store=new RadarStore(file);
+ try{store.saveLaunch(launch);store.queueProjection(launch.token);store.saveMarket(launch.token,{token:launch.token,name:'Test',symbol:'T',source:'geckoterminal',priceUsd:1,liquidityUsd:50,volume24hUsd:null,marketCapUsd:null,fdvUsd:100,fetchedAt:1});store.close();store=new RadarStore(file);
+ assert.equal(store.pendingProjections(10)[0]?.token,launch.token);store.saveMarket(launch.token,null,'source unavailable');assert.equal(store.market(launch.token)?.data?.priceUsd,1);assert.equal(store.market(launch.token)?.data?.fetchedAt,1);assert.equal(store.market(launch.token)?.error,'source unavailable');assert.equal(store.marketCandidates().length,0);
+ }finally{store.close();rmSync(directory,{recursive:true,force:true});}
+});
