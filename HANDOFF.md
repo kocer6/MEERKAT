@@ -91,3 +91,5 @@ Known limits: wallet mode searches local indexed histories rather than the entir
 UTF-8 follow-up: normalize accidental doubled carriage returns in terminal.js before deployment; JS syntax and diff whitespace check pass.
 
 Live follow-up: the 128-token projector drained its pending queue to zero. Add a five-second pause after completed projection to give collection/enrichment writers fair access to SQLite. Cold dossiers can show external snapshots before contract-profile RPC completes.
+
+SQLite contention fix: project scores against a read-only WAL snapshot, buffer writes, commit only results in a short transaction, publish feed then acknowledge unchanged job revisions. Regression uses two real SQLite connections and writes during scoring. This addresses the observed cold HOODED history database-lock failure. Production re-verification follows.

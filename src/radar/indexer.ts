@@ -1,7 +1,7 @@
 import type {RadarMarket} from './market.js';
 import type {RadarReader} from './reader.js';
 import {RadarStore} from './store.js';
-import type {RadarEvent,RadarLaunch} from './types.js';
+import type {RadarEvent,RadarLaunch,ScoreSnapshot,RadarActivity} from './types.js';
 import {scoreLaunchQuality,scoreRadarStrength,scoreWalletReputation} from './scores.js';
 import {markPosition} from './positions.js';
 import {RadarService} from './service.js';
@@ -30,6 +30,9 @@ export interface RadarIndexerStatus {
 const sanitize=(error:unknown)=>(error instanceof Error?error.message:'Radar indexing failed').split('\n')[0]!.replace(/https?:\/\/\S+/g,'[RPC endpoint]').slice(0,240);
 
 export class RadarIndexer {
+ private projectedScores:Map<string,ScoreSnapshot>|null=null;
+ private projectedActivities:RadarActivity[]=[];
+ private projectedTokens=new Set<string>();
  private pending:Promise<void>|null=null;
  private timer:NodeJS.Timeout|null=null;
  private stopped=false;
@@ -94,8 +97,20 @@ export class RadarIndexer {
     const failed=results.find(result=>result.status==='rejected');if(failed?.status==='rejected')throw failed.reason;
    }else{
     const jobs=this.store.pendingProjections(128);
-    // Read committed events, score, publish and acknowledge together. No network inside this transaction.
-    this.store.transaction(()=>{const changed=this.recomputeScores(head,jobs.map(job=>job.token));views.refreshFeedTokens(changed);for(const job of jobs)this.store.finishProjection(job);});
+    // Compute against a WAL read snapshot; collection and token history can keep writing.
+    this.projectedScores=new Map();this.projectedActivities=[];this.projectedTokens.clear();
+    let changed:string[];
+    try{
+     changed=this.store.readSnapshot(()=>this.recomputeScores(BigInt(this.store.cursor('market')!.blockNumber),jobs.map(job=>job.token)));
+     this.store.transaction(()=>{
+      for(const score of this.projectedScores!.values())this.store.saveScore(score);
+      for(const activity of this.projectedActivities)this.store.saveActivity(activity);
+      for(const token of this.projectedTokens){const launch=this.store.launchByToken(token);if(launch)this.store.saveLaunch({...launch,state:'scored',updatedAt:Date.now()});}
+     });
+    }finally{this.projectedScores=null;this.projectedActivities=[];this.projectedTokens.clear();}
+    views.refreshFeedTokens(changed);
+    // A crash before publication leaves the durable jobs available for another pass.
+    this.store.transaction(()=>{for(const job of jobs)this.store.finishProjection(job);});
     const last= this.store.view('leaderboard-all')?.updatedAt;
     if(!last||Date.now()-last>=(this.options.viewRefreshMs??300000))views.refreshViews();
    }
@@ -139,17 +154,20 @@ export class RadarIndexer {
    for(const position of positions)tokenSet.add(position.token);
   }
   for(const token of tokenSet){
-   const launch=this.store.launchByToken(token);if(!launch)continue;const events=this.store.eventsForToken(token),walletsForToken=[...new Set(events.map(event=>event.wallet).filter((wallet):wallet is string=>wallet!==null))],qualified=walletsForToken.flatMap(wallet=>{const value=this.store.score(wallet,'wallet-reputation')?.value;return value!==null&&value!==undefined&&value>=60?[value]:[];}),buys=events.filter(event=>event.kind==='buy'),sells=events.filter(event=>event.kind==='sell'),buyFlow=buys.reduce((sum,event)=>sum+BigInt(event.quote??0),0n),sellFlow=sells.reduce((sum,event)=>sum+BigInt(event.quote??0),0n),totalFlow=buyFlow+sellFlow,launchQuality=this.store.score(launch.token,'launch-quality');
+   const launch=this.store.launchByToken(token);if(!launch)continue;const events=this.store.eventsForToken(token),walletsForToken=[...new Set(events.map(event=>event.wallet).filter((wallet):wallet is string=>wallet!==null))],qualified=walletsForToken.flatMap(wallet=>{const value=this.scoreSnapshot(wallet,'wallet-reputation')?.value;return value!==null&&value!==undefined&&value>=60?[value]:[];}),buys=events.filter(event=>event.kind==='buy'),sells=events.filter(event=>event.kind==='sell'),buyFlow=buys.reduce((sum,event)=>sum+BigInt(event.quote??0),0n),sellFlow=sells.reduce((sum,event)=>sum+BigInt(event.quote??0),0n),totalFlow=buyFlow+sellFlow,launchQuality=this.scoreSnapshot(launch.token,'launch-quality');
    const radarScore=scoreRadarStrength({subject:launch.token,asOfBlock:head.toString(),verified:true,recentMarketIndexed:true,nonInfrastructureEvents:events.length,qualifiedConviction:qualified.length?qualified.reduce((sum,value)=>sum+value**2/100,0)/qualified.length:null,qualifiedBreadth:qualified.length?Math.min(100,qualified.length*12):null,flowAcceleration:events.length>=5?Math.min(100,events.length*4):null,netBuyPressure:totalFlow>0n?Number(buyFlow*100n/totalFlow):null,freshness:events.length?100:null,launchQuality:launchQuality?.value??null,holderRetention:launch.profile?.holderCount===null||!launch.profile?null:Math.min(100,launch.profile.holderCount*4),riskPenalty:sellFlow>buyFlow&&totalFlow>0n?Math.min(25,Number((sellFlow-buyFlow)*25n/totalFlow)):0});
-   this.persistScore(radarScore,head);if(radarScore.value!==null)this.store.saveLaunch({...launch,state:'scored',updatedAt:Date.now()});
+   this.persistScore(radarScore,head);if(radarScore.value!==null){if(this.projectedScores)this.projectedTokens.add(token);else this.store.saveLaunch({...launch,state:'scored',updatedAt:Date.now()});}
   }
  return [...tokenSet];
  }
 
+ private scoreSnapshot(subject:string,kind:ScoreSnapshot['kind']){return this.projectedScores?.get(`${subject}:${kind}`)??this.store.score(subject,kind);}
+ private persistActivity(activity:RadarActivity){if(this.projectedScores)this.projectedActivities.push(activity);else this.store.saveActivity(activity);}
+
  private persistScore(score:ReturnType<typeof scoreLaunchQuality>,head:bigint){
-  const previous=this.store.score(score.subject,score.kind);this.store.saveScore(score);
+  const previous=this.store.score(score.subject,score.kind);if(this.projectedScores)this.projectedScores.set(`${score.subject}:${score.kind}`,score);else this.store.saveScore(score);
   const band=(value:number|null)=>value===null?'withheld':value<40?'low':value<60?'watch':value<75?'strong':'high';
-  if(previous&&band(previous.value)!==band(score.value))this.store.saveActivity({id:`${score.subject}:${score.kind}:${head}:${band(score.value)}`,subject:score.subject,subjectKind:score.kind==='wallet-reputation'?'wallet':'token',kind:'score-band-change',material:true,blockNumber:head.toString(),blockHash:null,txHash:null,createdAt:Date.now(),summary:`${score.kind} changed from ${band(previous.value)} to ${band(score.value)}`});
+  if(previous&&band(previous.value)!==band(score.value))this.persistActivity({id:`${score.subject}:${score.kind}:${head}:${band(score.value)}`,subject:score.subject,subjectKind:score.kind==='wallet-reputation'?'wallet':'token',kind:'score-band-change',material:true,blockNumber:head.toString(),blockHash:null,txHash:null,createdAt:Date.now(),summary:`${score.kind} changed from ${band(previous.value)} to ${band(score.value)}`});
  }
 
  private async profileLaunches(head:bigint){

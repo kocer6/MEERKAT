@@ -183,3 +183,17 @@ test('late metadata cannot resurrect a launch removed by overlap correction',asy
  const reader={chainId:async()=>4663,profile:async()=>{entered();await gate;return profile;},quoteSell:async()=>null} as unknown as RadarReader;
  const worker=new RadarIndexer(store,reader,{mode:'enrich',rangeBlocks:200n,pollMs:30000,profileConcurrency:1,historyStartBlock:100n});const work=worker.tick();await started;store.replaceLaunchRange('factory',400n,500n,500n,[]);release();await work;assert.equal(store.launchByToken(token),undefined);await worker.close();store.close();
 });
+import {mkdtempSync,rmSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+
+test('projection permits concurrent database writes and retains work changed during its read snapshot',async()=>{
+ const directory=mkdtempSync(join(tmpdir(),'meerkat-project-')),file=join(directory,'radar.sqlite'),store=new RadarStore(file),other=new RadarStore(file);
+ const worker=new RadarIndexer(store,{} as RadarReader,{mode:'project',rangeBlocks:200n,pollMs:5000,profileConcurrency:1,historyStartBlock:100n});
+ try{
+  store.replaceLaunchRange('factory',400n,500n,500n,[{...launch,profile}]);store.replaceEventRange('market',400n,500n,500n,[{...buy,token}]);
+  const read=store.eventsForToken.bind(store);let written=false;
+  store.eventsForToken=(address:string)=>{if(!written){written=true;other.transaction(()=>{other.saveLaunch({...launch,profile:{...profile,name:'Updated concurrently'}});other.queueProjection(token);});}return read(address);};
+  await worker.tick();assert.equal(worker.status().state,'ready');assert.equal(store.launchByToken(token)?.profile?.name,'Updated concurrently');assert.equal(store.pendingProjections(10).length,1);await worker.tick();assert.equal(store.pendingProjections(10).length,0);
+ }finally{await worker.close();store.close();other.close();rmSync(directory,{recursive:true,force:true});}
+});
