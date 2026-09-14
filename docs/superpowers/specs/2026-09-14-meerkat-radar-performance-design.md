@@ -28,7 +28,7 @@ The worker replaces each snapshot in one SQLite statement. Readers see either th
 
 ## Runtime
 
-`meerkat.service` starts `serve` with its in-process Radar loop disabled. `meerkat-indexer.service` starts `radar-index`. Both use the same environment and database. The worker publishes an initial view after its first successful cycle and then refreshes it every cycle; the five-minute interval remains configurable for future heavier refresh separation.
+`meerkat.service` starts `serve` with its in-process Radar loop disabled. `meerkat-indexer.service` starts `radar-index`. Both use the same environment and database. Each tail cycle recalculates only tokens and wallets affected by new events or profile results. The worker publishes an initial view after its first successful cycle and refreshes the complete feed and leaderboard snapshot at most once every five minutes by default.
 
 ## Success criteria
 

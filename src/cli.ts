@@ -5,7 +5,7 @@ import {RadarStore} from './radar/store.js';
 import {RadarIndexer} from './radar/indexer.js';
 import {radarReader} from './radar/reader.js';
 
-const radarOptions=()=>({rangeBlocks:BigInt(process.env.MEERKAT_RADAR_RANGE_BLOCKS??2000),pollMs:Number(process.env.MEERKAT_RADAR_POLL_MS??30000),profileConcurrency:Number(process.env.MEERKAT_RADAR_PROFILE_CONCURRENCY??4),profileBatchSize:Number(process.env.MEERKAT_RADAR_PROFILE_BATCH_SIZE??40),historyStartBlock:BigInt(process.env.MEERKAT_RADAR_START_BLOCK??0)});
+const radarOptions=()=>({rangeBlocks:BigInt(process.env.MEERKAT_RADAR_RANGE_BLOCKS??2000),pollMs:Number(process.env.MEERKAT_RADAR_POLL_MS??30000),profileConcurrency:Number(process.env.MEERKAT_RADAR_PROFILE_CONCURRENCY??4),profileBatchSize:Number(process.env.MEERKAT_RADAR_PROFILE_BATCH_SIZE??40),viewRefreshMs:Number(process.env.MEERKAT_RADAR_VIEW_REFRESH_MS??300000),historyStartBlock:BigInt(process.env.MEERKAT_RADAR_START_BLOCK??0)});
 
 if (process.argv[2] === 'demo') {
   const {runDemo}=await import('./demo.js');

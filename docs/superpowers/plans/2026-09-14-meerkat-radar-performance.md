@@ -55,4 +55,6 @@
 - [ ] Commit and push the focused checkpoint; verify the remote SHA.
 - [ ] Back up production SQLite, deploy both services, and verify database integrity.
 - [ ] Measure Radar, Leaderboard, Activity, and token route latency while the worker is indexing.
+- [x] Recalculate scores only for tokens and wallets affected by the current tail cycle.
+- [x] Bound full feed and leaderboard publication to a configurable five-minute interval.
 - [ ] Inspect the production terminal and confirm metadata/error presentation.

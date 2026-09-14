@@ -85,3 +85,17 @@ test('profile queue prioritizes launches with observed activity',async()=>{
  const indexer=new RadarIndexer(store,reader,{rangeBlocks:200n,pollMs:30000,profileConcurrency:1,historyStartBlock:100n});await indexer.tick();
  assert.deepEqual(profiled,[active.token]);await indexer.close();store.close();
 });
+
+test('unchanged tokens are not rescored during an incremental tail cycle',async()=>{
+ const untouched={...launch,token:'0x00000000000000000000000000000000000000c1',curve:'0x00000000000000000000000000000000000000c2',launchBlock:'100',state:'profiled' as const,profile};
+ const store=new RadarStore(':memory:');store.saveLaunch(untouched);store.saveScore({subject:untouched.token,kind:'launch-quality',value:50,confidence:'low',modelVersion:'old',asOfBlock:'100',computedAt:1,components:[],unknownInputs:[],explanation:'old'});
+ const reader:RadarReader={chainId:async()=>4663,head:async()=>500n,block:async number=>({number,hash:`0x${number}`,timestamp:number}),factoryDeployment:async()=>100n,launches:async()=>[launch],trades:async()=>[buy],profile:async()=>profile,quoteSell:async()=>null};
+ const indexer=new RadarIndexer(store,reader,{rangeBlocks:200n,pollMs:30000,profileConcurrency:2,historyStartBlock:100n,viewRefreshMs:300000});await indexer.tick();
+ assert.equal(store.score(untouched.token,'launch-quality')?.computedAt,1);await indexer.close();store.close();
+});
+
+test('materialized views refresh at most once inside the configured interval',async()=>{
+ const reader:RadarReader={chainId:async()=>4663,head:async()=>500n,block:async number=>({number,hash:`0x${number}`,timestamp:number}),factoryDeployment:async()=>100n,launches:async()=>[launch],trades:async()=>[buy],profile:async()=>profile,quoteSell:async()=>null};
+ const store=new RadarStore(':memory:'),indexer=new RadarIndexer(store,reader,{rangeBlocks:200n,pollMs:30000,profileConcurrency:2,historyStartBlock:100n,viewRefreshMs:300000});await indexer.tick();const first=store.view('feed-rows')?.updatedAt;await indexer.tick();
+ assert.equal(store.view('feed-rows')?.updatedAt,first);await indexer.close();store.close();
+});
