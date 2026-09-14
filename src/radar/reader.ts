@@ -52,6 +52,7 @@ export function radarReader(rpcUrls:string|string[]=radarRpcUrls()):RadarReader{
  const urls=Array.isArray(rpcUrls)?rpcUrls:[rpcUrls];for(const value of urls){const parsed=new URL(value);if(!['http:','https:'].includes(parsed.protocol))throw new Error('RPC must use http or https');}
  const transports=urls.map(radarHttpTransport),transport=transports.length===1?transports[0]!:fallback(transports,{rank:true,retryCount:1});
  const client=createPublicClient({transport});
+ const logTransports=urls.map(url=>http(url,{timeout:15000,retryCount:1})),logClient=createPublicClient({transport:logTransports.length===1?logTransports[0]!:fallback(logTransports,{rank:true,retryCount:1})});
  const getRecord=(token:string,blockNumber:bigint)=>client.readContract({address:factory,abi:factoryAbi,functionName:'getLaunchedToken',args:[token as Address],blockNumber});
  const configuredFloor=process.env.MEERKAT_RADAR_START_BLOCK&&/^\d+$/.test(process.env.MEERKAT_RADAR_START_BLOCK)?BigInt(process.env.MEERKAT_RADAR_START_BLOCK):0n;
  return {
@@ -60,14 +61,14 @@ export function radarReader(rpcUrls:string|string[]=radarRpcUrls()):RadarReader{
   block:async number=>{const block=await client.getBlock({blockNumber:number});if(!block.hash)throw new Error('Block hash unavailable');return {number:block.number,hash:block.hash,timestamp:block.timestamp};},
   factoryDeployment:async()=>{const head=await client.getBlockNumber({cacheTime:0});return factoryIndexFloor(head,block=>client.getBytecode({address:factory,blockNumber:block}),configuredFloor);},
   launches:async(fromBlock,toBlock)=>{
-   const logs=await client.getLogs({address:factory,event:launched,fromBlock,toBlock,strict:true});
+   const logs=await logClient.getLogs({address:factory,event:launched,fromBlock,toBlock,strict:true});
    return logs.filter(log=>!log.removed&&log.blockNumber!==null&&log.blockHash!==null&&log.transactionHash!==null&&log.logIndex!==null).map(log=>({
     token:log.args.token.toLowerCase(),curve:log.args.curve.toLowerCase(),deployer:log.args.deployer.toLowerCase(),pairToken:log.args.pairToken.toLowerCase(),
     launchBlock:log.blockNumber!.toString(),blockHash:log.blockHash!,txHash:log.transactionHash!,logIndex:log.logIndex!,state:'discovered' as const,profile:null,profileError:null,updatedAt:Date.now(),
    }));
   },
   trades:async(fromBlock,toBlock)=>{
-   const logs=await client.getLogs({events:[curveBuyEvent,curveSellEvent],fromBlock,toBlock,strict:true});
+   const logs=await logClient.getLogs({events:[curveBuyEvent,curveSellEvent],fromBlock,toBlock,strict:true});
    return logs.filter(log=>!log.removed&&log.blockNumber!==null&&log.blockHash!==null&&log.transactionHash!==null&&log.logIndex!==null).map(log=>{
     const common={id:`${log.blockHash}:${log.transactionHash}:${log.logIndex}`,token:'',curve:log.address.toLowerCase(),blockNumber:log.blockNumber!.toString(),blockHash:log.blockHash!,txHash:log.transactionHash!,logIndex:log.logIndex!,at:null,complete:true};
     if(log.eventName==='CurveBuy')return {...common,wallet:log.args.buyer.toLowerCase(),kind:'buy' as const,tokens:log.args.tokensOut.toString(),quote:log.args.quoteIn.toString()};

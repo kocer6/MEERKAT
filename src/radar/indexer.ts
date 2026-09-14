@@ -27,7 +27,7 @@ export interface RadarIndexerStatus {
  error:string|null;
 }
 
-const sanitize=(error:unknown)=>(error instanceof Error?error.message:'Radar indexing failed').split('\n')[0]!.replace(/https?:\/\/\S+/g,'[RPC endpoint]').slice(0,240);
+const sanitize=(error:unknown)=>(error instanceof Error?`${error.message}${'details' in error&&typeof error.details==='string'?`: ${error.details}`:''}`:'Radar indexing failed').split('\n')[0]!.replace(/https?:\/\/\S+/g,'[RPC endpoint]').slice(0,240);
 
 export class RadarIndexer {
  private projectedScores:Map<string,ScoreSnapshot>|null=null;

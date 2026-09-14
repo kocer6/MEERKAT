@@ -93,3 +93,5 @@ UTF-8 follow-up: normalize accidental doubled carriage returns in terminal.js be
 Live follow-up: the 128-token projector drained its pending queue to zero. Add a five-second pause after completed projection to give collection/enrichment writers fair access to SQLite. Cold dossiers can show external snapshots before contract-profile RPC completes.
 
 SQLite contention fix: project scores against a read-only WAL snapshot, buffer writes, commit only results in a short transaction, publish feed then acknowledge unchanged job revisions. Regression uses two real SQLite connections and writes during scoring. This addresses the observed cold HOODED history database-lock failure. Production re-verification follows.
+
+RPC budget follow-up: live getLogs returned Too Many Requests; batch responses masked it as a viem UnknownRpcError. Use non-batched log transport and limit split enrichment to 20 missing profiles + 5 refreshes, concurrency 2, every 30 seconds. Cached endpoints stayed responsive. Verify collector resumes after provider cooldown.
