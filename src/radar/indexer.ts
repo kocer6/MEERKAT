@@ -171,11 +171,11 @@ export class RadarIndexer {
  }
 
  private async profileLaunches(head:bigint){
-  const limit=this.options.profileBatchSize??this.options.profileConcurrency,eligible=(row:RadarLaunch|undefined):row is RadarLaunch=>Boolean(row&&!row.profile&&(!row.profileError||Date.now()-(row.profileAttemptAt??row.updatedAt)>=300000));
+  const limit=this.options.profileBatchSize??this.options.profileConcurrency,eligible=(row:RadarLaunch|undefined):row is RadarLaunch=>Boolean(row&&BigInt(row.launchBlock)<=head&&!row.profile&&(!row.profileError||Date.now()-(row.profileAttemptAt??row.updatedAt)>=300000));
   const cached=this.store.view<Array<{token:string;launchBlock?:string;radarStrength:number|null}>>('feed-rows')?.value??[],launches=this.store.launches(),byToken=new Map(launches.map(row=>[row.token,row]));
   const visibleFresh=cached.filter(row=>row.launchBlock!==undefined).sort((a,b)=>Number(BigInt(b.launchBlock!)-BigInt(a.launchBlock!))||a.token.localeCompare(b.token)).slice(0,50).map(row=>byToken.get(row.token)).filter(eligible),fresh=launches.filter(eligible),preferred=[...cached].filter(row=>row.radarStrength!==null).sort((a,b)=>(b.radarStrength??-1)-(a.radarStrength??-1)||a.token.localeCompare(b.token)).map(row=>byToken.get(row.token)).filter(eligible),seen=new Set<string>(),queue:RadarLaunch[]=[];
-  const add=(rows:RadarLaunch[],capacity:number)=>{for(const row of rows)if(queue.length<capacity&&!seen.has(row.token)){seen.add(row.token);queue.push(row);}};
-  add(visibleFresh,Math.floor(limit/4));add(fresh,Math.floor(limit/2));add(preferred,Math.max(1,Math.ceil(limit*0.75)));add(this.store.profileCandidates(limit),limit);add(fresh,limit);
+  const add=(rows:RadarLaunch[],capacity:number)=>{for(const row of rows)if(queue.length<capacity&&BigInt(row.launchBlock)<=head&&!seen.has(row.token)){seen.add(row.token);queue.push(row);}};
+  add(visibleFresh,Math.floor(limit/4));add(fresh,Math.floor(limit/2));add(preferred,Math.max(1,Math.ceil(limit*0.75)));add(this.store.profileCandidates(limit).filter(eligible),limit);add(fresh,limit);
   if(this.options.mode==='enrich')add(this.store.staleProfiles(Math.max(1,Math.floor(limit/4))),queue.length+Math.max(1,Math.floor(limit/4)));
   let cursor=0;const profiled:string[]=[];
   const save=(row:RadarLaunch,result:RadarProfile|Error)=>this.store.transaction(()=>{

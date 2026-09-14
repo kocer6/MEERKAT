@@ -218,3 +218,10 @@ test('batched enrichment bounds calls and saves successes despite a failed sibli
  const indexer=new RadarIndexer(store,reader,{mode:'enrich',rangeBlocks:200n,pollMs:30000,profileConcurrency:2,profileBatchSize:45,historyStartBlock:0n});
  await indexer.tick();assert.deepEqual(batches,[20,20,5]);assert.equal(store.launches().filter(row=>row.profile).length,44);assert.match(store.launchByToken(rows[0]!.token)!.profileError!,/reverted/);assert.equal(store.projectionCount(),44);await indexer.close();store.close();
 });
+
+
+test('enrichment defers launches newer than its captured market block without marking failure',async()=>{
+ const store=new RadarStore(':memory:');store.saveLaunch({...launch,launchBlock:'501'});store.replaceEventRange('market',500n,500n,500n,[],'0x500');let requested=0;
+ const reader:RadarReader={chainId:async()=>4663,head:async()=>500n,block:async number=>({number,hash:'0x1',timestamp:number}),factoryDeployment:async()=>0n,launches:async()=>[],trades:async()=>[],profile:async()=>{requested++;throw new Error('not registered at old block');},quoteSell:async()=>null};
+ const indexer=new RadarIndexer(store,reader,{mode:'enrich',rangeBlocks:200n,pollMs:30000,profileConcurrency:2,profileBatchSize:4,historyStartBlock:0n});await indexer.tick();assert.equal(requested,0);assert.equal(store.launchByToken(token)!.profileError,null);await indexer.close();store.close();
+});
