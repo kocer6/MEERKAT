@@ -160,7 +160,7 @@ test('terminal connects token and wallet modes to read-only evidence APIs',async
   assert.match(css,/\.fee-route/);
   assert.match(css,/overflow-wrap:anywhere/);
   assert.match(js,/scrollIntoView/);
-  for(const label of ['OVERVIEW & SCORE','FEE FLOW','RELATIONSHIPS','WALLETS & HOLDERS','TIMELINE'])assert.match(js,new RegExp(label.replace('&','&')));
+  for(const label of ['MARKET INTELLIGENCE','SCORE & CONTRACT','FEE FLOW','RELATIONSHIPS','WALLETS & HOLDERS','TIMELINE'])assert.match(js,new RegExp(label.replace('&','&')));
   assert.match(js,/\/api\/token\/timeline/);
   assert.match(js,/get\('\/healthz'\)/);
   assert.doesNotMatch(js,/get\('\/api\/state'\)/);

@@ -18,7 +18,7 @@ export type LeaderboardSort='total-pnl'|'realized'|'open'|'win-rate'|'reputation
 export type LeaderboardStatus='eligible'|'provisional'|'all';
 export interface LeaderboardRow {
  wallet:string;status:'eligible'|'provisional';eligibilityReasons:string[];completedPositions:number;
- wins:number;winRate:number|null;realizedPnl:string;openPnl:string|null;totalPnl:string|null;
+ wins:number;losses:number;winRate:number|null;realizedPnl:string;openPnl:string|null;totalPnl:string|null;
  reputation:number|null;confidence:string;activePositions:number;
 }
 
@@ -38,19 +38,20 @@ export class RadarService {
  search(raw:string){
   const query=raw.trim();if(!query)throw new Error('Search query is required');
   if(isAddress(query)){const address=query.toLowerCase(),launch=this.store.launchByToken(address);return launch?{kind:'token' as const,address,route:`/terminal/token/${address}`}:{kind:'unclassified' as const,address,choices:['token','wallet'] as const};}
-  const needle=query.toLowerCase(),matches=this.store.launches().filter(row=>row.profile&&(row.profile.symbol.toLowerCase()===needle||row.profile.name.toLowerCase().includes(needle))).slice(0,10).map(row=>({kind:'token' as const,address:row.token,name:row.profile!.name,symbol:row.profile!.symbol,route:`/terminal/token/${row.token}`}));
+  const needle=query.toLowerCase(),matches=this.store.launches().filter(row=>row.profile&&(row.profile.symbol.toLowerCase()===needle||row.profile.name.toLowerCase().includes(needle))).slice(0,10).map(row=>({kind:'token' as const,address:row.token,name:row.profile!.name,symbol:row.profile!.symbol,score:this.store.score(row.token,'radar-strength')?.value??null,route:`/terminal/token/${row.token}`}));
   return {kind:'results' as const,query,items:matches};
  }
 
  tokenSummary(address:string){
   if(!isAddress(address))throw new Error('Invalid token address');const token=address.toLowerCase(),launch=this.store.launchByToken(token);if(!launch)throw new Error('Token is not registered in the Radar index');
-  return {launch,launchQuality:this.store.score(token,'launch-quality')??null,radarStrength:this.store.score(token,'radar-strength')??null,positions:this.store.positionsForToken(token),events:this.store.eventsForToken(token)};
+  const positions=this.store.positionsForToken(token),events=this.store.eventsForToken(token),participantScores=positions.map(row=>{const score=this.store.score(row.wallet,'wallet-reputation');return {wallet:row.wallet,reputation:score?.value??null,confidence:score?.confidence??'provisional'};});
+  return {launch,launchQuality:this.store.score(token,'launch-quality')??null,radarStrength:this.store.score(token,'radar-strength')??null,positions,events,participantScores};
  }
 
  walletSummary(address:string){
   if(!isAddress(address))throw new Error('Invalid wallet address');const wallet=address.toLowerCase();
   const positions=this.store.positionsForWallet(wallet),outcomes=this.store.outcomesForWallet(wallet),eligibilityReasons=this.eligibilityReasons(wallet,outcomes,positions),realized=positions.length?positions.reduce((sum,row)=>sum+BigInt(row.realizedPnl),0n):outcomes.reduce((sum,row)=>sum+BigInt(row.pnl),0n),active=positions.filter(row=>BigInt(row.tokenBalance)>0n),marked=active.every(row=>row.openPnl!==null&&row.openPnl!==undefined),open=marked?active.reduce((sum,row)=>sum+BigInt(row.openPnl!),0n):null,total=open===null?null:realized+open;
-  return {address:wallet,reputation:this.store.score(wallet,'wallet-reputation')??null,positions,outcomes,events:this.store.eventsForWallet(wallet),leaderboardEligible:eligibilityReasons.length===0,eligibilityReasons,completedPositions:outcomes.length,profitablePositions:outcomes.filter(row=>BigInt(row.pnl)>0n).length,realizedPnl:realized.toString(),openPnl:open?.toString()??null,totalPnl:total?.toString()??null,activePositions:active.length};
+  return {address:wallet,reputation:this.store.score(wallet,'wallet-reputation')??null,positions,outcomes,events:this.store.eventsForWallet(wallet),leaderboardEligible:eligibilityReasons.length===0,eligibilityReasons,completedPositions:outcomes.length,profitablePositions:outcomes.filter(row=>BigInt(row.pnl)>0n).length,losingPositions:outcomes.filter(row=>BigInt(row.pnl)<0n).length,breakEvenPositions:outcomes.filter(row=>BigInt(row.pnl)===0n).length,tokenScores:positions.map(row=>({token:row.token,score:this.store.score(row.token,'radar-strength')?.value??null})),realizedPnl:realized.toString(),openPnl:open?.toString()??null,totalPnl:total?.toString()??null,activePositions:active.length};
  }
 
  leaderboard(query:{window:RadarWindow;sort:LeaderboardSort;status:LeaderboardStatus;cursor:string|null}){
@@ -66,7 +67,7 @@ export class RadarService {
 
  private buildLeaderboardRows(window:RadarWindow){
   const cutoff=window==='all'?null:Date.now()-windowMs[window],outcomes=this.store.outcomes(cutoff),wallets=[...new Set(outcomes.map(row=>row.wallet))],rows:LeaderboardRow[]=[];
-  for(const wallet of wallets){const completed=outcomes.filter(row=>row.wallet===wallet&&row.complete),positions=this.store.positionsForWallet(wallet),reasons=this.eligibilityReasons(wallet,completed,positions),realized=completed.reduce((sum,row)=>sum+BigInt(row.pnl),0n),active=positions.filter(row=>BigInt(row.tokenBalance)>0n),marked=active.every(row=>row.openPnl!==null&&row.openPnl!==undefined),open=marked?active.reduce((sum,row)=>sum+BigInt(row.openPnl!),0n):null,reputation=this.store.score(wallet,'wallet-reputation');rows.push({wallet,status:reasons.length?'provisional':'eligible',eligibilityReasons:reasons,completedPositions:completed.length,wins:completed.filter(row=>BigInt(row.pnl)>0n).length,winRate:completed.length?completed.filter(row=>BigInt(row.pnl)>0n).length/completed.length:null,realizedPnl:realized.toString(),openPnl:open?.toString()??null,totalPnl:open===null?null:(realized+open).toString(),reputation:reputation?.value??null,confidence:reputation?.confidence??'provisional',activePositions:active.length});}
+  for(const wallet of wallets){const completed=outcomes.filter(row=>row.wallet===wallet&&row.complete),positions=this.store.positionsForWallet(wallet),reasons=this.eligibilityReasons(wallet,completed,positions),realized=completed.reduce((sum,row)=>sum+BigInt(row.pnl),0n),active=positions.filter(row=>BigInt(row.tokenBalance)>0n),marked=active.every(row=>row.openPnl!==null&&row.openPnl!==undefined),open=marked?active.reduce((sum,row)=>sum+BigInt(row.openPnl!),0n):null,reputation=this.store.score(wallet,'wallet-reputation'),wins=completed.filter(row=>BigInt(row.pnl)>0n).length,losses=completed.filter(row=>BigInt(row.pnl)<0n).length;rows.push({wallet,status:reasons.length?'provisional':'eligible',eligibilityReasons:reasons,completedPositions:completed.length,wins,losses,winRate:completed.length?wins/completed.length:null,realizedPnl:realized.toString(),openPnl:open?.toString()??null,totalPnl:open===null?null:(realized+open).toString(),reputation:reputation?.value??null,confidence:reputation?.confidence??'provisional',activePositions:active.length});}
   return rows;
  }
 

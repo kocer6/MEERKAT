@@ -57,6 +57,19 @@ test('wallet with a material transfer gap is not PnL eligible',()=>{
  assert.equal(row.leaderboardEligible,false);assert.ok(row.eligibilityReasons.includes('material transfer gap'));store.close();
 });
 
+test('wallet and leaderboard summaries expose profitable and losing outcomes',()=>{
+ const store=new RadarStore(':memory:'),owner=wallet(81);store.saveOutcome(outcome(owner,1,20n));store.saveOutcome(outcome(owner,2,-10n));store.saveOutcome(outcome(owner,3,0n));
+ const service=new RadarService(store,()=>status),summary=service.walletSummary(owner),ranked=service.leaderboard({window:'all',sort:'total-pnl',status:'all',cursor:null}).items[0]!;
+ assert.deepEqual({wins:summary.profitablePositions,losses:summary.losingPositions,breakEven:summary.breakEvenPositions},{wins:1,losses:1,breakEven:1});
+ assert.deepEqual({wins:ranked.wins,losses:ranked.losses},{wins:1,losses:1});store.close();
+});
+
+test('token summary includes participant reputation for score-colored intelligence tables',()=>{
+ const store=new RadarStore(':memory:'),owner=wallet(82);store.saveLaunch(launch);store.savePosition(position(owner));store.saveScore(reputation(owner,76));
+ const summary=new RadarService(store,()=>status).tokenSummary(token);
+ assert.deepEqual(summary.participantScores,[{wallet:owner,reputation:76,confidence:'medium'}]);store.close();
+});
+
 test('watchlist is idempotent and activity is material-only',()=>{
  const store=new RadarStore(':memory:'),service=new RadarService(store,()=>status);
  service.watch({kind:'token',address:token,createdAt:1});service.watch({kind:'token',address:token,createdAt:2});
@@ -68,7 +81,7 @@ test('watchlist is idempotent and activity is material-only',()=>{
 test('feed and leaderboard use materialized rows when available',()=>{
  const store=new RadarStore(':memory:'),owner=wallet(91),service=new RadarService(store,()=>status);
  const feedRow={token,curve:launch.curve,name:'Cached',symbol:'CACHE',state:'scored' as const,pairToken:launch.pairToken,launchBlock:'450',updatedAt:Date.now(),ageMs:0,phase:0,participants:9,buys:4,sells:1,buyFlow:'10',sellFlow:'2',missingInputs:[],radarStrength:81};
- const leaderboardRow={wallet:owner,status:'eligible' as const,eligibilityReasons:[],completedPositions:3,wins:2,winRate:2/3,realizedPnl:'50',openPnl:'10',totalPnl:'60',reputation:88,confidence:'high',activePositions:1};
+ const leaderboardRow={wallet:owner,status:'eligible' as const,eligibilityReasons:[],completedPositions:3,wins:2,losses:1,winRate:2/3,realizedPnl:'50',openPnl:'10',totalPnl:'60',reputation:88,confidence:'high',activePositions:1};
  store.saveView('feed-rows',[feedRow]);store.saveView('leaderboard-all',[leaderboardRow]);
  assert.equal(service.signals({feed:'signals',window:'24h',cursor:null}).items[0]?.symbol,'CACHE');
  assert.equal(service.leaderboard({window:'all',sort:'total-pnl',status:'all',cursor:null}).items[0]?.wallet,owner);

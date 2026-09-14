@@ -26,10 +26,17 @@ test('leaderboard ranks all evidenced outcomes by default',()=>{
  assert.match(js,/get\('\/api\/radar\/leaderboard',\{window:'all',sort:'total-pnl',status:'all'\}\)/);
 });
 
-test('entity links are green only on hover or focus',()=>{
- const css=readFileSync('public/terminal.css','utf8');
- assert.match(css,/\.entity-link\{[^}]*color:var\(--sand\)/);
- assert.match(css,/\.entity-link:is\(:hover,:focus-visible\)\{[^}]*color:var\(--green\)/);
+test('token and wallet entities use the shared red amber green score scale',()=>{
+ const js=readFileSync('public/terminal.js','utf8'),css=readFileSync('public/terminal.css','utf8');
+ assert.match(js,/function scoreTone/);assert.match(js,/score-low/);assert.match(js,/score-mid/);assert.match(js,/score-high/);
+ assert.match(css,/\.score-low/);assert.match(css,/\.score-mid/);assert.match(css,/\.score-high/);
+});
+
+test('token dossier exposes market intelligence, participant pnl and tape',()=>{
+ const js=readFileSync('public/terminal.js','utf8');
+ for(const label of ['MARKET INTELLIGENCE','SCORE & CONTRACT','BUYERS 60\+','WHO IS BUYING','WHO STILL HOLDS','THE TAPE'])assert.match(js,new RegExp(label));
+ assert.match(js,/participantScores/);assert.match(js,/REALIZED P\/L/);
+ assert.match(js,/LOSING/);
 });
 
 test('desktop readability floors are encoded in terminal CSS',()=>{
