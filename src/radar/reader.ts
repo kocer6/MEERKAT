@@ -46,9 +46,11 @@ export function radarRpcUrls(env:Record<string,string|undefined>=process.env){
  const urls=[...new Set(raw)];for(const value of urls){const parsed=new URL(value);if(!['http:','https:'].includes(parsed.protocol))throw new Error('RPC must use http or https');}return urls;
 }
 
+export const radarHttpTransport=(url:string)=>http(url,{batch:{batchSize:100,wait:10},timeout:15000,retryCount:1});
+
 export function radarReader(rpcUrls:string|string[]=radarRpcUrls()):RadarReader{
  const urls=Array.isArray(rpcUrls)?rpcUrls:[rpcUrls];for(const value of urls){const parsed=new URL(value);if(!['http:','https:'].includes(parsed.protocol))throw new Error('RPC must use http or https');}
- const transports=urls.map(url=>http(url,{timeout:15000,retryCount:1})),transport=transports.length===1?transports[0]!:fallback(transports,{rank:true,retryCount:1});
+ const transports=urls.map(radarHttpTransport),transport=transports.length===1?transports[0]!:fallback(transports,{rank:true,retryCount:1});
  const client=createPublicClient({transport});
  const getRecord=(token:string,blockNumber:bigint)=>client.readContract({address:factory,abi:factoryAbi,functionName:'getLaunchedToken',args:[token as Address],blockNumber});
  const configuredFloor=process.env.MEERKAT_RADAR_START_BLOCK&&/^\d+$/.test(process.env.MEERKAT_RADAR_START_BLOCK)?BigInt(process.env.MEERKAT_RADAR_START_BLOCK):0n;

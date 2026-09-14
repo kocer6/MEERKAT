@@ -12,6 +12,7 @@ Unprofiled launches are displayed as `UNKNOWN`, and the newest-first profile que
 - The indexer remains the only writer of Radar market data and periodically publishes materialized feed and leaderboard rows to SQLite.
 - The HTTP process reads those rows and SQL counts only. It never runs a full Radar score or leaderboard rebuild.
 - Tail indexing remains frequent. Expensive scoring and materialized-view refreshes run in the indexer process and publish atomically.
+- Concurrent contract reads use bounded JSON-RPC batches, reducing request count without increasing the logical profile batch.
 - Accept a comma-separated RPC pool. Viem fallback transport selects a healthy endpoint and fails over when one provider is unavailable.
 - Display `METADATA PENDING` for discovered launches. Prefer launches with observed activity in the metadata queue.
 - Parse HTTP responses defensively so an empty proxy error becomes a useful retry message.

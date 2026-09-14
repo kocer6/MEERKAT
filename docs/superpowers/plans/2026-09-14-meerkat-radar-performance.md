@@ -57,4 +57,5 @@
 - [ ] Measure Radar, Leaderboard, Activity, and token route latency while the worker is indexing.
 - [x] Recalculate scores only for tokens and wallets affected by the current tail cycle.
 - [x] Bound full feed and leaderboard publication to a configurable five-minute interval.
+- [x] Batch concurrent contract reads on each configured RPC transport.
 - [ ] Inspect the production terminal and confirm metadata/error presentation.
