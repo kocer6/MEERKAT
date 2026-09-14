@@ -64,3 +64,10 @@ test('terminal status keeps updating and recovers after an API failure',async()=
  current=new Error('network');await refresh();assert.equal(elements['session-status']!.textContent,'OFFLINE');assert.equal(callbacks.length,2);
  current={state:'ready',updatedAt:Date.now(),lastIndexedBlock:'200',workers:{enrichment:{state:'error',error:'rate limit'}}};await refresh();assert.equal(elements['radar-head']!.textContent,'200');assert.equal(elements['radar-index-status']!.textContent,'DEGRADED');assert.equal(elements['session-status']!.textContent,'CONNECTED');assert.equal(elements['session-status']!.className,'');
 });
+
+
+test('market availability distinguishes unlisted tokens from a pending request',()=>{
+ const source=readFileSync('public/terminal.js','utf8'),fn=source.slice(source.indexOf('function enrichedMarket('),source.indexOf('function renderToken(')),messages:string[]=[];
+ const render=runInNewContext(fn+';enrichedMarket',{el:(_tag:string,text?:string)=>{if(text)messages.push(text);return {append:()=>{}};},Date});
+ render(null);assert.match(messages.pop()!,/Loading/);render({checkedAt:1,data:null,error:null});assert.match(messages.pop()!,/do not list a market quote/);render({checkedAt:1,data:null,error:'rate limit'});assert.match(messages.pop()!,/provider unavailable/);
+});
