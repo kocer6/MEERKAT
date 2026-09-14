@@ -46,3 +46,15 @@ test('wrong chain records a sanitized error without advancing cursors',async()=>
  assert.equal(store.cursor('market'),undefined);
  await indexer.close();store.close();
 });
+
+test('profiles one bounded wave per cycle so market indexing is not blocked by the full queue',async()=>{
+ const launches=[1,2,3].map(index=>({...launch,token:`0x${index.toString(16).padStart(40,'0')}`,curve:`0x${(index+10).toString(16).padStart(40,'0')}`}));
+ let profiles=0;
+ const reader:RadarReader={chainId:async()=>4663,head:async()=>500n,block:async number=>({number,hash:`0x${number}`,timestamp:number}),factoryDeployment:async()=>100n,launches:async()=>launches,trades:async()=>[],profile:async()=>{profiles++;return profile;},quoteSell:async()=>null};
+ const store=new RadarStore(':memory:'),indexer=new RadarIndexer(store,reader,{rangeBlocks:200n,pollMs:30000,profileConcurrency:1,historyStartBlock:100n});
+ await indexer.tick();
+ assert.equal(profiles,1);
+ assert.equal(store.cursor('market')?.blockNumber,'500');
+ assert.equal(indexer.status().queueDepth,2);
+ await indexer.close();store.close();
+});

@@ -62,7 +62,7 @@ export class RadarIndexer {
    await this.markPositions(head,[...new Set(events.map(event=>event.token))]);
    this.recomputeScores(head);
    const cursor=this.store.cursor('market')!;
-   this.snapshot={state:'ready',headBlock:head.toString(),lastIndexedBlock:cursor.blockNumber,lagBlocks:(head-BigInt(cursor.blockNumber)).toString(),updatedAt:Date.now(),queueDepth:this.store.launches().filter(row=>row.state==='discovered').length,error:null};
+   this.snapshot={state:'ready',headBlock:head.toString(),lastIndexedBlock:cursor.blockNumber,lagBlocks:(head-BigInt(cursor.blockNumber)).toString(),updatedAt:Date.now(),queueDepth:this.store.launches().filter(row=>row.state==='discovered'||row.state==='error').length,error:null};
   }catch(error){this.snapshot={...this.snapshot,state:'error',updatedAt:Date.now(),error:sanitize(error)};}
  }
 
@@ -100,7 +100,7 @@ export class RadarIndexer {
  }
 
  private async profileLaunches(head:bigint){
-  const queue=this.store.launches().filter(row=>row.state==='discovered'||row.state==='error').sort((a,b)=>Number(BigInt(b.launchBlock)-BigInt(a.launchBlock)));
+  const queue=this.store.launches().filter(row=>row.state==='discovered'||row.state==='error').sort((a,b)=>Number(BigInt(b.launchBlock)-BigInt(a.launchBlock))).slice(0,Math.max(1,this.options.profileConcurrency));
   let cursor=0;
   const worker=async()=>{while(cursor<queue.length){const row=queue[cursor++];if(!row)continue;try{const profile=await this.reader.profile(row.token,head);this.store.saveLaunch({...row,state:'profiled',profile,profileError:null,updatedAt:Date.now()});}catch(error){this.store.saveLaunch({...row,state:'error',profileError:sanitize(error),updatedAt:Date.now()});}}};
   await Promise.all(Array.from({length:Math.min(this.options.profileConcurrency,queue.length)},()=>worker()));
