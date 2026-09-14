@@ -192,7 +192,7 @@ export class RadarIndexer {
  private range(name:string,head:bigint,floor:bigint){
   const cursor=this.store.cursor(name);if(!cursor){const from=head>=this.options.rangeBlocks-1n?head-this.options.rangeBlocks+1n:0n;return {from:from>floor?from:floor,to:head};}
   const saved=BigInt(cursor.blockNumber);if(head<saved)throw new Error('RPC head behind saved radar cursor');
-  const from=saved>63n?saved-63n:0n;return {from:from>floor?from:floor,to:head};
+  const overlap=this.options.rangeBlocks>64n?63n:0n,from=saved>overlap?saved-overlap:0n,start=from>floor?from:floor,end=start+this.options.rangeBlocks-1n;return {from:start,to:end<head?end:head};
  }
 
  private publishStatus(){this.store.saveView(this.options.mode==='enrich'?'enrich-status':this.options.mode==='project'?'project-status':'indexer-status',this.snapshot,this.snapshot.updatedAt??Date.now());}

@@ -202,3 +202,9 @@ test('external enrichment continues when contract RPC is unavailable',async()=>{
  const store=new RadarStore(':memory:');store.replaceLaunchRange('factory',400n,500n,500n,[launch]);store.replaceEventRange('market',400n,500n,500n,[]);
  const worker=new RadarIndexer(store,{chainId:async()=>{throw new Error('RPC unavailable');}} as unknown as RadarReader,{mode:'enrich',rangeBlocks:200n,pollMs:30000,profileConcurrency:1,historyStartBlock:100n,marketRead:async()=>[{token,name:'External Test',symbol:'EXT',source:'geckoterminal',priceUsd:1,liquidityUsd:10,volume24hUsd:null,marketCapUsd:null,fdvUsd:null,fetchedAt:Date.now()}]});await worker.tick();assert.equal(store.market(token)?.data?.symbol,'EXT');assert.match(worker.status().error??'',/RPC unavailable/);await worker.close();store.close();
 });
+
+test('collector catches up in bounded ranges after an outage',async()=>{
+ const store=new RadarStore(':memory:');store.replaceLaunchRange('factory',400n,500n,500n,[]);store.replaceEventRange('market',400n,500n,500n,[]);const ranges:Array<[bigint,bigint]>=[];
+ const reader={chainId:async()=>4663,head:async()=>5000n,factoryDeployment:async()=>100n,block:async(number:bigint)=>({number,hash:'0xblock',timestamp:number}),launches:async(from:bigint,to:bigint)=>{ranges.push([from,to]);return [];},trades:async(from:bigint,to:bigint)=>{ranges.push([from,to]);return [];}} as unknown as RadarReader;
+ const worker=new RadarIndexer(store,reader,{mode:'collect',rangeBlocks:200n,pollMs:30000,profileConcurrency:1,historyStartBlock:100n});await worker.tick();assert.ok(ranges.every(([from,to])=>to-from+1n<=200n));assert.equal(store.cursor('market')?.blockNumber,'636');await worker.close();store.close();
+});

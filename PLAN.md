@@ -96,3 +96,5 @@ SQLite contention fix: project scores against a read-only WAL snapshot, buffer w
 RPC budget follow-up: live getLogs returned Too Many Requests; batch responses masked it as a viem UnknownRpcError. Use non-batched log transport and limit split enrichment to 20 missing profiles + 5 refreshes, concurrency 2, every 30 seconds. Cached endpoints stayed responsive. Verify collector resumes after provider cooldown.
 
 Provider isolation: contract enrichment can use MEERKAT_ENRICH_RPC_URLS independently of the collector; external market batches proceed even if contract chainId fails. Disable periodic fallback ranking probes to preserve anonymous-provider quotas. Production collector uses verified BlockReq with official fallback, while contract enrichment/history use the official RPC. Both public providers showed quota limits, so no unlimited-freshness claim is valid.
+
+Outage catch-up now respects rangeBlocks (2,000 production default) instead of issuing an unbounded range from the old cursor to head. A regression verifies cursor progress in bounded chunks.
