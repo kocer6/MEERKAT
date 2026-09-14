@@ -104,3 +104,11 @@ test('profile refresh patches names into the visible feed without rebuilding eve
  assert.deepEqual({name:row?.name,symbol:row?.symbol,phase:row?.phase,missingInputs:row?.missingInputs},{name:'Test Token',symbol:'TEST',phase:0,missingInputs:[]});
  assert.equal(store.view('feed-rows')?.updatedAt,2);store.close();
 });
+
+
+test('fresh and launches keep newest blocks first after incremental cache updates',()=>{
+ const store=new RadarStore(':memory:'),service=new RadarService(store,()=>status);store.saveLaunch(launch);service.refreshViews();
+ const latest={...launch,token:wallet(999),curve:wallet(998),launchBlock:'900'};store.saveLaunch(latest);service.refreshFeedTokens([latest.token]);
+ for(const feed of ['fresh','launches'] as const){const rows=service.signals({feed,window:'all',cursor:null}).items;assert.deepEqual(rows.map(row=>row.token),[latest.token,token]);}
+ store.close();
+});
