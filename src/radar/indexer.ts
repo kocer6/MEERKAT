@@ -1,6 +1,7 @@
 import type {RadarReader} from './reader.js';
 import {RadarStore} from './store.js';
 import type {RadarEvent,RadarLaunch} from './types.js';
+import {scoreLaunchQuality,scoreRadarStrength,scoreWalletReputation} from './scores.js';
 
 export interface RadarIndexerOptions {
  rangeBlocks:bigint;
@@ -57,9 +58,37 @@ export class RadarIndexer {
    const marketBlock=marketRange.to===factoryRange.to?factoryBlock:await this.reader.block(marketRange.to);
    this.store.replaceEventRange('market',marketRange.from,marketRange.to,marketRange.to,events,marketBlock.hash);
    for(const token of new Set(events.map(event=>event.token))){const launch=this.store.launchByToken(token);if(launch?.profile&&launch.state==='profiled')this.store.saveLaunch({...launch,state:'tracking',updatedAt:Date.now()});}
+   this.recomputeScores(head);
    const cursor=this.store.cursor('market')!;
    this.snapshot={state:'ready',headBlock:head.toString(),lastIndexedBlock:cursor.blockNumber,lagBlocks:(head-BigInt(cursor.blockNumber)).toString(),updatedAt:Date.now(),queueDepth:this.store.launches().filter(row=>row.state==='discovered').length,error:null};
   }catch(error){this.snapshot={...this.snapshot,state:'error',updatedAt:Date.now(),error:sanitize(error)};}
+ }
+
+ private recomputeScores(head:bigint){
+  const allEvents=this.store.events();
+  for(const launch of this.store.launches()){
+   const profile=launch.profile,events=allEvents.filter(event=>event.token===launch.token),buys=events.filter(event=>event.kind==='buy'),sells=events.filter(event=>event.kind==='sell'),participants=new Set(events.map(event=>event.wallet).filter(Boolean)).size;
+   let exposure:number|null=null;if(profile&&BigInt(profile.totalSupply)>0n){const shareBps=Number(BigInt(profile.deployerBalance)*10000n/BigInt(profile.totalSupply));exposure=Math.max(0,100-shareBps/20);}
+   const launchScore=scoreLaunchQuality({subject:launch.token,asOfBlock:head.toString(),historyMaturity:Math.min(1,events.length/20),deployerOutcomes:null,deployerExposure:exposure,holderBreadth:profile?.holderCount===null||profile===null?null:Math.min(100,profile.holderCount*4),creatorConfig:profile?Math.max(0,100-profile.creatorTaxBps/50):null,earlyMarket:events.length>=5?Math.min(100,participants*12+Math.max(0,buys.length-sells.length)*4):null,metadata:profile?profile.metadataComplete?100:0:null});
+   this.persistScore(launchScore,head);
+  }
+  const wallets=new Set(allEvents.map(event=>event.wallet).filter((wallet):wallet is string=>wallet!==null));
+  for(const wallet of wallets){
+   const positions=this.store.positionsForWallet(wallet),outcomes=this.store.outcomesForWallet(wallet),complete=positions.filter(position=>position.complete),wins=outcomes.filter(outcome=>BigInt(outcome.pnl)>0n).length,positive=outcomes.filter(outcome=>BigInt(outcome.pnl)>0n).reduce((sum,row)=>sum+BigInt(row.pnl),0n),negative=outcomes.filter(outcome=>BigInt(outcome.pnl)<0n).reduce((sum,row)=>sum-BigInt(row.pnl),0n),coverage=positions.length?complete.length/positions.length:0;
+   const walletScore=scoreWalletReputation({subject:wallet,asOfBlock:head.toString(),completed:outcomes.length,coverage,outcomeQuality:outcomes.length?wins/outcomes.length*100:null,profitQuality:outcomes.length?negative===0n?positive>0n?100:50:Math.min(100,Number(positive*100n/negative)):null,repeatability:outcomes.length?Math.min(100,outcomes.length*8):null,earlyEntry:null,exitBehavior:outcomes.length?Math.max(0,100-positions.filter(position=>position.sells>0&&position.buys===0).length*25):null,coverageIntegrity:positions.length?coverage*100:null});
+   this.persistScore(walletScore,head);
+  }
+  for(const launch of this.store.launches()){
+   const events=allEvents.filter(event=>event.token===launch.token),walletsForToken=[...new Set(events.map(event=>event.wallet).filter((wallet):wallet is string=>wallet!==null))],qualified=walletsForToken.flatMap(wallet=>{const value=this.store.score(wallet,'wallet-reputation')?.value;return value!==null&&value!==undefined&&value>=60?[value]:[];}),buys=events.filter(event=>event.kind==='buy'),sells=events.filter(event=>event.kind==='sell'),buyFlow=buys.reduce((sum,event)=>sum+BigInt(event.quote??0),0n),sellFlow=sells.reduce((sum,event)=>sum+BigInt(event.quote??0),0n),totalFlow=buyFlow+sellFlow,launchQuality=this.store.score(launch.token,'launch-quality');
+   const radarScore=scoreRadarStrength({subject:launch.token,asOfBlock:head.toString(),verified:true,recentMarketIndexed:true,nonInfrastructureEvents:events.length,qualifiedConviction:qualified.length?qualified.reduce((sum,value)=>sum+value**2/100,0)/qualified.length:null,qualifiedBreadth:qualified.length?Math.min(100,qualified.length*12):null,flowAcceleration:events.length>=5?Math.min(100,events.length*4):null,netBuyPressure:totalFlow>0n?Number(buyFlow*100n/totalFlow):null,freshness:events.length?100:null,launchQuality:launchQuality?.value??null,holderRetention:launch.profile?.holderCount===null||!launch.profile?null:Math.min(100,launch.profile.holderCount*4),riskPenalty:sellFlow>buyFlow&&totalFlow>0n?Math.min(25,Number((sellFlow-buyFlow)*25n/totalFlow)):0});
+   this.persistScore(radarScore,head);if(radarScore.value!==null)this.store.saveLaunch({...launch,state:'scored',updatedAt:Date.now()});
+  }
+ }
+
+ private persistScore(score:ReturnType<typeof scoreLaunchQuality>,head:bigint){
+  const previous=this.store.score(score.subject,score.kind);this.store.saveScore(score);
+  const band=(value:number|null)=>value===null?'withheld':value<40?'low':value<60?'watch':value<75?'strong':'high';
+  if(previous&&band(previous.value)!==band(score.value))this.store.saveActivity({id:`${score.subject}:${score.kind}:${head}:${band(score.value)}`,subject:score.subject,subjectKind:score.kind==='wallet-reputation'?'wallet':'token',kind:'score-band-change',material:true,blockNumber:head.toString(),blockHash:null,txHash:null,createdAt:Date.now(),summary:`${score.kind} changed from ${band(previous.value)} to ${band(score.value)}`});
  }
 
  private async profileLaunches(head:bigint){

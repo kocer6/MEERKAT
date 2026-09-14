@@ -380,7 +380,7 @@ git commit -m "feat: account for radar wallet positions"
 - Consumes: profile facts, positions, outcomes, recent token flow, holder facts, and data coverage.
 - Produces: `scoreLaunchQuality`, `scoreWalletReputation`, `scoreRadarStrength`, all returning `ScoreSnapshot`.
 
-- [ ] **Step 1: Write gates, confidence shrinkage, caps, and risk-penalty tests**
+- [x] **Step 1: Write gates, confidence shrinkage, caps, and risk-penalty tests**
 
 ```ts
 test('withholds launch quality below sixty known weight',()=>{
@@ -401,13 +401,13 @@ test('risk evidence subtracts no more than twenty five radar points',()=>{
 });
 ```
 
-- [ ] **Step 2: Run tests and verify the score module is missing**
+- [x] **Step 2: Run tests and verify the score module is missing**
 
 Run: `node --import tsx --test test/radar-scores.test.ts`
 
 Expected: FAIL with missing `scores.js`.
 
-- [ ] **Step 3: Implement one shared weighted-score gate**
+- [x] **Step 3: Implement one shared weighted-score gate**
 
 ```ts
 function weighted(components:ScoreComponent[],minimumKnownWeight:number){
@@ -421,11 +421,11 @@ function weighted(components:ScoreComponent[],minimumKnownWeight:number){
 
 Implement the exact spec weights. Metadata is capped at 5 points. Wallet sample confidence is based on distinct completed positions and coverage, and displayed wallet value uses `Math.round(50*(1-confidence)+raw*confidence)`. Radar wallet contribution uses squared normalized reputation with diminishing returns and a per-wallet position-size cap. Apply verified risk penalties after the base calculation and cap the subtraction at 25.
 
-- [ ] **Step 4: Persist score explanations and material transitions**
+- [x] **Step 4: Persist score explanations and material transitions**
 
 Store `modelVersion`, `asOfBlock`, `computedAt`, components, evidence, unknown inputs, confidence, and explanation. Insert `radar_activity` only when a score crosses a configured band or a material component changes; use deterministic IDs formed from subject, score kind, block, and transition.
 
-- [ ] **Step 5: Verify and commit**
+- [x] **Step 5: Verify and commit**
 
 Run: `node --import tsx --test test/radar-scores.test.ts test/scoring.test.ts && npm run typecheck`
 
