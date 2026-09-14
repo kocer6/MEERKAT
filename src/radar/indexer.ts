@@ -104,7 +104,8 @@ export class RadarIndexer {
  }
 
  private async profileLaunches(head:bigint){
-  const queue=this.store.profileCandidates(this.options.profileBatchSize??this.options.profileConcurrency);
+  const limit=this.options.profileBatchSize??this.options.profileConcurrency,preferred=(this.store.view<Array<{token:string}>>('feed-rows')?.value??[]).map(row=>this.store.launchByToken(row.token)).filter((row):row is RadarLaunch=>Boolean(row&&!row.profile)),seen=new Set<string>(),queue:RadarLaunch[]=[];
+  for(const row of [...preferred,...this.store.profileCandidates(limit)])if(queue.length<limit&&!seen.has(row.token)){seen.add(row.token);queue.push(row);}
   let cursor=0;const profiled:string[]=[];
   const worker=async()=>{while(cursor<queue.length){const row=queue[cursor++];if(!row)continue;try{const profile=await this.reader.profile(row.token,head);this.store.saveLaunch({...row,state:'profiled',profile,profileError:null,updatedAt:Date.now()});profiled.push(row.token);}catch(error){this.store.saveLaunch({...row,state:'error',profileError:sanitize(error),updatedAt:Date.now()});}}};
   await Promise.all(Array.from({length:Math.min(this.options.profileConcurrency,queue.length)},()=>worker()));
