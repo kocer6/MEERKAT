@@ -30,6 +30,7 @@ export interface RadarReader {
  factoryDeployment():Promise<bigint>;
  launches(from:bigint,to:bigint):Promise<RadarLaunch[]>;
  trades(from:bigint,to:bigint):Promise<RadarEvent[]>;
+ profiles?(launches:RadarLaunch[],block:bigint):Promise<Map<string,RadarProfile|Error>>;
  profile(token:string,block:bigint):Promise<RadarProfile>;
  quoteSell(token:string,amount:bigint,block:bigint):Promise<bigint|null>;
 }
@@ -74,6 +75,27 @@ export function radarReader(rpcUrls:string|string[]=radarRpcUrls()):RadarReader{
     if(log.eventName==='CurveBuy')return {...common,wallet:log.args.buyer.toLowerCase(),kind:'buy' as const,tokens:log.args.tokensOut.toString(),quote:log.args.quoteIn.toString()};
     return {...common,wallet:log.args.seller.toLowerCase(),kind:'sell' as const,tokens:log.args.tokensIn.toString(),quote:log.args.quoteOut.toString()};
    });
+  },
+  profiles:async(launches,blockNumber)=>{
+   // One bounded eth_call for a batch; all values refer to the same captured block.
+   const contracts=launches.flatMap(row=>{
+    const c={address:row.token as Address,abi:tokenAbi};
+    return [{address:factory,abi:factoryAbi,functionName:'getLaunchedToken',args:[row.token as Address]},
+     {...c,functionName:'name'},{...c,functionName:'symbol'},{...c,functionName:'decimals'},
+     {...c,functionName:'totalSupply'},{...c,functionName:'balanceOf',args:[row.deployer as Address]},
+     {...c,functionName:'getTokenInfo'}];
+   });
+   const results=await client.multicall({contracts,blockNumber,multicallAddress:'0xcA11bde05977b3631167028862bE2a173976CA11',batchSize:0,allowFailure:true}),profiles=new Map<string,RadarProfile|Error>();
+   for(let i=0;i<launches.length;i++){
+    const row=launches[i]!,values=results.slice(i*7,i*7+7);
+    try{
+     const required=values.slice(0,6);for(const value of required)if(value.status==='failure')throw value.error;
+     const [record,name,symbol,decimals,totalSupply,deployerBalance]=required.map(value=>value.result) as [Awaited<ReturnType<typeof getRecord>>,string,string,number,bigint,bigint];
+     if(!record.exists||record.token.toLowerCase()!==row.token||record.curve.toLowerCase()!==row.curve||record.deployer.toLowerCase()!==row.deployer)throw new Error('Profile does not match the verified launch');
+     profiles.set(row.token,{name,symbol,decimals,phase:record.phase,creatorTaxBps:record.creatorTaxBps,creatorFeeRecipient:record.creatorFeeRecipient.toLowerCase(),totalSupply:totalSupply.toString(),deployerBalance:deployerBalance.toString(),holderCount:null,metadataComplete:values[6]?.status==='success',profiledAtBlock:blockNumber.toString(),profiledAt:Date.now()});
+    }catch(error){profiles.set(row.token,error instanceof Error?error:new Error(String(error)));}
+   }
+   return profiles;
   },
   profile:async(token,blockNumber)=>{
    const address=token as Address,record=await getRecord(token,blockNumber);if(!record.exists)throw new Error('Token is not registered in Pons V2');

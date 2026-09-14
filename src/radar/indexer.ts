@@ -1,7 +1,7 @@
 import type {RadarMarket} from './market.js';
 import type {RadarReader} from './reader.js';
 import {RadarStore} from './store.js';
-import type {RadarEvent,RadarLaunch,ScoreSnapshot,RadarActivity} from './types.js';
+import type {RadarEvent,RadarLaunch,RadarProfile,ScoreSnapshot,RadarActivity} from './types.js';
 import {scoreLaunchQuality,scoreRadarStrength,scoreWalletReputation} from './scores.js';
 import {markPosition} from './positions.js';
 import {RadarService} from './service.js';
@@ -178,13 +178,18 @@ export class RadarIndexer {
   add(visibleFresh,Math.floor(limit/4));add(fresh,Math.floor(limit/2));add(preferred,Math.max(1,Math.ceil(limit*0.75)));add(this.store.profileCandidates(limit),limit);add(fresh,limit);
   if(this.options.mode==='enrich')add(this.store.staleProfiles(Math.max(1,Math.floor(limit/4))),queue.length+Math.max(1,Math.floor(limit/4)));
   let cursor=0;const profiled:string[]=[];
-  const worker=async()=>{while(cursor<queue.length){const row=queue[cursor++];if(!row)continue;
-   try{const profile=await this.reader.profile(row.token,head);this.store.transaction(()=>{
-    const latest=this.store.launchByToken(row.token);if(!latest||latest.curve!==row.curve||latest.txHash!==row.txHash)return;
-    this.store.saveLaunch({...latest,state:latest.state==='scored'||latest.state==='tracking'?latest.state:'profiled',profile,profileError:null,profileAttemptAt:Date.now(),updatedAt:Date.now()});this.store.queueProjection(row.token);profiled.push(row.token);
-   });}catch(error){this.store.transaction(()=>{const latest=this.store.launchByToken(row.token);if(!latest||latest.curve!==row.curve||latest.txHash!==row.txHash)return;this.store.saveLaunch({...latest,state:latest.profile?latest.state:'error',profileError:sanitize(error),profileAttemptAt:Date.now(),updatedAt:Date.now()});});}
+  const save=(row:RadarLaunch,result:RadarProfile|Error)=>this.store.transaction(()=>{
+   const latest=this.store.launchByToken(row.token);if(!latest||latest.curve!==row.curve||latest.txHash!==row.txHash)return;
+   if(result instanceof Error){this.store.saveLaunch({...latest,state:latest.profile?latest.state:'error',profileError:sanitize(result),profileAttemptAt:Date.now(),updatedAt:Date.now()});return;}
+   this.store.saveLaunch({...latest,state:latest.state==='scored'||latest.state==='tracking'?latest.state:'profiled',profile:result,profileError:null,profileAttemptAt:Date.now(),updatedAt:Date.now()});this.store.queueProjection(row.token);profiled.push(row.token);
+  });
+  const worker=async()=>{while(cursor<queue.length){
+   const rows=queue.slice(cursor,cursor+(this.reader.profiles?20:1));cursor+=rows.length;
+   try{
+    if(this.reader.profiles){const results=await this.reader.profiles(rows,head);for(const row of rows)save(row,results.get(row.token)??new Error('Profile missing from batch response'));}
+    else{const row=rows[0]!;save(row,await this.reader.profile(row.token,head));}
+   }catch(error){for(const row of rows)save(row,error instanceof Error?error:new Error(String(error)));}
   }};
-
   await Promise.all(Array.from({length:Math.min(this.options.profileConcurrency,queue.length)},()=>worker()));
   return profiled;
  }

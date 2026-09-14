@@ -208,3 +208,13 @@ test('collector catches up in bounded ranges after an outage',async()=>{
  const reader={chainId:async()=>4663,head:async()=>5000n,factoryDeployment:async()=>100n,block:async(number:bigint)=>({number,hash:'0xblock',timestamp:number}),launches:async(from:bigint,to:bigint)=>{ranges.push([from,to]);return [];},trades:async(from:bigint,to:bigint)=>{ranges.push([from,to]);return [];}} as unknown as RadarReader;
  const worker=new RadarIndexer(store,reader,{mode:'collect',rangeBlocks:200n,pollMs:30000,profileConcurrency:1,historyStartBlock:100n});await worker.tick();assert.ok(ranges.every(([from,to])=>to-from+1n<=200n));assert.equal(store.cursor('market')?.blockNumber,'636');await worker.close();store.close();
 });
+
+
+test('batched enrichment bounds calls and saves successes despite a failed sibling',async()=>{
+ const store=new RadarStore(':memory:'),rows=Array.from({length:45},(_,i)=>({...launch,token:`0x${(100+i).toString(16).padStart(40,'0')}`,curve:`0x${(200+i).toString(16).padStart(40,'0')}`,launchBlock:String(100+i)}));
+ for(const row of rows)store.saveLaunch(row);store.replaceEventRange('market',500n,500n,500n,[],'0x500');
+ const batches:number[]=[];
+ const reader:RadarReader={chainId:async()=>4663,head:async()=>500n,block:async number=>({number,hash:'0x1',timestamp:number}),factoryDeployment:async()=>0n,launches:async()=>[],trades:async()=>[],profile:async()=>{throw new Error('single-token path must not run');},profiles:async requested=>{batches.push(requested.length);return new Map(requested.map(row=>[row.token,row.token===rows[0]!.token?new Error('reverted'):profile]));},quoteSell:async()=>null};
+ const indexer=new RadarIndexer(store,reader,{mode:'enrich',rangeBlocks:200n,pollMs:30000,profileConcurrency:2,profileBatchSize:45,historyStartBlock:0n});
+ await indexer.tick();assert.deepEqual(batches,[20,20,5]);assert.equal(store.launches().filter(row=>row.profile).length,44);assert.match(store.launchByToken(rows[0]!.token)!.profileError!,/reverted/);assert.equal(store.projectionCount(),44);await indexer.close();store.close();
+});
