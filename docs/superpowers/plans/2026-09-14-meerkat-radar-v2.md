@@ -515,7 +515,7 @@ git commit -m "feat: expose cached radar APIs"
 - Consumes: Radar APIs from Task 6 and legacy token/wallet APIs.
 - Produces: client routes for Radar, Leaderboard, Watchlist, Activity, Token Dossier, and Wallet Dossier with browser-state restoration.
 
-- [ ] **Step 1: Write static UI contract tests**
+- [x] **Step 1: Write static UI contract tests**
 
 ```ts
 test('terminal exposes four destinations and no Analyze navigation',()=>{
@@ -535,13 +535,13 @@ test('entity links are green only on hover or focus',()=>{
 });
 ```
 
-- [ ] **Step 2: Run the UI tests and verify the old Analyze shell fails them**
+- [x] **Step 2: Run the UI tests and verify the old Analyze shell fails them**
 
 Run: `node --import tsx --test test/terminal-ui.test.ts`
 
 Expected: FAIL because the four route buttons and global search are absent.
 
-- [ ] **Step 3: Replace the left Analyze form with persistent navigation and header search**
+- [x] **Step 3: Replace the left Analyze form with persistent navigation and header search**
 
 ```html
 <aside class="terminal-sidebar">
@@ -560,7 +560,7 @@ Expected: FAIL because the four route buttons and global search are absent.
 <main id="terminal-view" tabindex="-1"></main>
 ```
 
-- [ ] **Step 4: Implement a small History API router and explicit wallet fallback**
+- [x] **Step 4: Implement a small History API router and explicit wallet fallback**
 
 ```js
 const routes=[
@@ -577,11 +577,11 @@ window.addEventListener('popstate',event=>void renderRoute(location.pathname,eve
 
 Search navigates a token result directly. An unclassified address renders an inline confirmation with `OPEN AS WALLET`; only that button navigates to `/terminal/wallet/:address`. Save active feed, filters, scroll position, and dossier tab in `history.state`; restore them on Back.
 
-- [ ] **Step 5: Render Radar feeds with progressive, stale, partial, and empty states**
+- [x] **Step 5: Render Radar feeds with progressive, stale, partial, and empty states**
 
 Build five feed tabs: Signals, Fresh, Exits, Launches, Wallets. Each row shows the fields defined by the spec, uses text beside color, links entities through `navigate`, paginates by API cursor, and polls only the active feed. Status shows last indexed block, data age, lag, worker state, and missing inputs.
 
-- [ ] **Step 6: Verify routing and commit**
+- [x] **Step 6: Verify routing and commit**
 
 Run: `node --import tsx --test test/terminal-ui.test.ts test/observer-server.test.ts && npm run typecheck && npm run build`
 

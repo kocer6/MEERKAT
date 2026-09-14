@@ -126,7 +126,7 @@ test('terminal connects token and wallet modes to read-only evidence APIs',async
   assert.match(js,/\/api\/token\/index/);
   assert.match(js,/\/api\/token\/history/);
   assert.match(js,/\/api\/wallet\/dossier/);
-  assert.match(html,/RELATIONSHIP MAP/);
+  assert.match(js,/RELATIONSHIP MAP/);
   assert.match(css,/\.relationship-map/);
   assert.match(css,/\.terminal-shell\{max-width:none;margin:18px;/);
   assert.match(css,/\.relationship-section \.section-heading/);
