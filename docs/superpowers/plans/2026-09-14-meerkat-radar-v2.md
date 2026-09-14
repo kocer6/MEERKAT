@@ -313,7 +313,7 @@ git commit -m "feat: add cached launch radar feeds"
 - Consumes: ordered normalized `RadarEvent[]`, launch pair token, optional executable sell quote.
 - Produces: `applyPositionEvent(position,event)`, `markPosition(position,quote)`, and rebuilt `WalletTokenPosition` rows.
 
-- [ ] **Step 1: Write exact buy, partial sell, close, and transfer-gap tests**
+- [x] **Step 1: Write exact buy, partial sell, close, and transfer-gap tests**
 
 ```ts
 test('uses weighted average cost for a partial sell',()=>{
@@ -334,13 +334,13 @@ test('unmatched transfer makes return incomplete',()=>{
 });
 ```
 
-- [ ] **Step 2: Run tests and verify the module is missing**
+- [x] **Step 2: Run tests and verify the module is missing**
 
 Run: `node --import tsx --test test/radar-positions.test.ts`
 
 Expected: FAIL with missing `positions.js`.
 
-- [ ] **Step 3: Implement bigint-safe weighted-average accounting**
+- [x] **Step 3: Implement bigint-safe weighted-average accounting**
 
 ```ts
 export function applyPositionEvent(position:WalletTokenPosition,event:RadarEvent):WalletTokenPosition{
@@ -353,11 +353,11 @@ export function applyPositionEvent(position:WalletTokenPosition,event:RadarEvent
 
 `markPosition` returns `{openPnl,totalPnl,returnBps}` only when the position is complete and a current executable quote exists. An unmatched sell, incoming transfer, outgoing transfer, or event marked incomplete sets `complete=false` and never invents a cost basis.
 
-- [ ] **Step 4: Rebuild affected positions inside every overlap transaction**
+- [x] **Step 4: Rebuild affected positions inside every overlap transaction**
 
 After `replaceEventRange`, collect affected `(wallet,token)` pairs from both deleted and inserted rows, replay all persisted events in block/log order, and replace their `wallet_token_positions` rows in the same transaction. Exclude null wallets, self-routing, configured infrastructure addresses, and quote values below the dust threshold.
 
-- [ ] **Step 5: Verify and commit**
+- [x] **Step 5: Verify and commit**
 
 Run: `node --import tsx --test test/radar-positions.test.ts test/radar-store.test.ts test/radar-indexer.test.ts && npm run typecheck`
 

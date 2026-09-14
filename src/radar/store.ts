@@ -1,6 +1,7 @@
 import {mkdirSync} from 'node:fs';
 import {dirname} from 'node:path';
 import {DatabaseSync} from 'node:sqlite';
+import {applyPositionEvent,emptyPosition} from './positions.js';
 import type {Page,RadarActivity,RadarCursor,RadarEvent,RadarLaunch,ScoreSnapshot,WalletOutcome,WalletTokenPosition,WatchKind,WatchlistItem} from './types.js';
 
 interface ValueRow {
@@ -69,9 +70,11 @@ export class RadarStore {
 
  replaceEventRange(name:string,from:bigint,to:bigint,cursor:bigint,events:RadarEvent[],cursorHash:string|null=null){
   this.transaction(()=>{
+   const affected=new Set((this.db.prepare('SELECT wallet,token FROM radar_events WHERE block>=? AND block<=? AND wallet IS NOT NULL').all(Number(from),Number(to)) as {wallet:string;token:string}[]).map(row=>`${row.wallet}:${row.token}`));
    this.db.prepare('DELETE FROM radar_events WHERE block>=? AND block<=?').run(Number(from),Number(to));
    const insert=this.db.prepare('INSERT INTO radar_events(id,token,curve,wallet,kind,block,value) VALUES (?,?,?,?,?,?,?)');
-   for(const row of events){const event=this.normalizeEvent(row);insert.run(event.id,event.token,event.curve,event.wallet,event.kind,Number(event.blockNumber),JSON.stringify(event));}
+   for(const row of events){const event=this.normalizeEvent(row);insert.run(event.id,event.token,event.curve,event.wallet,event.kind,Number(event.blockNumber),JSON.stringify(event));if(event.wallet)affected.add(`${event.wallet}:${event.token}`);}
+   for(const key of affected){const split=key.indexOf(':0x'),wallet=key.slice(0,split),token=key.slice(split+1);this.rebuildPosition(wallet,token);}
    this.saveCursor(name,cursor,cursorHash);
   });
  }
@@ -100,6 +103,18 @@ export class RadarStore {
  positionsForWallet(wallet:string){return (this.db.prepare('SELECT value FROM wallet_token_positions WHERE wallet=? ORDER BY token').all(normalized(wallet)) as ValueRow[]).map(row=>JSON.parse(row.value) as WalletTokenPosition);}
  positionsForToken(token:string){return (this.db.prepare('SELECT value FROM wallet_token_positions WHERE token=? ORDER BY wallet').all(normalized(token)) as ValueRow[]).map(row=>JSON.parse(row.value) as WalletTokenPosition);}
  deletePosition(wallet:string,token:string){this.db.prepare('DELETE FROM wallet_token_positions WHERE wallet=? AND token=?').run(normalized(wallet),normalized(token));}
+
+ private rebuildPosition(wallet:string,token:string){
+  const launch=this.launchByToken(token),events=this.eventsForWallet(wallet).filter(event=>event.token===token);
+  if(!launch||!events.length||wallet===launch.curve||wallet===launch.token||wallet==='0x0000000000000000000000000000000000000000'){this.deletePosition(wallet,token);return;}
+  let position=emptyPosition(wallet,token,launch.pairToken);
+  for(const event of events)position=applyPositionEvent(position,event);
+  this.savePosition(position);
+  if(position.complete&&position.tokenBalance==='0'&&position.buys>0&&position.sells>0){
+   const proceeds=BigInt(position.observedProceeds),pnl=BigInt(position.realizedPnl),cost=proceeds-pnl,last=events.at(-1)!;
+   this.saveOutcome({wallet,token,closedAt:last.at??0,cost:cost.toString(),proceeds:proceeds.toString(),pnl:pnl.toString(),returnBps:cost>0n?Number(pnl*10000n/cost):null,complete:true});
+  }else this.db.prepare('DELETE FROM wallet_outcomes WHERE wallet=? AND token=?').run(wallet,token);
+ }
 
  saveOutcome(outcome:WalletOutcome){
   const value={...outcome,wallet:normalized(outcome.wallet),token:normalized(outcome.token)};
