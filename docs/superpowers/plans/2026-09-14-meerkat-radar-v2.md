@@ -161,7 +161,7 @@ git commit -m "feat: add radar persistence store"
 - Consumes: `RadarStore.replaceLaunchRange`, `RadarStore.replaceEventRange`, `RadarStore.cursor`, and the contracts from Task 1.
 - Produces: `RadarReader` and `RadarIndexer.start():void`, `tick():Promise<void>`, `status():RadarIndexerStatus`, `close():Promise<void>`.
 
-- [ ] **Step 1: Write a deterministic resume, filter, and singleton-cycle test**
+- [x] **Step 1: Write a deterministic resume, filter, and singleton-cycle test**
 
 ```ts
 test('indexes verified curves, resumes with overlap, and coalesces concurrent ticks',async()=>{
@@ -182,13 +182,13 @@ test('indexes verified curves, resumes with overlap, and coalesces concurrent ti
 });
 ```
 
-- [ ] **Step 2: Run the test and verify the missing reader/indexer failure**
+- [x] **Step 2: Run the test and verify the missing reader/indexer failure**
 
 Run: `node --import tsx --test test/radar-indexer.test.ts`
 
 Expected: FAIL because `RadarReader` and `RadarIndexer` do not exist.
 
-- [ ] **Step 3: Add curve event ABI and normalize only complete logs**
+- [x] **Step 3: Add curve event ABI and normalize only complete logs**
 
 ```ts
 export const curveBuy=parseAbiItem('event CurveBuy(address indexed buyer,address indexed recipient,uint256 quoteIn,uint256 tokensOut,uint256 fee,uint256 tax)');
@@ -208,7 +208,7 @@ export interface RadarReader {
 
 Use viem `getLogs` by event topic without an address for `CurveBuy` and `CurveSell`, map buyer/seller to `wallet`, preserve block hash/transaction hash/log index, and let the indexer discard events whose curve is absent from `radar_launches`.
 
-- [ ] **Step 4: Implement one coalesced scheduling loop with recent-first bootstrap**
+- [x] **Step 4: Implement one coalesced scheduling loop with recent-first bootstrap**
 
 ```ts
 export class RadarIndexer {
@@ -227,7 +227,7 @@ export class RadarIndexer {
 
 In `runCycle`, validate chain 4663, index the newest range first when no market cursor exists, replace the 64-block overlap, then advance one historical range for factory and tape. Store lag, last indexed block, queue depth, state, and a sanitized one-line error in `status()`.
 
-- [ ] **Step 5: Run focused and discovery regression tests, then commit**
+- [x] **Step 5: Run focused and discovery regression tests, then commit**
 
 Run: `node --import tsx --test test/radar-indexer.test.ts test/discovery.test.ts && npm run typecheck`
 
