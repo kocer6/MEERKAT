@@ -51,3 +51,13 @@ test('unchanged overlap preserves an executable mark and changed accounting clea
  assert.equal(store.position(buy.wallet!,launch.token)?.currentValue,null);
  store.close();
 });
+
+test('materialized views replace atomically and counts stay in SQL',()=>{
+ const store=new RadarStore(':memory:');
+ store.saveLaunch(launch);store.replaceEventRange('market',100n,120n,120n,[buy]);
+ store.saveView('feed-rows',[{token:launch.token,participants:1}],10);
+ store.saveView('feed-rows',[{token:launch.token,participants:2}],20);
+ assert.deepEqual(store.view<{token:string;participants:number}[]>('feed-rows'),{updatedAt:20,value:[{token:launch.token,participants:2}]});
+ assert.deepEqual(store.counts(),{launches:1,events:1});
+ store.close();
+});

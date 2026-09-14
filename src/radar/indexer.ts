@@ -3,11 +3,13 @@ import {RadarStore} from './store.js';
 import type {RadarEvent,RadarLaunch} from './types.js';
 import {scoreLaunchQuality,scoreRadarStrength,scoreWalletReputation} from './scores.js';
 import {markPosition} from './positions.js';
+import {RadarService} from './service.js';
 
 export interface RadarIndexerOptions {
  rangeBlocks:bigint;
  pollMs:number;
  profileConcurrency:number;
+ profileBatchSize?:number;
  historyStartBlock:bigint;
 }
 
@@ -41,12 +43,12 @@ export class RadarIndexer {
   return this.pending;
  }
 
- start(){if(!this.timer&&!this.stopped){void this.tick();this.timer=setInterval(()=>void this.tick(),this.options.pollMs);this.timer.unref();}}
+ start(){if(!this.timer&&!this.stopped){void this.tick();this.timer=setInterval(()=>void this.tick(),this.options.pollMs);}}
 
  async close(){this.stopped=true;if(this.timer){clearInterval(this.timer);this.timer=null;}await this.pending;this.snapshot={...this.snapshot,state:'stopped'};}
 
  private async runCycle(){
-  this.snapshot={...this.snapshot,state:'indexing',error:null};
+  this.snapshot={...this.snapshot,state:'indexing',error:null};this.publishStatus();
   try{
    const chainId=await this.reader.chainId();if(chainId!==4663)throw new Error(`wrong chain: ${chainId}; expected 4663`);
    const head=await this.reader.head(),deployment=await this.reader.factoryDeployment();
@@ -60,10 +62,12 @@ export class RadarIndexer {
    this.store.replaceEventRange('market',marketRange.from,marketRange.to,marketRange.to,events,marketBlock.hash);
    for(const token of new Set(events.map(event=>event.token))){const launch=this.store.launchByToken(token);if(launch?.profile&&launch.state==='profiled')this.store.saveLaunch({...launch,state:'tracking',updatedAt:Date.now()});}
    await this.markPositions(head,[...new Set(events.map(event=>event.token))]);
+   const views=new RadarService(this.store,()=>this.status());if(!this.store.view('feed-rows'))views.refreshViews();
    this.recomputeScores(head);
+   views.refreshViews();
    const cursor=this.store.cursor('market')!;
-   this.snapshot={state:'ready',headBlock:head.toString(),lastIndexedBlock:cursor.blockNumber,lagBlocks:(head-BigInt(cursor.blockNumber)).toString(),updatedAt:Date.now(),queueDepth:this.store.launches().filter(row=>row.state==='discovered'||row.state==='error').length,error:null};
-  }catch(error){this.snapshot={...this.snapshot,state:'error',updatedAt:Date.now(),error:sanitize(error)};}
+   this.snapshot={state:'ready',headBlock:head.toString(),lastIndexedBlock:cursor.blockNumber,lagBlocks:(head-BigInt(cursor.blockNumber)).toString(),updatedAt:Date.now(),queueDepth:this.store.launches().filter(row=>row.state==='discovered'||row.state==='error').length,error:null};this.publishStatus();
+  }catch(error){this.snapshot={...this.snapshot,state:'error',updatedAt:Date.now(),error:sanitize(error)};this.publishStatus();}
  }
 
  private async markPositions(head:bigint,tokens:string[]){
@@ -100,7 +104,7 @@ export class RadarIndexer {
  }
 
  private async profileLaunches(head:bigint){
-  const queue=this.store.launches().filter(row=>row.state==='discovered'||row.state==='error').sort((a,b)=>Number(BigInt(b.launchBlock)-BigInt(a.launchBlock))).slice(0,Math.max(1,this.options.profileConcurrency));
+  const queue=this.store.profileCandidates(this.options.profileBatchSize??this.options.profileConcurrency);
   let cursor=0;
   const worker=async()=>{while(cursor<queue.length){const row=queue[cursor++];if(!row)continue;try{const profile=await this.reader.profile(row.token,head);this.store.saveLaunch({...row,state:'profiled',profile,profileError:null,updatedAt:Date.now()});}catch(error){this.store.saveLaunch({...row,state:'error',profileError:sanitize(error),updatedAt:Date.now()});}}};
   await Promise.all(Array.from({length:Math.min(this.options.profileConcurrency,queue.length)},()=>worker()));
@@ -111,4 +115,6 @@ export class RadarIndexer {
   const saved=BigInt(cursor.blockNumber);if(head<saved)throw new Error('RPC head behind saved radar cursor');
   const from=saved>63n?saved-63n:0n;return {from:from>floor?from:floor,to:head};
  }
+
+ private publishStatus(){this.store.saveView('indexer-status',this.snapshot,this.snapshot.updatedAt??Date.now());}
 }

@@ -56,3 +56,11 @@ test('production deployment kit contains the required service boundaries',()=>{
  const caddy=readFileSync(resolve(root,'deploy/Caddyfile'),'utf8');assert.match(caddy,/meerkat\.my/);assert.match(caddy,/reverse_proxy 127\.0\.0\.1:4664/);
  const environment=readFileSync(resolve(root,'deploy/meerkat.env.example'),'utf8');assert.match(environment,/MEERKAT_PUBLIC=1/);assert.match(environment,/MEERKAT_DB=\/var\/lib\/meerkat\/observer\.sqlite/);assert.doesNotMatch(environment,/PRIVATE_KEY|SEED|MNEMONIC/);
 });
+
+test('production runs the web server and Radar indexer as separate services',()=>{
+ const web=readFileSync('deploy/meerkat.service','utf8'),worker=readFileSync('deploy/meerkat-indexer.service','utf8'),install=readFileSync('deploy/install.sh','utf8'),env=readFileSync('deploy/meerkat.env.example','utf8');
+ assert.match(web,/MEERKAT_RADAR=0/);
+ assert.match(worker,/radar-index/);
+ assert.match(install,/meerkat-indexer\.service/);
+ assert.match(env,/MEERKAT_RPC_URLS=/);
+});

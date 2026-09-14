@@ -4,6 +4,8 @@ The active product is a public and locally installable Pons V2 scoring and intel
 
 The current `main` checkpoint includes the tabbed dossier, paginated Timeline and the product-proof landing sections described below.
 
+The Radar performance checkpoint moves continuous market indexing into `meerkat-indexer.service`. The web service reads atomic `radar_views` snapshots and SQL counts, so scoring and leaderboard rebuilds no longer block HTTP. The metadata queue prioritizes launches with observed activity and processes a configurable batch (production default 40 with concurrency 4). `MEERKAT_RPC_URLS` accepts an ordered comma-separated provider pool. The terminal labels unprofiled launches `METADATA PENDING`, safely handles empty/non-JSON upstream responses, and exposes a retry action.
+
 Public hosting is live at `https://meerkat.my`. `MEERKAT_PUBLIC=1` removes the control token from terminal HTML, exposes token indexing through a bounded in-process admission queue, adds `/healthz`, and hides local operator routes. The Caddy, systemd, firewall, backup, install, rollback and recovery workflow is in `deploy/` and `docs/DEPLOYMENT.md`; production evidence is recorded in `docs/evidence/public-deployment-2026-09-13.md`.
 
 The landing sections now span the available desktop width instead of stopping at 1,500–1,800 px, and the terminal shell uses the full viewport with an 18 px working gutter. The mobile shell keeps its existing 10 px gutter and no page-level horizontal overflow. The README now presents a visual product tour using current HOP OUT captures for Overview, Fee Flow, Relationship Map, Current Holders and Timeline; the roadmap reuses the focused relationship evidence capture.

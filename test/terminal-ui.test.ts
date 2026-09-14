@@ -37,3 +37,12 @@ test('desktop readability floors are encoded in terminal CSS',()=>{
  assert.match(css,/--body-size:17px/);assert.match(css,/--table-size:15px/);assert.match(css,/--meta-size:12px/);assert.match(css,/min-height:50px/);
  assert.doesNotMatch(css,/\.metric\{[^}]*border-radius:\s*(?:[1-9][0-9]|[2-9])px/);
 });
+
+test('terminal handles empty upstream responses and labels pending metadata honestly',()=>{
+ const js=readFileSync('public/terminal.js','utf8');
+ assert.match(js,/Service temporarily unavailable\. Retry in a moment\./);
+ assert.match(js,/METADATA PENDING/);
+ assert.match(js,/'RETRY'/);
+ assert.doesNotMatch(js,/item\.symbol\|\|'UNKNOWN'/);
+ assert.doesNotMatch(js,/await response\.json\(\)/);
+});

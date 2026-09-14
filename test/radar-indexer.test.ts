@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {RadarIndexer} from '../src/radar/indexer.js';
+import {RadarIndexer,type RadarIndexerStatus} from '../src/radar/indexer.js';
 import type {RadarReader} from '../src/radar/reader.js';
 import {RadarStore} from '../src/radar/store.js';
 import type {RadarEvent,RadarLaunch,RadarProfile} from '../src/radar/types.js';
@@ -66,4 +66,22 @@ test('marks one bounded quote wave per cycle',async()=>{
  await indexer.tick();
  assert.equal(quotes,4);
  await indexer.close();store.close();
+});
+
+test('publishes durable status and materialized views after a cycle',async()=>{
+ const reader:RadarReader={chainId:async()=>4663,head:async()=>500n,block:async number=>({number,hash:`0x${number}`,timestamp:number}),factoryDeployment:async()=>100n,launches:async()=>[launch],trades:async()=>[buy],profile:async()=>profile,quoteSell:async()=>null};
+ const store=new RadarStore(':memory:'),indexer=new RadarIndexer(store,reader,{rangeBlocks:200n,pollMs:30000,profileConcurrency:2,historyStartBlock:100n});
+ await indexer.tick();
+ assert.equal(store.view<RadarIndexerStatus>('indexer-status')?.value.state,'ready');
+ assert.equal(store.view<unknown[]>('feed-rows')?.value.length,1);
+ assert.ok(store.view<unknown[]>('leaderboard-all'));
+ await indexer.close();store.close();
+});
+
+test('profile queue prioritizes launches with observed activity',async()=>{
+ const active={...launch,token:'0x00000000000000000000000000000000000000a1',curve:'0x00000000000000000000000000000000000000a2',launchBlock:'100'},newer={...launch,token:'0x00000000000000000000000000000000000000b1',curve:'0x00000000000000000000000000000000000000b2',launchBlock:'200'};
+ const store=new RadarStore(':memory:');store.saveLaunch(active);store.saveLaunch(newer);store.replaceEventRange('seed',100n,100n,100n,[{...buy,token:active.token,curve:active.curve,wallet:'0x00000000000000000000000000000000000000a3'}]);
+ const profiled:string[]=[];const reader:RadarReader={chainId:async()=>4663,head:async()=>500n,block:async number=>({number,hash:`0x${number}`,timestamp:number}),factoryDeployment:async()=>100n,launches:async()=>[],trades:async()=>[],profile:async token=>{profiled.push(token);return profile;},quoteSell:async()=>null};
+ const indexer=new RadarIndexer(store,reader,{rangeBlocks:200n,pollMs:30000,profileConcurrency:1,historyStartBlock:100n});await indexer.tick();
+ assert.deepEqual(profiled,[active.token]);await indexer.close();store.close();
 });

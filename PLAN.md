@@ -54,6 +54,7 @@ MEERKAT scores Pons V2 tokens and locally evidenced wallet behavior, then expose
 ## Next acceptance gates
 
 - [x] Deploy the reviewed public mode to `meerkat.my` and record DNS, TLS, restart, persisted-cursor and backup-restore evidence.
+- [x] Split Radar indexing from HTTP, publish materialized feed/leaderboard views, add RPC failover configuration, and harden terminal response parsing.
 
 - [x] Complete a launch-to-head backfill through the packaged server and record duration, cursor, event count, and restart/resume evidence.
 - [x] Add a relationship graph for deployer, curve buyers/sellers, transfer recipients, and explicitly marked pool callers.

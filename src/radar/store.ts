@@ -32,6 +32,7 @@ export class RadarStore {
    CREATE TABLE IF NOT EXISTS token_signal_snapshots(token TEXT NOT NULL,kind TEXT NOT NULL,value TEXT NOT NULL,PRIMARY KEY(token,kind));
    CREATE TABLE IF NOT EXISTS radar_activity(id TEXT PRIMARY KEY,block INTEGER NOT NULL,value TEXT NOT NULL);
    CREATE TABLE IF NOT EXISTS watchlist_items(kind TEXT NOT NULL,address TEXT NOT NULL,created_at INTEGER NOT NULL,PRIMARY KEY(kind,address));
+   CREATE TABLE IF NOT EXISTS radar_views(name TEXT PRIMARY KEY,updated_at INTEGER NOT NULL,value TEXT NOT NULL);
    CREATE INDEX IF NOT EXISTS radar_events_token_block ON radar_events(token,block,id);
    CREATE INDEX IF NOT EXISTS radar_events_wallet_block ON radar_events(wallet,block,id);
    CREATE INDEX IF NOT EXISTS radar_launches_block ON radar_launches(block,token);
@@ -40,7 +41,11 @@ export class RadarStore {
  }
 
  health(){return (this.db.prepare('SELECT 1 AS ok').get() as {ok:number}).ok===1;}
+ counts(){const launches=(this.db.prepare('SELECT COUNT(*) AS count FROM radar_launches').get() as {count:number}).count,events=(this.db.prepare('SELECT COUNT(*) AS count FROM radar_events').get() as {count:number}).count;return {launches,events};}
  close(){this.db.close();}
+
+ saveView<T>(name:string,value:T,updatedAt=Date.now()){this.db.prepare(`INSERT INTO radar_views(name,updated_at,value) VALUES (?,?,?) ON CONFLICT(name) DO UPDATE SET updated_at=excluded.updated_at,value=excluded.value`).run(name,updatedAt,JSON.stringify(value));}
+ view<T>(name:string){const row=this.db.prepare('SELECT updated_at,value FROM radar_views WHERE name=?').get(name) as {updated_at:number;value:string}|undefined;return row?{updatedAt:row.updated_at,value:JSON.parse(row.value) as T}:undefined;}
 
  private transaction(work:()=>void){
   this.db.exec('BEGIN IMMEDIATE');
@@ -89,6 +94,7 @@ export class RadarStore {
  launchByToken(token:string){return parsed<RadarLaunch>(this.db.prepare('SELECT value FROM radar_launches WHERE token=?').get(normalized(token)) as ValueRow|undefined);}
  launchByCurve(curve:string){return parsed<RadarLaunch>(this.db.prepare('SELECT value FROM radar_launches WHERE curve=?').get(normalized(curve)) as ValueRow|undefined);}
  launches(){return (this.db.prepare('SELECT value FROM radar_launches ORDER BY block DESC,token').all() as ValueRow[]).map(row=>JSON.parse(row.value) as RadarLaunch);}
+ profileCandidates(limit:number){return (this.db.prepare(`SELECT launch.value FROM radar_launches launch LEFT JOIN (SELECT token,COUNT(*) AS activity FROM radar_events GROUP BY token) event ON event.token=launch.token WHERE json_extract(launch.value,'$.state') IN ('discovered','error') ORDER BY COALESCE(event.activity,0) DESC,launch.block DESC,launch.token LIMIT ?`).all(Math.max(1,Math.trunc(limit))) as ValueRow[]).map(row=>JSON.parse(row.value) as RadarLaunch);}
 
  eventsForToken(token:string){return (this.db.prepare('SELECT value FROM radar_events WHERE token=? ORDER BY block,id').all(normalized(token)) as ValueRow[]).map(row=>JSON.parse(row.value) as RadarEvent);}
  eventsForWallet(wallet:string){return (this.db.prepare('SELECT value FROM radar_events WHERE wallet=? ORDER BY block,id').all(normalized(wallet)) as ValueRow[]).map(row=>JSON.parse(row.value) as RadarEvent);}

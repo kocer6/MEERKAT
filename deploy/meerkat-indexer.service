@@ -1,5 +1,5 @@
 [Unit]
-Description=MEERKAT token intelligence terminal
+Description=MEERKAT Radar background indexer
 Wants=network-online.target
 After=network-online.target
 
@@ -9,8 +9,7 @@ User=meerkat
 Group=meerkat
 WorkingDirectory=/opt/meerkat/app
 EnvironmentFile=/etc/meerkat/meerkat.env
-Environment=MEERKAT_RADAR=0
-ExecStart=/opt/meerkat/node/bin/node /opt/meerkat/app/dist/src/cli.js serve
+ExecStart=/opt/meerkat/node/bin/node /opt/meerkat/app/dist/src/cli.js radar-index
 Restart=on-failure
 RestartSec=5
 TimeoutStopSec=120

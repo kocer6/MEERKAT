@@ -64,3 +64,13 @@ test('watchlist is idempotent and activity is material-only',()=>{
  store.saveActivity({id:'cosmetic',subject:token,subjectKind:'token',kind:'refresh',material:false,blockNumber:'501',blockHash:null,txHash:null,createdAt:2,summary:'refreshed'});
  assert.equal(service.watchlist().items.length,1);assert.deepEqual(service.activity(null).items.map(row=>row.id),['material']);store.close();
 });
+
+test('feed and leaderboard use materialized rows when available',()=>{
+ const store=new RadarStore(':memory:'),owner=wallet(91),service=new RadarService(store,()=>status);
+ const feedRow={token,curve:launch.curve,name:'Cached',symbol:'CACHE',state:'scored' as const,pairToken:launch.pairToken,launchBlock:'450',updatedAt:Date.now(),ageMs:0,phase:0,participants:9,buys:4,sells:1,buyFlow:'10',sellFlow:'2',missingInputs:[],radarStrength:81};
+ const leaderboardRow={wallet:owner,status:'eligible' as const,eligibilityReasons:[],completedPositions:3,wins:2,winRate:2/3,realizedPnl:'50',openPnl:'10',totalPnl:'60',reputation:88,confidence:'high',activePositions:1};
+ store.saveView('feed-rows',[feedRow]);store.saveView('leaderboard-all',[leaderboardRow]);
+ assert.equal(service.signals({feed:'signals',window:'24h',cursor:null}).items[0]?.symbol,'CACHE');
+ assert.equal(service.leaderboard({window:'all',sort:'total-pnl',status:'all',cursor:null}).items[0]?.wallet,owner);
+ store.close();
+});

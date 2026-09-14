@@ -1,4 +1,4 @@
-import {createPublicClient,http,parseAbi,type Address} from 'viem';
+import {createPublicClient,fallback,http,parseAbi,type Address} from 'viem';
 import {curveBuyEvent,curveSellEvent,factory,factoryAbi,launched} from '../chain/abi.js';
 import {curveSell} from '../chain/quotes.js';
 import type {RadarEvent,RadarLaunch,RadarProfile} from './types.js';
@@ -41,9 +41,15 @@ export async function factoryIndexFloor(head:bigint,readCode:(block:bigint)=>Pro
  return configured;
 }
 
-export function radarReader(rpcUrl=process.env.MEERKAT_RPC_URL??'https://rpc.mainnet.chain.robinhood.com'):RadarReader{
- const parsed=new URL(rpcUrl);if(!['http:','https:'].includes(parsed.protocol))throw new Error('RPC must use http or https');
- const client=createPublicClient({transport:http(rpcUrl,{timeout:15000,retryCount:1})});
+export function radarRpcUrls(env:Record<string,string|undefined>=process.env){
+ const raw=env.MEERKAT_RPC_URLS?.split(',').map(value=>value.trim()).filter(Boolean)??[],single=env.MEERKAT_RPC_URL?.trim();if(single)raw.push(single);if(!raw.length)raw.push('https://rpc.mainnet.chain.robinhood.com');
+ const urls=[...new Set(raw)];for(const value of urls){const parsed=new URL(value);if(!['http:','https:'].includes(parsed.protocol))throw new Error('RPC must use http or https');}return urls;
+}
+
+export function radarReader(rpcUrls:string|string[]=radarRpcUrls()):RadarReader{
+ const urls=Array.isArray(rpcUrls)?rpcUrls:[rpcUrls];for(const value of urls){const parsed=new URL(value);if(!['http:','https:'].includes(parsed.protocol))throw new Error('RPC must use http or https');}
+ const transports=urls.map(url=>http(url,{timeout:15000,retryCount:1})),transport=transports.length===1?transports[0]!:fallback(transports,{rank:true,retryCount:1});
+ const client=createPublicClient({transport});
  const getRecord=(token:string,blockNumber:bigint)=>client.readContract({address:factory,abi:factoryAbi,functionName:'getLaunchedToken',args:[token as Address],blockNumber});
  const configuredFloor=process.env.MEERKAT_RADAR_START_BLOCK&&/^\d+$/.test(process.env.MEERKAT_RADAR_START_BLOCK)?BigInt(process.env.MEERKAT_RADAR_START_BLOCK):0n;
  return {

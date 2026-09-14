@@ -12,6 +12,7 @@ export interface RadarFeedRow {
  pairToken:string;
  launchBlock:string;ageMs:number|null;phase:number|null;participants:number;
  buys:number;sells:number;buyFlow:string;sellFlow:string;missingInputs:string[];
+ updatedAt:number;radarStrength:number|null;
 }
 export type LeaderboardSort='total-pnl'|'realized'|'open'|'win-rate'|'reputation';
 export type LeaderboardStatus='eligible'|'provisional'|'all';
@@ -31,7 +32,7 @@ const windowMs:Record<Exclude<RadarWindow,'all'>,number>={
 export class RadarService {
  constructor(private store:RadarStore,private indexStatus:()=>RadarIndexerStatus){}
 
- status(){return {...this.indexStatus(),launches:this.store.launches().length,events:this.store.events().length};}
+ status(){return {...this.indexStatus(),...this.store.counts()};}
  launches(cursor:string|null){return this.signals({feed:'launches',window:'all',cursor});}
 
  search(raw:string){
@@ -54,9 +55,23 @@ export class RadarService {
 
  leaderboard(query:{window:RadarWindow;sort:LeaderboardSort;status:LeaderboardStatus;cursor:string|null}){
   if(!['24h','7d','30d','all'].includes(query.window))throw new Error('Invalid leaderboard window');if(!['total-pnl','realized','open','win-rate','reputation'].includes(query.sort))throw new Error('Invalid leaderboard sort');if(!['eligible','provisional','all'].includes(query.status))throw new Error('Invalid leaderboard status');
-  const cutoff=query.window==='all'?null:Date.now()-windowMs[query.window],outcomes=this.store.outcomes(cutoff),wallets=[...new Set(outcomes.map(row=>row.wallet))],rows:LeaderboardRow[]=[];
+  const rows=this.store.view<LeaderboardRow[]>(`leaderboard-${query.window}`)?.value??this.buildLeaderboardRows(query.window);
+  return this.rankLeaderboard(rows,query.sort,query.status);
+ }
+
+ refreshViews(updatedAt=Date.now()){
+  const now=Date.now(),feed=this.store.launches().map(row=>this.feedRow(row,now));this.store.saveView('feed-rows',feed,updatedAt);
+  for(const window of ['24h','7d','30d','all'] as const)this.store.saveView(`leaderboard-${window}`,this.buildLeaderboardRows(window),updatedAt);
+ }
+
+ private buildLeaderboardRows(window:RadarWindow){
+  const cutoff=window==='all'?null:Date.now()-windowMs[window],outcomes=this.store.outcomes(cutoff),wallets=[...new Set(outcomes.map(row=>row.wallet))],rows:LeaderboardRow[]=[];
   for(const wallet of wallets){const completed=outcomes.filter(row=>row.wallet===wallet&&row.complete),positions=this.store.positionsForWallet(wallet),reasons=this.eligibilityReasons(wallet,completed,positions),realized=completed.reduce((sum,row)=>sum+BigInt(row.pnl),0n),active=positions.filter(row=>BigInt(row.tokenBalance)>0n),marked=active.every(row=>row.openPnl!==null&&row.openPnl!==undefined),open=marked?active.reduce((sum,row)=>sum+BigInt(row.openPnl!),0n):null,reputation=this.store.score(wallet,'wallet-reputation');rows.push({wallet,status:reasons.length?'provisional':'eligible',eligibilityReasons:reasons,completedPositions:completed.length,wins:completed.filter(row=>BigInt(row.pnl)>0n).length,winRate:completed.length?completed.filter(row=>BigInt(row.pnl)>0n).length/completed.length:null,realizedPnl:realized.toString(),openPnl:open?.toString()??null,totalPnl:open===null?null:(realized+open).toString(),reputation:reputation?.value??null,confidence:reputation?.confidence??'provisional',activePositions:active.length});}
-  const filtered=rows.filter(row=>query.status==='all'||row.status===query.status),metric=(row:LeaderboardRow)=>query.sort==='reputation'?BigInt(row.reputation??-1):query.sort==='win-rate'?BigInt(row.winRate===null?-1:Math.round(row.winRate*10000)):query.sort==='open'?BigInt(row.openPnl??'-999999999999999999999999999999999999'):query.sort==='realized'?BigInt(row.realizedPnl):BigInt(row.totalPnl??'-999999999999999999999999999999999999');
+  return rows;
+ }
+
+ private rankLeaderboard(rows:LeaderboardRow[],sort:LeaderboardSort,status:LeaderboardStatus){
+  const filtered=rows.filter(row=>status==='all'||row.status===status),metric=(row:LeaderboardRow)=>sort==='reputation'?BigInt(row.reputation??-1):sort==='win-rate'?BigInt(row.winRate===null?-1:Math.round(row.winRate*10000)):sort==='open'?BigInt(row.openPnl??'-999999999999999999999999999999999999'):sort==='realized'?BigInt(row.realizedPnl):BigInt(row.totalPnl??'-999999999999999999999999999999999999');
   filtered.sort((a,b)=>a.status!==b.status?(a.status==='eligible'?-1:1):metric(a)!==metric(b)?(metric(a)>metric(b)?-1:1):b.completedPositions-a.completedPositions||a.wallet.localeCompare(b.wallet));return {items:filtered.slice(0,100),nextCursor:null};
  }
  activity(cursor:string|null){const page=this.store.activity(cursor);return {...page,items:page.items.filter(item=>item.material)};}
@@ -68,6 +83,8 @@ export class RadarService {
   if(!['signals','fresh','exits','launches','wallets'].includes(query.feed))throw new Error('Invalid radar feed');
   if(!['24h','7d','30d','all'].includes(query.window))throw new Error('Invalid radar window');
   const after=query.cursor?this.decodeCursor(query.cursor):null,now=Date.now(),cutoff=query.window==='all'?null:now-windowMs[query.window];
+  const cached=this.store.view<RadarFeedRow[]>('feed-rows')?.value;
+  if(cached){let rows=cached.filter(row=>(cutoff===null||row.updatedAt>=cutoff)&&(!after||BigInt(row.launchBlock)<BigInt(after.block)||(row.launchBlock===after.block&&row.token>after.token)));if(query.feed==='signals')rows=rows.filter(row=>row.radarStrength!==null).sort((a,b)=>(b.radarStrength??-1)-(a.radarStrength??-1)||a.token.localeCompare(b.token));if(query.feed==='exits')rows=rows.filter(row=>row.sells>0).sort((a,b)=>Number(BigInt(b.launchBlock)-BigInt(a.launchBlock))||a.token.localeCompare(b.token));if(query.feed==='wallets')rows=rows.sort((a,b)=>b.participants-a.participants||a.token.localeCompare(b.token));const page=rows.slice(0,50),last=page.at(-1);return {items:page,nextCursor:rows.length>50&&last?Buffer.from(JSON.stringify({block:last.launchBlock,token:last.token} satisfies LaunchCursor)).toString('base64url'):null};}
   let launches=this.store.launches().filter(row=>(cutoff===null||row.updatedAt>=cutoff)&&(!after||BigInt(row.launchBlock)<BigInt(after.block)||(row.launchBlock===after.block&&row.token>after.token)));
   if(query.feed==='signals')launches=launches.filter(row=>this.store.score(row.token,'radar-strength')?.value!==null).sort((a,b)=>(this.store.score(b.token,'radar-strength')?.value??-1)-(this.store.score(a.token,'radar-strength')?.value??-1)||a.token.localeCompare(b.token));
   if(query.feed==='exits')launches=launches.filter(row=>this.store.eventsForToken(row.token).some(event=>event.kind==='sell'&&(cutoff===null||event.at===null||event.at>=cutoff))).sort((a,b)=>Number(BigInt(b.launchBlock)-BigInt(a.launchBlock))||a.token.localeCompare(b.token));
@@ -82,7 +99,7 @@ export class RadarService {
   if(!launch.profile)missingInputs.push('token profile');
   if(!events.length)missingInputs.push('market activity');
   if(launch.profile?.holderCount===null)missingInputs.push('holder breadth');
-  return {token:launch.token,curve:launch.curve,name:launch.profile?.name??null,symbol:launch.profile?.symbol??null,state:launch.state,pairToken:launch.pairToken,launchBlock:launch.launchBlock,ageMs:Math.max(0,now-launch.updatedAt),phase:launch.profile?.phase??null,participants:wallets.size,buys:buys.length,sells:sells.length,buyFlow:sum(buys),sellFlow:sum(sells),missingInputs};
+  return {token:launch.token,curve:launch.curve,name:launch.profile?.name??null,symbol:launch.profile?.symbol??null,state:launch.state,pairToken:launch.pairToken,launchBlock:launch.launchBlock,ageMs:Math.max(0,now-launch.updatedAt),phase:launch.profile?.phase??null,participants:wallets.size,buys:buys.length,sells:sells.length,buyFlow:sum(buys),sellFlow:sum(sells),missingInputs,updatedAt:launch.updatedAt,radarStrength:this.store.score(launch.token,'radar-strength')?.value??null};
  }
 
  private eligibilityReasons(wallet:string,outcomes:ReturnType<RadarStore['outcomesForWallet']>,positions:ReturnType<RadarStore['positionsForWallet']>){

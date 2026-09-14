@@ -1,6 +1,11 @@
 import { encode } from './types.js';
 import { startObserver } from './observer-server.js';
 import { PonsDiscovery, rpcReader } from './chain/discovery.js';
+import {RadarStore} from './radar/store.js';
+import {RadarIndexer} from './radar/indexer.js';
+import {radarReader} from './radar/reader.js';
+
+const radarOptions=()=>({rangeBlocks:BigInt(process.env.MEERKAT_RADAR_RANGE_BLOCKS??2000),pollMs:Number(process.env.MEERKAT_RADAR_POLL_MS??30000),profileConcurrency:Number(process.env.MEERKAT_RADAR_PROFILE_CONCURRENCY??4),profileBatchSize:Number(process.env.MEERKAT_RADAR_PROFILE_BATCH_SIZE??40),historyStartBlock:BigInt(process.env.MEERKAT_RADAR_START_BLOCK??0)});
 
 if (process.argv[2] === 'demo') {
   const {runDemo}=await import('./demo.js');
@@ -15,7 +20,10 @@ if (process.argv[2] === 'demo') {
   console.log(`MEERKAT market watch: ${app.url}`);
   const stop = () => { void app.close().then(() => process.exit(0)); };
   process.once('SIGINT', stop); process.once('SIGTERM', stop);
+} else if(process.argv[2]==='radar-index'){
+  const store=new RadarStore(process.env.MEERKAT_DB??'data/observer.sqlite'),indexer=new RadarIndexer(store,radarReader(),radarOptions());indexer.start();console.log('MEERKAT Radar indexer started');
+  const stop=()=>{void indexer.close().then(()=>{store.close();process.exit(0);});};process.once('SIGINT',stop);process.once('SIGTERM',stop);
 } else {
-  console.error('Usage: meerkat demo | serve | market');
+  console.error('Usage: meerkat demo | serve | market | radar-index');
   process.exitCode = 1;
 }
