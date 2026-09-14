@@ -670,7 +670,7 @@ git commit -m "feat: connect radar dossiers and leaderboard"
 - Consumes: all completed Radar V2 services and views.
 - Produces: saved token/wallet lists, material activity feed, compliant responsive UI, user documentation, and release evidence.
 
-- [ ] **Step 1: Write watchlist/activity and typography contract tests**
+- [x] **Step 1: Write watchlist/activity and typography contract tests**
 
 ```ts
 test('watchlist is idempotent and activity is material-only',()=>{
@@ -690,35 +690,35 @@ test('desktop readability floors are encoded in terminal CSS',()=>{
 });
 ```
 
-- [ ] **Step 2: Run tests and verify the final contracts fail**
+- [x] **Step 2: Run tests and verify the final contracts fail**
 
 Run: `node --import tsx --test test/radar-service.test.ts test/terminal-ui.test.ts test/docs.test.ts`
 
 Expected: FAIL until watchlist routes, activity rendering, typography variables, and docs are complete.
 
-- [ ] **Step 3: Finish Watchlist and Activity interactions**
+- [x] **Step 3: Finish Watchlist and Activity interactions**
 
 Add idempotent token/wallet save and remove controls to dossiers and feed rows. Watchlist shows saved identities, current score, freshness, and last material change. Activity shows threshold crossings, watched entries/exits, creator changes, and material score changes with source block/transaction links; cosmetic recomputations do not create records.
 
-- [ ] **Step 4: Apply the full readability and responsive contract**
+- [x] **Step 4: Apply the full readability and responsive contract**
 
 Use `--body-size:17px`, `--table-size:15px`, and `--meta-size:12px`; body weight is at least 600; rows are 50px high. Let the terminal use the full viewport with useful columns at 2560px. At 1440px reduce columns without reducing type. At 390px stack modules, preserve minimum sizes, use horizontal scrolling only for data tables, and keep search/navigation operable. Restrict PressStart to the wordmark, large headings, and major scores.
 
-- [ ] **Step 5: Update project docs and evidence**
+- [x] **Step 5: Update project docs and evidence**
 
 Document the four destinations, universal search, score meanings, PnL limitations, worker lifecycle, environment settings, new SQLite tables, API routes, and operational restart behavior. Add current Radar, Token Dossier, Wallet Dossier, and Leaderboard screenshots to `docs/assets/` and reference them from README and ROADMAP with explanatory captions.
 
-- [ ] **Step 6: Run complete automated verification**
+- [x] **Step 6: Run complete automated verification**
 
 Run: `npm test && npm run typecheck && npm run build`
 
 Expected: all tests pass, TypeScript reports zero errors, and `dist/public` contains the updated terminal assets.
 
-- [ ] **Step 7: Run live and visual acceptance checks**
+- [x] **Step 7: Run live and visual acceptance checks**
 
 Start the built server against a temporary database, confirm only one global worker is reported, wait for a verified launch and compare stored factory/trade events with Blockscout, restart and confirm cursors resume with overlap, then inspect Radar, Leaderboard, Token Dossier, and Wallet Dossier at 2560×1440, 1440×900, and 390×844. Record commands, timestamps, addresses, screenshots, observed lag, and any evidence gaps in `docs/evidence/radar-v2-2026-09-14.md`.
 
-- [ ] **Step 8: Commit the verified release package**
+- [x] **Step 8: Commit the verified release package**
 
 ```bash
 git add src/radar/service.ts src/observer-server.ts public/terminal.js public/terminal.css README.md ROADMAP.md docs/ARCHITECTURE.md docs/assets docs/evidence/radar-v2-2026-09-14.md test/radar-service.test.ts test/terminal-ui.test.ts test/docs.test.ts
@@ -727,14 +727,14 @@ git commit -m "feat: complete MEERKAT Radar V2"
 
 ## Final acceptance gate
 
-- [ ] `RADAR`, `LEADERBOARD`, `WATCHLIST`, and `ACTIVITY` are the only persistent terminal destinations.
-- [ ] Global search opens registered Pons tokens directly and requires explicit wallet fallback for an unclassified address.
-- [ ] Radar reads cached state and one server-owned indexer resumes after restart.
-- [ ] Fresh and Launches work before deep token history is complete.
-- [ ] Launch Quality, Wallet Reputation, and Radar Strength expose separate evidence and confidence.
-- [ ] Weighted-average position accounting passes buy, partial-sell, close, quote, and transfer-gap cases.
-- [ ] Eligible wallets cannot be outranked by provisional wallets in the PnL leaderboard.
-- [ ] Token and wallet dossiers link to each other, Pons, and exact Blockscout evidence.
-- [ ] Existing Fee Flow, Relationships, Holders, and Timeline remain functional.
-- [ ] The terminal fills wide screens, uses readable type, and does not leave large unused side gutters.
-- [ ] Full tests, typecheck, build, live chain checks, restart checks, and three viewport inspections are recorded before deployment.
+- [x] `RADAR`, `LEADERBOARD`, `WATCHLIST`, and `ACTIVITY` are the only persistent terminal destinations.
+- [x] Global search opens registered Pons tokens directly and requires explicit wallet fallback for an unclassified address.
+- [x] Radar reads cached state and one server-owned indexer resumes after restart.
+- [x] Fresh and Launches work before deep token history is complete.
+- [x] Launch Quality, Wallet Reputation, and Radar Strength expose separate evidence and confidence.
+- [x] Weighted-average position accounting passes buy, partial-sell, close, quote, and transfer-gap cases.
+- [x] Eligible wallets cannot be outranked by provisional wallets in the PnL leaderboard.
+- [x] Token and wallet dossiers link to each other, Pons, and exact Blockscout evidence.
+- [x] Existing Fee Flow, Relationships, Holders, and Timeline remain functional.
+- [x] The terminal fills wide screens, uses readable type, and does not leave large unused side gutters.
+- [x] Full tests, typecheck, build, live chain checks, restart checks, and three viewport inspections are recorded before deployment.

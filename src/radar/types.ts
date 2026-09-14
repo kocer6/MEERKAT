@@ -70,6 +70,11 @@ export interface WalletTokenPosition {
  lastTradeBlock:string|null;
  complete:boolean;
  updatedAt:number;
+ currentValue?:string|null;
+ openPnl?:string|null;
+ totalPnl?:string|null;
+ returnBps?:number|null;
+ markedAtBlock?:string|null;
 }
 
 export interface WalletOutcome {

@@ -28,6 +28,19 @@
 
 ## What it looks like
 
+**Radar V2 is the default terminal view.** It continuously indexes verified Pons launches, ranks signals from cached evidence, and keeps Fresh, Exits, Launches, and Wallets one click away. Global search accepts a token name, symbol, token contract, or wallet address.
+
+![MEERKAT Radar V2 with ranked token signals and global search](docs/assets/radar-v2.png)
+
+| Connected token dossier | Connected wallet dossier |
+| --- | --- |
+| Radar Strength, Launch Quality, qualified buyers, fee flow, relationships, holders, and the paginated event timeline stay attached to the token. | Wallet Reputation, attributed positions, realized/open PnL, recent fills, shared-wallet context, Pons profile, and transaction evidence stay attached to the wallet. |
+| ![MEERKAT Token Dossier V2](docs/assets/token-dossier-v2.png) | ![MEERKAT Wallet Dossier V2](docs/assets/wallet-dossier-v2.png) |
+
+**Leaderboard ranks wallets by evidence-backed performance.** Eligible rows require at least three completed attributed positions and no material transfer gap. Provisional wallets remain visible but cannot outrank eligible wallets.
+
+![MEERKAT wallet PnL leaderboard](docs/assets/leaderboard-v2.png)
+
 **Score first, then inspect the reasons.** The Overview keeps the token score, confidence, index coverage, market activity and source links in one workspace. This capture uses the real HOP OUT token on Robinhood Chain.
 
 <p align="center">
@@ -49,7 +62,7 @@
 
 ## What MEERKAT does
 
-Paste a Pons V2 token or public wallet address into `/terminal`. MEERKAT returns a 0–100 evidence score first, shows confidence and every scoring component, then opens the underlying dossier:
+Use global search in `/terminal` to find a Pons V2 token or open a public wallet explicitly. MEERKAT keeps four destinations—**Radar**, **Leaderboard**, **Watchlist**, and **Activity**—and opens token and wallet dossiers as linked detail routes:
 
 - launch identity, deployer, pair, curve, tax and current phase;
 - curve buys and sells with attributed initiating addresses;
@@ -80,12 +93,16 @@ npm start
 
 Use the [public terminal](https://meerkat.my/terminal), or open [http://127.0.0.1:4664/](http://127.0.0.1:4664/) after a local install. Select **Open terminal** and paste a token or wallet address. The default RPC and database path work without adding secrets. See the [local setup guide](docs/LOCAL-SETUP.md) for configuration and troubleshooting.
 
-## Two investigation modes
+## Connected investigations
 
 | Mode | Input | Result | Current boundary |
 | --- | --- | --- | --- |
 | **Token** | Pons V2 token address | Five focused views for score, fee flow, relationships, holders and lifecycle evidence | Timeline pages load 50 events at a time; the full indexed history stays in SQLite |
-| **Wallet** | Public EVM address | Behavior score, confidence, cross-token activity and timing labels | Searches locally indexed Pons histories; global wallet discovery is in development |
+| **Wallet** | Public EVM address selected explicitly | Reputation, positions, completed outcomes, recent actions, Pons profile and exact transaction links | Transfer gaps withhold open/total PnL and leaderboard eligibility |
+
+Radar is the live market-wide list. Global search replaces the former Analyze destination: it opens a registered token directly and asks before treating an unclassified contract-shaped address as a wallet. Watchlist is stored in the current browser; Activity contains material score-band and market changes from the persistent index.
+
+PnL uses attributed curve fills and weighted-average cost in pair-token units. Native-pair launches display ETH. Open and total PnL appear only after an executable sell quote is captured; missing quotes and material transfer gaps remain `UNKNOWN`. MEERKAT does not invent USD values.
 
 The landing page, terminal, APIs, indexer, state, and database all run inside one local Node.js process. The browser never receives a signing route because the server has none.
 
@@ -124,7 +141,8 @@ Every label is derived from an explicit rule. For example, an **early entry** is
 | Token signal score | **Live locally** | Withheld until ready; deterministic components and confidence |
 | Local wallet score | **Live locally** | Cross-token local evidence with explicit coverage |
 | Token lifecycle | **Live locally** | Verified launch and resumable event history |
-| Global wallet discovery | **Building** | Bounded discovery with saved cursor |
+| Radar V2 global index | **Live locally** | One resumable worker, cached feeds, universal search and connected dossiers |
+| Wallet PnL leaderboard | **Live locally** | Eligibility gates, deterministic ranking and provisional separation |
 | Relationship map | **Live locally** | Trade Flow, Current Holders and Wallet Routes with a selected-wallet inspector |
 | Creator fee flow | **Live locally** | Exact curve/pool sweeps, current route and recipient-change evidence |
 | Holder intelligence | **Live locally / improving** | Transfer-ledger balances and explicit partial state; known-contract exclusions remain next |

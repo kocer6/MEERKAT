@@ -4,12 +4,24 @@ This roadmap records product capability, not marketing dates. A feature moves to
 
 ## Live
 
+### Radar V2 market workspace
+
+- continuously discovers verified Pons launches with one server-owned worker;
+- serves Signals, Fresh, Exits, Launches, and Wallets from cached SQLite state;
+- replaces the separate Analyze screen with global name, symbol, token, and wallet search;
+- connects token and wallet dossiers, browser watchlist, material Activity, and an evidence-gated PnL leaderboard;
+- stores weighted-average positions and captures executable pair-token quotes for open PnL when available.
+
+![MEERKAT Radar V2 ranked signal workspace](docs/assets/radar-v2.png)
+
+Acceptance evidence: deterministic index, position, score, search, ranking, route, and restart tests plus the QA record in `docs/evidence/radar-v2-2026-09-14.md`.
+
 ### Transparent scores
 
 - withholds the token score until indexing completes, then scores deployer exposure, creator tax, participant breadth, two-sided activity and holder breadth;
 - returns a wallet behavior score from local scope, early discovery, two-sided activity and evidence depth;
 - shows every component, observation, caveat and confidence level before the detailed dossier;
-- keeps realized PnL null and smart status unassessed.
+- keeps PnL unknown when attribution, transfer continuity, or executable quote evidence is incomplete.
 
 Acceptance evidence: deterministic scoring tests for strong, partial and thin-evidence cases plus UI/API contract checks.
 
@@ -23,10 +35,11 @@ Acceptance evidence: deterministic scoring tests for strong, partial and thin-ev
 
 Acceptance evidence: tests, build, browser QA, and the bounded COPY integration sample recorded in `docs/evidence/landing-terminal-v1-2026-09-11.md`.
 
-### Local product shell
+### Connected terminal shell
 
 - branded public landing page with a compact interactive ZZZ dossier preview, five working evidence tabs and a direct ZZZ analysis route;
-- token and wallet address modes plus five persistent token dossier tabs;
+- Radar, Leaderboard, Watchlist, and Activity destinations plus route-addressable token and wallet dossiers;
+- global search with explicit wallet fallback for unclassified addresses;
 - lazy Timeline pages of 50 events with BUY, SELL, TRANSFER and FEES filters;
 - BUY/SELL-specific radial Trade Flow views and per-wallet trade counts in holder and transfer-route maps;
 - local SQLite persistence;
@@ -68,14 +81,12 @@ Acceptance evidence: deterministic aggregation and migration tests plus the real
 
 ## Building now
 
-### Global wallet discovery
+### Broader outcome coverage
 
-- discover relevant Pons events for a wallet beyond histories already stored locally;
-- bound RPC range and concurrency;
-- save the discovery cursor and make partial coverage visible;
-- merge results into the existing dossier without duplicate events.
-
-Acceptance gate: clean-install test showing a previously unseen wallet can be indexed, interrupted, resumed, and audited from exact transactions.
+- expand historical outcomes beyond the recent Radar window;
+- classify additional known infrastructure contracts;
+- compare captured executable quotes against independent Pons views;
+- add explicit stale-age controls to ranked feeds.
 
 ## Next
 

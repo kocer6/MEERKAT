@@ -70,6 +70,7 @@ export async function startObserver(options:ObserverOptions){
     if(path==='/api/radar/signals'){send(res,200,radar.signals({feed:feed(p.get('feed')),window:window(p.get('window')),cursor:p.get('cursor')}));return;}
     if(path==='/api/radar/launches'){send(res,200,radar.launches(p.get('cursor')));return;}
     if(path==='/api/radar/activity'){send(res,200,radar.activity(p.get('cursor')));return;}
+    if(path==='/api/radar/watchlist'){send(res,200,radar.watchlist());return;}
     if(path==='/api/radar/leaderboard'){send(res,200,radar.leaderboard({window:window(p.get('window')),sort:sort(p.get('sort')),status:rankingStatus(p.get('status')),cursor:p.get('cursor')}));return;}
     if(path==='/api/radar/search'){send(res,200,radar.search(p.get('q')??''));return;}
     const tokenSummary=/^\/api\/radar\/token\/(0x[a-fA-F0-9]{40})\/summary$/.exec(path);if(tokenSummary){send(res,200,radar.tokenSummary(tokenSummary[1]!));return;}

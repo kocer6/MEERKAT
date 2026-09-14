@@ -25,3 +25,9 @@ test('entity links are green only on hover or focus',()=>{
  assert.match(css,/\.entity-link\{[^}]*color:var\(--sand\)/);
  assert.match(css,/\.entity-link:is\(:hover,:focus-visible\)\{[^}]*color:var\(--green\)/);
 });
+
+test('desktop readability floors are encoded in terminal CSS',()=>{
+ const css=readFileSync('public/terminal.css','utf8');
+ assert.match(css,/--body-size:17px/);assert.match(css,/--table-size:15px/);assert.match(css,/--meta-size:12px/);assert.match(css,/min-height:50px/);
+ assert.doesNotMatch(css,/\.metric\{[^}]*border-radius:\s*(?:[1-9][0-9]|[2-9])px/);
+});

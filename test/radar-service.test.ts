@@ -21,6 +21,12 @@ test('fresh feed exposes progressive launch states from cached rows',()=>{
  store.close();
 });
 
+test('signals and exits use cached scores and events instead of empty placeholders',()=>{
+ const store=new RadarStore(':memory:');store.saveLaunch(launch);store.saveScore({...reputation(token,82),kind:'radar-strength'});
+ store.replaceEventRange('market',450n,500n,500n,[{id:'sell',token,curve:launch.curve,wallet:wallet(90),kind:'sell',tokens:'10',quote:'4',blockNumber:'500',blockHash:'0x500',txHash:'0xsell',logIndex:0,at:Date.now(),complete:true}]);
+ const service=new RadarService(store,()=>status);assert.equal(service.signals({feed:'signals',window:'24h',cursor:null}).items[0]?.token,token);assert.equal(service.signals({feed:'exits',window:'24h',cursor:null}).items[0]?.sells,1);store.close();
+});
+
 test('launch feed is bounded and rejects invalid cursors',()=>{
  const store=new RadarStore(':memory:');
  for(let index=0;index<55;index++)store.saveLaunch({...launch,token:`0x${(index+1).toString(16).padStart(40,'0')}`,curve:`0x${(index+101).toString(16).padStart(40,'0')}`,launchBlock:String(450+index),updatedAt:launch.updatedAt+index});
@@ -49,4 +55,12 @@ test('wallet with a material transfer gap is not PnL eligible',()=>{
  const store=new RadarStore(':memory:'),owner=wallet(80);for(let index=0;index<3;index++)store.saveOutcome(outcome(owner,index,10n));store.savePosition(position(owner,false));
  const row=new RadarService(store,()=>status).walletSummary(owner);
  assert.equal(row.leaderboardEligible,false);assert.ok(row.eligibilityReasons.includes('material transfer gap'));store.close();
+});
+
+test('watchlist is idempotent and activity is material-only',()=>{
+ const store=new RadarStore(':memory:'),service=new RadarService(store,()=>status);
+ service.watch({kind:'token',address:token,createdAt:1});service.watch({kind:'token',address:token,createdAt:2});
+ store.saveActivity({id:'material',subject:token,subjectKind:'token',kind:'score-band-change',material:true,blockNumber:'500',blockHash:null,txHash:null,createdAt:1,summary:'score moved'});
+ store.saveActivity({id:'cosmetic',subject:token,subjectKind:'token',kind:'refresh',material:false,blockNumber:'501',blockHash:null,txHash:null,createdAt:2,summary:'refreshed'});
+ assert.equal(service.watchlist().items.length,1);assert.deepEqual(service.activity(null).items.map(row=>row.id),['material']);store.close();
 });

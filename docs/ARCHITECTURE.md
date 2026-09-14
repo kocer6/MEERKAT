@@ -6,10 +6,12 @@ The same process can run in public mode behind a loopback reverse proxy. Public 
 
 ```mermaid
 flowchart TB
-  Browser[Landing and terminal] -->|local HTTP| Server[Observer server]
+  Browser[Landing, Radar and dossiers] -->|local HTTP| Server[Observer server]
   Server --> Profile[Factory and token profile reader]
   Server --> History[Chunked lifecycle indexer]
   Server --> Dossier[Wallet dossier builder]
+  Server --> Radar[Radar service]
+  Radar --> Global[One global indexer]
   Server --> Scout[Scout and watch services]
   Profile --> RPC[Robinhood Chain RPC]
   History --> RPC
@@ -17,6 +19,8 @@ flowchart TB
   History --> DB[(Local SQLite)]
   Dossier --> DB
   Scout --> DB
+  Global --> RPC
+  Radar --> DB
 ```
 
 ## Runtime components
@@ -32,6 +36,10 @@ flowchart TB
 | Discovery | `src/discovery.ts` | Recent Pons launch discovery used by Live Scout |
 | Watch service | `src/watch.ts` | Local watchlist, snapshots and activity |
 | Chain adapters | `src/chain/*` | Selected Pons ABI, market reads and quote math |
+| Radar indexer | `src/radar/indexer.ts` | One coalesced launch/trade worker with independent factory and market cursors |
+| Radar service | `src/radar/service.ts` | Cached feeds, global search, connected summaries, activity, watchlist and leaderboard queries |
+| Position accounting | `src/radar/positions.ts` | Weighted-average cost, realized PnL, executable open-position marks and transfer-gap handling |
+| Radar scores | `src/radar/scores.ts` | Separate Launch Quality, Wallet Reputation and Radar Strength models |
 
 The older paper-trading modules remain in the repository as tested development history, but the default `npm start` product uses `observer-server.ts` and exposes no order or signing service.
 
@@ -42,7 +50,7 @@ The default database is `data/observer.sqlite`. SQLite WAL mode and a busy timeo
 - `token_history`: profile, cursor, state, error and update time per token;
 - `token_events`: decoded evidence keyed by token and stable event identity.
 
-Watch and discovery state use tables in the same local database. Database files and SQLite companions are ignored by Git. Back up the process while stopped, or copy the database together with its WAL/SHM companions.
+Radar adds `radar_cursors`, `radar_launches`, `radar_events`, `wallet_token_positions`, `wallet_outcomes`, `wallet_scores`, `token_signal_snapshots`, `radar_activity`, and `watchlist_items` in the same database. Factory and market cursors persist independently. Database files and SQLite companions are ignored by Git. Back up the process while stopped, or copy the database together with its WAL/SHM companions.
 
 ## Indexing and resume
 
@@ -66,6 +74,15 @@ The current browser uses:
 | `GET /api/state` | Read Scout, watch and local activity state |
 | `GET /api/export` | Download local observation state |
 | `POST /api/watch/*`, `/api/monitor/*`, `/api/scanner/*` | Operate local supporting tools |
+| `GET /api/radar/status` | Read the single global worker state, cursors and lag |
+| `GET /api/radar/signals?feed=…&window=…` | Read bounded cached Radar feeds without chain calls |
+| `GET /api/radar/search?q=…` | Classify a token/name/symbol or request explicit wallet fallback |
+| `GET /api/radar/token/:address/summary` | Read cached scores, positions, events and launch identity |
+| `GET /api/radar/wallet/:address/summary` | Read reputation, eligibility, outcomes, positions and PnL |
+| `GET /api/radar/leaderboard` | Rank eligible and provisional wallets deterministically |
+| `GET /api/radar/activity` | Read material indexed changes |
+
+`MEERKAT_RADAR=0` disables the background worker for controlled QA or maintenance. `MEERKAT_RPC_URL` selects the Robinhood Chain RPC, `MEERKAT_DB` selects the SQLite path, and `PORT` selects the HTTP port. `MEERKAT_RADAR_START_BLOCK` optionally sets a trusted lower scan floor; bootstrap validates factory bytecode at the current head so it also works with a non-archive RPC. With Radar enabled, browser GET requests never initiate chain reads; the single process worker owns discovery and market indexing. Every restart resumes each cursor with a 64-block replacement overlap.
 
 These endpoints are not yet a versioned public API. Their schemas may change before the roadmap API gate is complete.
 

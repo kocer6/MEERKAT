@@ -34,20 +34,23 @@ export interface RadarReader {
  quoteSell(token:string,amount:bigint,block:bigint):Promise<bigint|null>;
 }
 
+export async function factoryIndexFloor(head:bigint,readCode:(block:bigint)=>Promise<string|undefined>,configured=0n){
+ const code=await readCode(head);
+ if(!code||code==='0x')throw new Error('Pons V2 factory has no deployed code');
+ if(configured<0n||configured>head)throw new Error('Radar start block is outside the current chain');
+ return configured;
+}
+
 export function radarReader(rpcUrl=process.env.MEERKAT_RPC_URL??'https://rpc.mainnet.chain.robinhood.com'):RadarReader{
  const parsed=new URL(rpcUrl);if(!['http:','https:'].includes(parsed.protocol))throw new Error('RPC must use http or https');
  const client=createPublicClient({transport:http(rpcUrl,{timeout:15000,retryCount:1})});
  const getRecord=(token:string,blockNumber:bigint)=>client.readContract({address:factory,abi:factoryAbi,functionName:'getLaunchedToken',args:[token as Address],blockNumber});
+ const configuredFloor=process.env.MEERKAT_RADAR_START_BLOCK&&/^\d+$/.test(process.env.MEERKAT_RADAR_START_BLOCK)?BigInt(process.env.MEERKAT_RADAR_START_BLOCK):0n;
  return {
   chainId:()=>client.getChainId(),
   head:()=>client.getBlockNumber({cacheTime:0}),
   block:async number=>{const block=await client.getBlock({blockNumber:number});if(!block.hash)throw new Error('Block hash unavailable');return {number:block.number,hash:block.hash,timestamp:block.timestamp};},
-  factoryDeployment:async()=>{
-   const head=await client.getBlockNumber({cacheTime:0});let low=0n,high=head;
-   if((await client.getBytecode({address:factory,blockNumber:high}))==='0x')throw new Error('Pons V2 factory has no deployed code');
-   while(low<high){const middle=(low+high)/2n;const code=await client.getBytecode({address:factory,blockNumber:middle});if(code&&code!=='0x')high=middle;else low=middle+1n;}
-   return low;
-  },
+  factoryDeployment:async()=>{const head=await client.getBlockNumber({cacheTime:0});return factoryIndexFloor(head,block=>client.getBytecode({address:factory,blockNumber:block}),configuredFloor);},
   launches:async(fromBlock,toBlock)=>{
    const logs=await client.getLogs({address:factory,event:launched,fromBlock,toBlock,strict:true});
    return logs.filter(log=>!log.removed&&log.blockNumber!==null&&log.blockHash!==null&&log.transactionHash!==null&&log.logIndex!==null).map(log=>({

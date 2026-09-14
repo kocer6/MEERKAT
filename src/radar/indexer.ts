@@ -2,6 +2,7 @@ import type {RadarReader} from './reader.js';
 import {RadarStore} from './store.js';
 import type {RadarEvent,RadarLaunch} from './types.js';
 import {scoreLaunchQuality,scoreRadarStrength,scoreWalletReputation} from './scores.js';
+import {markPosition} from './positions.js';
 
 export interface RadarIndexerOptions {
  rangeBlocks:bigint;
@@ -58,10 +59,17 @@ export class RadarIndexer {
    const marketBlock=marketRange.to===factoryRange.to?factoryBlock:await this.reader.block(marketRange.to);
    this.store.replaceEventRange('market',marketRange.from,marketRange.to,marketRange.to,events,marketBlock.hash);
    for(const token of new Set(events.map(event=>event.token))){const launch=this.store.launchByToken(token);if(launch?.profile&&launch.state==='profiled')this.store.saveLaunch({...launch,state:'tracking',updatedAt:Date.now()});}
+   await this.markPositions(head,[...new Set(events.map(event=>event.token))]);
    this.recomputeScores(head);
    const cursor=this.store.cursor('market')!;
    this.snapshot={state:'ready',headBlock:head.toString(),lastIndexedBlock:cursor.blockNumber,lagBlocks:(head-BigInt(cursor.blockNumber)).toString(),updatedAt:Date.now(),queueDepth:this.store.launches().filter(row=>row.state==='discovered').length,error:null};
   }catch(error){this.snapshot={...this.snapshot,state:'error',updatedAt:Date.now(),error:sanitize(error)};}
+ }
+
+ private async markPositions(head:bigint,tokens:string[]){
+  const jobs=tokens.flatMap(token=>this.store.positionsForToken(token).map(position=>({token,position}))),workers=Math.min(4,jobs.length);let cursor=0;
+  const work=async()=>{while(cursor<jobs.length){const job=jobs[cursor++];if(!job)continue;const balance=BigInt(job.position.tokenBalance);if(!job.position.complete){this.store.savePosition({...job.position,currentValue:null,openPnl:null,totalPnl:null,returnBps:null,markedAtBlock:head.toString()});continue;}const quote=balance===0n?0n:await this.reader.quoteSell(job.token,balance,head);if(quote===null){this.store.savePosition({...job.position,currentValue:null,openPnl:null,totalPnl:null,returnBps:null,markedAtBlock:head.toString()});continue;}this.store.savePosition({...job.position,...markPosition(job.position,quote),markedAtBlock:head.toString()});}};
+  await Promise.all(Array.from({length:workers},()=>work()));
  }
 
  private recomputeScores(head:bigint){
