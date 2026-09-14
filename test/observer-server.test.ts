@@ -27,10 +27,12 @@ test('landing and terminal are separate product surfaces',async()=>{
  try{
   const headLanding=await fetch(app.url+'/',{method:'HEAD'});
   const headTerminal=await fetch(app.url+'/terminal',{method:'HEAD'});
+  const headRadar=await fetch(app.url+'/terminal/radar',{method:'HEAD'});
   assert.equal(headLanding.status,200);
   assert.equal(headLanding.headers.get('content-type'),'text/html; charset=utf-8');
   assert.equal(await headLanding.text(),'');
   assert.equal(headTerminal.status,200);
+  assert.equal(headRadar.status,200);
   const landing=await (await fetch(app.url+'/')).text();
   const terminal=await (await fetch(app.url+'/terminal')).text();
   assert.match(landing,/<title>MEERKAT — Token Intelligence<\/title>/);

@@ -449,7 +449,7 @@ git commit -m "feat: calculate evidence based radar scores"
 - Consumes: `RadarStore`, `RadarIndexer`, `RadarService`, existing `HistoryStore`, and `TokenHistory`.
 - Produces: all `/api/radar/*` endpoints and static route fallback for `/terminal/*`.
 
-- [ ] **Step 1: Write endpoint and classification tests**
+- [x] **Step 1: Write endpoint and classification tests**
 
 ```ts
 test('serves cached radar routes and classifies registered addresses',async()=>{
@@ -468,13 +468,13 @@ test('does not silently classify an unknown contract-shaped address as a wallet'
 });
 ```
 
-- [ ] **Step 2: Run focused tests and verify the new routes return 404**
+- [x] **Step 2: Run focused tests and verify the new routes return 404**
 
 Run: `node --import tsx --test test/radar-search.test.ts test/observer-server.test.ts`
 
 Expected: FAIL because `/api/radar/status` and `/terminal/radar` do not exist.
 
-- [ ] **Step 3: Add strict bounded query parsing and endpoints**
+- [x] **Step 3: Add strict bounded query parsing and endpoints**
 
 Add:
 
@@ -487,11 +487,11 @@ if(req.method==='GET'&&path==='/api/radar/search'){send(res,200,radar.search((p.
 
 Also add launches, activity, token summary, wallet summary, watchlist GET/POST/DELETE routes. Limit queries to 50 items. Invalid enums, cursors, addresses, and ambiguous hexadecimal input return 400 with a specific message.
 
-- [ ] **Step 4: Wire exactly one Radar indexer into server startup and shutdown**
+- [x] **Step 4: Wire exactly one Radar indexer into server startup and shutdown**
 
 Extend `ObserverOptions` with optional `radarReader`, `radarAutoStart`, and bounded Radar settings for tests. Construct one `RadarStore` on the same database, start one `RadarIndexer` when enabled, serve all terminal subpaths using `terminalBody`, and await `radarIndexer.close()` before closing stores. The request handler never calls `radarReader`.
 
-- [ ] **Step 5: Verify endpoint compatibility and commit**
+- [x] **Step 5: Verify endpoint compatibility and commit**
 
 Run: `node --import tsx --test test/radar-search.test.ts test/observer-server.test.ts && npm run typecheck && npm run build`
 
