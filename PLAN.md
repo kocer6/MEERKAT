@@ -86,3 +86,5 @@ MEERKAT scores Pons V2 tokens and locally evidenced wallet behavior, then expose
 - [ ] Clean-install and packaged launch verification on Windows.
 
 Current product status and exact evidence are in HANDOFF.md. Historical paper modules remain tests/development history and are not exposed by the default product server.
+
+UTF-8 follow-up: normalize accidental doubled carriage returns in terminal.js before deployment; JS syntax and diff whitespace check pass.
