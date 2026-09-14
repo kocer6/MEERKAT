@@ -92,8 +92,8 @@ export class RadarIndexer {
    const cursor=this.store.cursor('market');if(!cursor){this.snapshot={...this.snapshot,state:'idle'};this.publishStatus();return;}
    const head=BigInt(cursor.blockNumber),views=new RadarService(this.store,()=>this.status());
    if(mode==='enrich'){
-    if(await this.reader.chainId()!==4663)throw new Error('wrong enrichment chain; expected 4663');
-    const results=await Promise.allSettled([this.profileLaunches(head),this.markPositions(head,[]),this.enrichMarket()]);
+    const contracts=async()=>{if(await this.reader.chainId()!==4663)throw new Error('wrong enrichment chain; expected 4663');const results=await Promise.allSettled([this.profileLaunches(head),this.markPositions(head,[])]);const failed=results.find(result=>result.status==='rejected');if(failed?.status==='rejected')throw failed.reason;};
+    const results=await Promise.allSettled([contracts(),this.enrichMarket()]);
     const failed=results.find(result=>result.status==='rejected');if(failed?.status==='rejected')throw failed.reason;
    }else{
     const jobs=this.store.pendingProjections(128);

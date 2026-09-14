@@ -197,3 +197,8 @@ test('projection permits concurrent database writes and retains work changed dur
   await worker.tick();assert.equal(worker.status().state,'ready');assert.equal(store.launchByToken(token)?.profile?.name,'Updated concurrently');assert.equal(store.pendingProjections(10).length,1);await worker.tick();assert.equal(store.pendingProjections(10).length,0);
  }finally{await worker.close();store.close();other.close();rmSync(directory,{recursive:true,force:true});}
 });
+
+test('external enrichment continues when contract RPC is unavailable',async()=>{
+ const store=new RadarStore(':memory:');store.replaceLaunchRange('factory',400n,500n,500n,[launch]);store.replaceEventRange('market',400n,500n,500n,[]);
+ const worker=new RadarIndexer(store,{chainId:async()=>{throw new Error('RPC unavailable');}} as unknown as RadarReader,{mode:'enrich',rangeBlocks:200n,pollMs:30000,profileConcurrency:1,historyStartBlock:100n,marketRead:async()=>[{token,name:'External Test',symbol:'EXT',source:'geckoterminal',priceUsd:1,liquidityUsd:10,volume24hUsd:null,marketCapUsd:null,fdvUsd:null,fetchedAt:Date.now()}]});await worker.tick();assert.equal(store.market(token)?.data?.symbol,'EXT');assert.match(worker.status().error??'',/RPC unavailable/);await worker.close();store.close();
+});
