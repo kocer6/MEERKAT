@@ -47,7 +47,7 @@ export class RadarIndexer {
   return this.pending;
  }
 
- start(){if(!this.timer&&!this.stopped){void this.tick();this.timer=setInterval(()=>void this.tick(),this.options.pollMs);}}
+ start(){if(!this.timer&&!this.stopped){if(this.options.mode==='project'){const run=async()=>{await this.tick();if(!this.stopped)this.timer=setTimeout(()=>void run(),this.options.pollMs);};this.timer=setTimeout(()=>void run(),0);}else{void this.tick();this.timer=setInterval(()=>void this.tick(),this.options.pollMs);}}}
 
  async close(){this.stopped=true;if(this.timer){clearInterval(this.timer);this.timer=null;}await this.pending;this.snapshot={...this.snapshot,state:'stopped'};}
 

@@ -88,3 +88,5 @@ MEERKAT scores Pons V2 tokens and locally evidenced wallet behavior, then expose
 Current product status and exact evidence are in HANDOFF.md. Historical paper modules remain tests/development history and are not exposed by the default product server.
 
 UTF-8 follow-up: normalize accidental doubled carriage returns in terminal.js before deployment; JS syntax and diff whitespace check pass.
+
+Live follow-up: the 128-token projector drained its pending queue to zero. Add a five-second pause after completed projection to give collection/enrichment writers fair access to SQLite. Cold dossiers can show external snapshots before contract-profile RPC completes.

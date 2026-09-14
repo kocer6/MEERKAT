@@ -89,3 +89,5 @@ Build global wallet discovery beyond histories already indexed locally, with bou
 Known limits: wallet mode searches local indexed histories rather than the entire chain; holder balances cover the indexed Transfer range and do not yet exclude every known protocol contract; the bounded visual graph is a ranked investigation view rather than the complete stored graph; recipient escrow balances can aggregate several launches; downstream transfers after an escrow withdrawal are not attributed without trace evidence; public RPC can still rate-limit a chunk and requires resume; pool swap end-user attribution needs trace evidence; no per-event timestamps; no external notifications.
 
 UTF-8 follow-up: normalize accidental doubled carriage returns in terminal.js before deployment; JS syntax and diff whitespace check pass.
+
+Live follow-up: the 128-token projector drained its pending queue to zero. Add a five-second pause after completed projection to give collection/enrichment writers fair access to SQLite. Cold dossiers can show external snapshots before contract-profile RPC completes.
