@@ -50,12 +50,12 @@
 
 **Files:** `PLAN.md`, `HANDOFF.md`, `docs/evidence/`
 
-- [ ] Run typecheck, all tests, and build.
-- [ ] Update project continuation records with exact results.
-- [ ] Commit and push the focused checkpoint; verify the remote SHA.
-- [ ] Back up production SQLite, deploy both services, and verify database integrity.
-- [ ] Measure Radar, Leaderboard, Activity, and token route latency while the worker is indexing.
+- [x] Run typecheck, all tests, and build.
+- [x] Update project continuation records with exact results.
+- [x] Commit and push the focused checkpoint; verify the remote SHA.
+- [x] Back up production SQLite, deploy both services, and verify database integrity.
+- [x] Measure Radar, Leaderboard, Activity, and token route latency while the worker is indexing.
 - [x] Recalculate scores only for tokens and wallets affected by the current tail cycle.
 - [x] Bound full feed and leaderboard publication to a configurable five-minute interval.
 - [x] Batch concurrent contract reads on each configured RPC transport.
-- [ ] Inspect the production terminal and confirm metadata/error presentation.
+- [x] Inspect the production terminal and confirm metadata/error presentation.
