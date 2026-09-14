@@ -37,6 +37,7 @@ export interface RadarLaunch {
  state:RadarStage;
  profile:RadarProfile|null;
  profileError:string|null;
+ profileAttemptAt?:number;
  updatedAt:number;
 }
 

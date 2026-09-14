@@ -112,11 +112,11 @@ export class RadarIndexer {
  }
 
  private async profileLaunches(head:bigint){
-  const limit=this.options.profileBatchSize??this.options.profileConcurrency,eligible=(row:RadarLaunch|undefined):row is RadarLaunch=>Boolean(row&&!row.profile&&(!row.profileError||Date.now()-row.updatedAt>=300000)),fresh=this.store.launches().filter(eligible).slice(0,Math.floor(limit/2)),preferred=[...(this.store.view<Array<{token:string;radarStrength:number|null}>>('feed-rows')?.value??[])].filter(row=>row.radarStrength!==null).sort((a,b)=>(b.radarStrength??-1)-(a.radarStrength??-1)||a.token.localeCompare(b.token)).map(row=>this.store.launchByToken(row.token)).filter(eligible),seen=new Set<string>(),queue:RadarLaunch[]=[];
+  const limit=this.options.profileBatchSize??this.options.profileConcurrency,eligible=(row:RadarLaunch|undefined):row is RadarLaunch=>Boolean(row&&!row.profile&&(!row.profileError||Date.now()-(row.profileAttemptAt??row.updatedAt)>=300000)),fresh=this.store.launches().filter(eligible).slice(0,Math.floor(limit/2)),preferred=[...(this.store.view<Array<{token:string;radarStrength:number|null}>>('feed-rows')?.value??[])].filter(row=>row.radarStrength!==null).sort((a,b)=>(b.radarStrength??-1)-(a.radarStrength??-1)||a.token.localeCompare(b.token)).map(row=>this.store.launchByToken(row.token)).filter(eligible),seen=new Set<string>(),queue:RadarLaunch[]=[];
   const add=(rows:RadarLaunch[],capacity:number)=>{for(const row of rows)if(queue.length<capacity&&!seen.has(row.token)){seen.add(row.token);queue.push(row);}};
   add(fresh,fresh.length);add(preferred,Math.max(1,Math.ceil(limit*0.75)));add(this.store.profileCandidates(limit),limit);add(preferred,limit);
   let cursor=0;const profiled:string[]=[];
-  const worker=async()=>{while(cursor<queue.length){const row=queue[cursor++];if(!row)continue;try{const profile=await this.reader.profile(row.token,head);this.store.saveLaunch({...row,state:'profiled',profile,profileError:null,updatedAt:Date.now()});profiled.push(row.token);}catch(error){this.store.saveLaunch({...row,state:'error',profileError:sanitize(error),updatedAt:Date.now()});}}};
+  const worker=async()=>{while(cursor<queue.length){const row=queue[cursor++];if(!row)continue;try{const profile=await this.reader.profile(row.token,head);this.store.saveLaunch({...row,state:'profiled',profile,profileError:null,profileAttemptAt:Date.now(),updatedAt:Date.now()});profiled.push(row.token);}catch(error){this.store.saveLaunch({...row,state:'error',profileError:sanitize(error),profileAttemptAt:Date.now(),updatedAt:Date.now()});}}};
   await Promise.all(Array.from({length:Math.min(this.options.profileConcurrency,queue.length)},()=>worker()));
   return profiled;
  }

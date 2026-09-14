@@ -40,6 +40,13 @@ test('failed profiles cool down so the next pass can name other tokens',async()=
  assert.deepEqual(requested,[token,other.token]);await indexer.close();store.close();
 });
 
+test('score updates do not extend the failed-profile retry clock',async()=>{
+ const store=new RadarStore(':memory:'),requested:string[]=[];
+ store.saveLaunch({...launch,launchBlock:'100',profileError:'RPC timeout',profileAttemptAt:1,updatedAt:Date.now()});
+ const reader:RadarReader={chainId:async()=>4663,head:async()=>500n,block:async number=>({number,hash:`0x${number}`,timestamp:number}),factoryDeployment:async()=>100n,launches:async()=>[],trades:async()=>[],profile:async address=>{requested.push(address);return profile;},quoteSell:async()=>null};
+ const indexer=new RadarIndexer(store,reader,{rangeBlocks:200n,pollMs:30000,profileConcurrency:1,historyStartBlock:100n});await indexer.tick();assert.deepEqual(requested,[token]);await indexer.close();store.close();
+});
+
 test('indexes verified curves, resumes with overlap, and coalesces concurrent ticks',async()=>{
  const calls:Array<[string,bigint,bigint]>=[];
  let release:()=>void=()=>{};
