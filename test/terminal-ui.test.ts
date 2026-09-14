@@ -20,6 +20,11 @@ test('terminal client has six route handlers and explicit wallet fallback',()=>{
  assert.match(js,/captureViewState/);
 });
 
+test('leaderboard ranks all evidenced outcomes by default',()=>{
+ const js=readFileSync('public/terminal.js','utf8');
+ assert.match(js,/get\('\/api\/radar\/leaderboard',\{window:'all',sort:'total-pnl',status:'all'\}\)/);
+});
+
 test('entity links are green only on hover or focus',()=>{
  const css=readFileSync('public/terminal.css','utf8');
  assert.match(css,/\.entity-link\{[^}]*color:var\(--sand\)/);
