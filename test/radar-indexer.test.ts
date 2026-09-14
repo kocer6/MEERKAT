@@ -86,9 +86,9 @@ test('profile queue prioritizes launches with observed activity',async()=>{
  assert.deepEqual(profiled,[active.token]);await indexer.close();store.close();
 });
 
-test('profile queue repairs tokens in the current feed before the background backlog',async()=>{
+test('profile queue repairs the highest-scored visible token before the background backlog',async()=>{
  const active={...launch,token:'0x00000000000000000000000000000000000000a1',curve:'0x00000000000000000000000000000000000000a2',launchBlock:'100'},visible={...launch,token:'0x00000000000000000000000000000000000000b1',curve:'0x00000000000000000000000000000000000000b2',launchBlock:'200'};
- const store=new RadarStore(':memory:');store.saveLaunch(active);store.saveLaunch(visible);store.replaceEventRange('seed',100n,100n,100n,[{...buy,token:active.token,curve:active.curve,wallet:'0x00000000000000000000000000000000000000a3'}]);store.saveView('feed-rows',[{token:visible.token}],1);
+ const store=new RadarStore(':memory:');store.saveLaunch(active);store.saveLaunch(visible);store.replaceEventRange('seed',100n,100n,100n,[{...buy,token:active.token,curve:active.curve,wallet:'0x00000000000000000000000000000000000000a3'}]);store.saveView('feed-rows',[{token:active.token,radarStrength:50},{token:visible.token,radarStrength:80}],1);
  const profiled:string[]=[];const reader:RadarReader={chainId:async()=>4663,head:async()=>500n,block:async number=>({number,hash:`0x${number}`,timestamp:number}),factoryDeployment:async()=>100n,launches:async()=>[],trades:async()=>[],profile:async token=>{profiled.push(token);return profile;},quoteSell:async()=>null};
  const indexer=new RadarIndexer(store,reader,{rangeBlocks:200n,pollMs:30000,profileConcurrency:1,profileBatchSize:1,historyStartBlock:100n});await indexer.tick();
  assert.deepEqual(profiled,[visible.token]);await indexer.close();store.close();

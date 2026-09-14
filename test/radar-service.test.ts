@@ -95,3 +95,12 @@ test('read-only web service never runs expensive fallback before the first view'
  assert.deepEqual(service.leaderboard({window:'all',sort:'total-pnl',status:'all',cursor:null}).items,[]);
  store.close();
 });
+
+test('profile refresh patches names into the visible feed without rebuilding every view',()=>{
+ const store=new RadarStore(':memory:'),service=new RadarService(store,()=>status),pending={token,curve:launch.curve,name:null,symbol:null,state:'scored' as const,pairToken:launch.pairToken,launchBlock:'450',updatedAt:1,ageMs:0,phase:null,participants:9,buys:4,sells:1,buyFlow:'10',sellFlow:'2',missingInputs:['token profile'],radarStrength:81};
+ store.saveLaunch({...launch,state:'scored'});store.saveView('feed-rows',[pending],1);
+ service.refreshFeedProfiles([token],2);
+ const row=store.view<typeof pending[]>('feed-rows')?.value[0];
+ assert.deepEqual({name:row?.name,symbol:row?.symbol,phase:row?.phase,missingInputs:row?.missingInputs},{name:'Test Token',symbol:'TEST',phase:0,missingInputs:[]});
+ assert.equal(store.view('feed-rows')?.updatedAt,2);store.close();
+});

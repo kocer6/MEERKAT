@@ -65,6 +65,15 @@ export class RadarService {
   for(const window of ['24h','7d','30d','all'] as const)this.store.saveView(`leaderboard-${window}`,this.buildLeaderboardRows(window),updatedAt);
  }
 
+ refreshFeedProfiles(tokens:string[],updatedAt=Date.now()){
+  const cached=this.store.view<RadarFeedRow[]>('feed-rows');if(!cached||tokens.length===0)return;
+  const changed=new Set(tokens),rows=cached.value.map(row=>{
+   if(!changed.has(row.token))return row;const launch=this.store.launchByToken(row.token);if(!launch?.profile)return row;
+   return {...row,name:launch.profile.name,symbol:launch.profile.symbol,phase:launch.profile.phase,state:launch.state,updatedAt:launch.updatedAt,missingInputs:row.missingInputs.filter(input=>input!=='token profile')};
+  });
+  this.store.saveView('feed-rows',rows,updatedAt);
+ }
+
  private buildLeaderboardRows(window:RadarWindow){
   const cutoff=window==='all'?null:Date.now()-windowMs[window],outcomes=this.store.outcomes(cutoff),wallets=[...new Set(outcomes.map(row=>row.wallet))],rows:LeaderboardRow[]=[];
   for(const wallet of wallets){const completed=outcomes.filter(row=>row.wallet===wallet&&row.complete),positions=this.store.positionsForWallet(wallet),reasons=this.eligibilityReasons(wallet,completed,positions),realized=completed.reduce((sum,row)=>sum+BigInt(row.pnl),0n),active=positions.filter(row=>BigInt(row.tokenBalance)>0n),marked=active.every(row=>row.openPnl!==null&&row.openPnl!==undefined),open=marked?active.reduce((sum,row)=>sum+BigInt(row.openPnl!),0n):null,reputation=this.store.score(wallet,'wallet-reputation'),wins=completed.filter(row=>BigInt(row.pnl)>0n).length,losses=completed.filter(row=>BigInt(row.pnl)<0n).length;rows.push({wallet,status:reasons.length?'provisional':'eligible',eligibilityReasons:reasons,completedPositions:completed.length,wins,losses,winRate:completed.length?wins/completed.length:null,realizedPnl:realized.toString(),openPnl:open?.toString()??null,totalPnl:open===null?null:(realized+open).toString(),reputation:reputation?.value??null,confidence:reputation?.confidence??'provisional',activePositions:active.length});}
