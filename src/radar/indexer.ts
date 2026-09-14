@@ -93,7 +93,7 @@ export class RadarIndexer {
     const results=await Promise.allSettled([this.profileLaunches(head),this.markPositions(head,[]),this.enrichMarket()]);
     const failed=results.find(result=>result.status==='rejected');if(failed?.status==='rejected')throw failed.reason;
    }else{
-    const jobs=this.store.pendingProjections(12);
+    const jobs=this.store.pendingProjections(128);
     // Read committed events, score, publish and acknowledge together. No network inside this transaction.
     this.store.transaction(()=>{const changed=this.recomputeScores(head,jobs.map(job=>job.token));views.refreshFeedTokens(changed);for(const job of jobs)this.store.finishProjection(job);});
     const last= this.store.view('leaderboard-all')?.updatedAt;

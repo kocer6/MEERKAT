@@ -65,3 +65,5 @@ test('production runs the web server and Radar indexer as separate services',()=
  assert.match(install,/meerkat-indexer\.service/);
  assert.match(env,/MEERKAT_RPC_URLS=/);
 });
+
+test('terminal JavaScript is valid UTF-8',()=>{assert.doesNotThrow(()=>new TextDecoder('utf-8',{fatal:true}).decode(readFileSync(resolve(root,'public/terminal.js'))));});

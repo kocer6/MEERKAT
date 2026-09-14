@@ -8,6 +8,8 @@ MEERKAT scores Pons V2 tokens and locally evidenced wallet behavior, then expose
 
 ## Completed
 
+- [x] Deploy split services; enlarge projection batches to amortize shared-wallet dependencies and correct UTF-8 in new market labels. Verification in progress on live workload.
+
 - [x] Implement separated collection, enrichment and projection commands/services with durable versioned work, safe late-result writes and cached external market snapshots. Local verification: 191 tests, typecheck/build, JS syntax; deployment verification pending.
 
 - [x] Production regression acceptance: FRESH/SIGNALS/LAUNCHES 50/50 named; cold token history and browser dossier/leaderboard flows verified. Evidence: `docs/evidence/radar-metadata-recovery-2026-09-14.md`.
