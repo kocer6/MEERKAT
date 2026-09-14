@@ -8,6 +8,8 @@ MEERKAT scores Pons V2 tokens and locally evidenced wallet behavior, then expose
 
 ## Completed
 
+- [x] Production regression acceptance: FRESH/SIGNALS/LAUNCHES 50/50 named; cold token history and browser dossier/leaderboard flows verified. Evidence: `docs/evidence/radar-metadata-recovery-2026-09-14.md`.
+
 - [x] Reserve metadata capacity for both the visible FRESH page and incoming launches; keep scored and active backlog progressing. Continuous-arrival regression passes. Verification: 182 tests, typecheck/build; production cold MIAO dossier cache 67 ms, full history 14.1 s.
 
 - [x] Connect token history discovery to Radar's persisted launch block, verify the hinted factory event before use, and fall back on a stale hint. Batch independent profile reads; show cached Radar participants while full history loads. Local verification: 181 tests, typecheck/build and JS syntax.
