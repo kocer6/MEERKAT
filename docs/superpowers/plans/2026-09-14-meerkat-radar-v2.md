@@ -606,7 +606,7 @@ git commit -m "feat: add route driven radar terminal"
 - Consumes: persisted positions/scores, current `TokenHistory` and wallet evidence responses, route shell from Task 7.
 - Produces: unified Token Dossier, Wallet Dossier, eligible/provisional leaderboard, Pons links, Blockscout links, and buyer PnL columns.
 
-- [ ] **Step 1: Write leaderboard eligibility and deterministic-order tests**
+- [x] **Step 1: Write leaderboard eligibility and deterministic-order tests**
 
 ```ts
 test('eligible wallets outrank provisional wallets and ties are stable',()=>{
@@ -622,25 +622,25 @@ test('wallet with a material transfer gap is not PnL eligible',()=>{
 });
 ```
 
-- [ ] **Step 2: Run service tests and verify eligibility fields are missing**
+- [x] **Step 2: Run service tests and verify eligibility fields are missing**
 
 Run: `node --import tsx --test test/radar-service.test.ts test/wallet-dossier.test.ts`
 
 Expected: FAIL because leaderboard aggregation and dossier summaries are incomplete.
 
-- [ ] **Step 3: Implement first-party leaderboard aggregation**
+- [x] **Step 3: Implement first-party leaderboard aggregation**
 
 Require at least three completed attributed positions, sufficient selected-window coverage, no material transfer gap, and no infrastructure/deployer/token classification. Support `24h`, `7d`, `30d`, `all`; sorts `total-pnl`, `realized`, `open`, `win-rate`, `reputation`; statuses `eligible`, `provisional`, `all`. Sort by eligibility first, selected metric descending, completed positions descending, then wallet ascending.
 
-- [ ] **Step 4: Merge Radar summaries into the existing token dossier**
+- [x] **Step 4: Merge Radar summaries into the existing token dossier**
 
 The token header contains verified identity, Pons and Blockscout links, Radar Strength, confidence, Launch Quality, qualified buyers, buy/sell flow, holders, creator revenue, deployer holding, freshness, and explanation. Keep exactly five deep tabs: Overview, Fee Flow, Relationships, Holders, Timeline. Overview adds `Who is buying` and `Who still holds`; complete rows show cost, executable current value, realized PnL, and total PnL. Existing deep-history loading and timeline pagination remain intact.
 
-- [ ] **Step 5: Replace the wallet result with the connected wallet dossier**
+- [x] **Step 5: Replace the wallet result with the connected wallet dossier**
 
 The wallet header contains address, Pons profile, Blockscout, Wallet Reputation, confidence, judged tokens, profitable completed positions, early entries, round trips, fast exits, active positions, observed flow, coverage, and evidence explanation. Tabs are Profile, Positions, Recent Trades, Shared Wallets, Evidence. Token names are `.entity-link` buttons that navigate to `/terminal/token/:address`; each token also gets a Pons launch link and each action an exact Blockscout transaction link.
 
-- [ ] **Step 6: Verify dossiers, leaderboard, and legacy analysis**
+- [x] **Step 6: Verify dossiers, leaderboard, and legacy analysis**
 
 Run: `node --import tsx --test test/radar-service.test.ts test/wallet-dossier.test.ts test/token-history.test.ts test/fee-flow.test.ts test/relationship-graph.test.ts test/terminal-ui.test.ts && npm run typecheck && npm run build`
 
