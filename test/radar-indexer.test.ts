@@ -31,6 +31,14 @@ test('metadata patches cannot postpone an overdue leaderboard refresh',async()=>
  assert.ok(store.view('leaderboard-all')!.updatedAt>1);await indexer.close();store.close();
 });
 
+test('visible Fresh metadata is not starved by a continuous stream of newer launches',async()=>{
+ const store=new RadarStore(':memory:'),requested:string[]=[];
+ const visible={...launch,launchBlock:'100'};store.saveLaunch(visible);store.saveView('feed-rows',[{token,launchBlock:'100',radarStrength:null,missingInputs:['token profile']}],Date.now());store.saveView('leaderboard-all',[],Date.now());
+ const newer=Array.from({length:8},(_,i)=>({...launch,token:`0x${(100+i).toString(16).padStart(40,'0')}`,curve:`0x${(200+i).toString(16).padStart(40,'0')}`,launchBlock:String(450+i)}));
+ const reader:RadarReader={chainId:async()=>4663,head:async()=>500n,block:async number=>({number,hash:`0x${number}`,timestamp:number}),factoryDeployment:async()=>100n,launches:async()=>newer,trades:async()=>[],profile:async address=>{requested.push(address);return profile;},quoteSell:async()=>null};
+ const indexer=new RadarIndexer(store,reader,{rangeBlocks:200n,pollMs:30000,profileConcurrency:2,profileBatchSize:4,historyStartBlock:100n});await indexer.tick();assert.ok(requested.includes(token));assert.ok(requested.some(address=>newer.some(row=>row.token===address)));await indexer.close();store.close();
+});
+
 test('failed profiles cool down so the next pass can name other tokens',async()=>{
  const store=new RadarStore(':memory:'),requested:string[]=[];
  const broken={...launch,launchBlock:'100'},other={...launch,token:'0x0000000000000000000000000000000000000099',curve:'0x0000000000000000000000000000000000000088',launchBlock:'101'};
