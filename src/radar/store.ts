@@ -105,11 +105,12 @@ export class RadarStore {
  deletePosition(wallet:string,token:string){this.db.prepare('DELETE FROM wallet_token_positions WHERE wallet=? AND token=?').run(normalized(wallet),normalized(token));}
 
  private rebuildPosition(wallet:string,token:string){
-  const launch=this.launchByToken(token),events=this.eventsForWallet(wallet).filter(event=>event.token===token);
+  const previous=this.position(wallet,token),launch=this.launchByToken(token),events=this.eventsForWallet(wallet).filter(event=>event.token===token);
   if(!launch||!events.length||wallet===launch.curve||wallet===launch.token||wallet==='0x0000000000000000000000000000000000000000'){this.deletePosition(wallet,token);return;}
   let position=emptyPosition(wallet,token,launch.pairToken);
   for(const event of events)position=applyPositionEvent(position,event);
-  this.savePosition(position);
+  const unchanged=previous&&['pairToken','tokenBalance','remainingCost','realizedPnl','observedProceeds','buys','sells','firstBuyBlock','lastTradeBlock','complete'].every(key=>previous[key as keyof WalletTokenPosition]===position[key as keyof WalletTokenPosition]);
+  this.savePosition({...position,currentValue:unchanged?previous.currentValue??null:null,openPnl:unchanged?previous.openPnl??null:null,totalPnl:unchanged?previous.totalPnl??null:null,returnBps:unchanged?previous.returnBps??null:null,markedAtBlock:unchanged?previous.markedAtBlock??null:null});
   if(position.complete&&position.tokenBalance==='0'&&position.buys>0&&position.sells>0){
    const proceeds=BigInt(position.observedProceeds),pnl=BigInt(position.realizedPnl),cost=proceeds-pnl,last=events.at(-1)!;
    this.saveOutcome({wallet,token,closedAt:last.at??0,cost:cost.toString(),proceeds:proceeds.toString(),pnl:pnl.toString(),returnBps:cost>0n?Number(pnl*10000n/cost):null,complete:true});

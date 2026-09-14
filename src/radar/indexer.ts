@@ -67,7 +67,7 @@ export class RadarIndexer {
  }
 
  private async markPositions(head:bigint,tokens:string[]){
-  const jobs=tokens.flatMap(token=>this.store.positionsForToken(token).map(position=>({token,position}))),workers=Math.min(4,jobs.length);let cursor=0;
+  const jobs=tokens.flatMap(token=>this.store.positionsForToken(token).map(position=>({token,position}))).sort((a,b)=>BigInt(a.position.markedAtBlock??0)<BigInt(b.position.markedAtBlock??0)?-1:BigInt(a.position.markedAtBlock??0)>BigInt(b.position.markedAtBlock??0)?1:a.position.wallet.localeCompare(b.position.wallet)).slice(0,4),workers=Math.min(4,jobs.length);let cursor=0;
   const work=async()=>{while(cursor<jobs.length){const job=jobs[cursor++];if(!job)continue;const balance=BigInt(job.position.tokenBalance);if(!job.position.complete){this.store.savePosition({...job.position,currentValue:null,openPnl:null,totalPnl:null,returnBps:null,markedAtBlock:head.toString()});continue;}const quote=balance===0n?0n:await this.reader.quoteSell(job.token,balance,head);if(quote===null){this.store.savePosition({...job.position,currentValue:null,openPnl:null,totalPnl:null,returnBps:null,markedAtBlock:head.toString()});continue;}this.store.savePosition({...job.position,...markPosition(job.position,quote),markedAtBlock:head.toString()});}};
   await Promise.all(Array.from({length:workers},()=>work()));
  }

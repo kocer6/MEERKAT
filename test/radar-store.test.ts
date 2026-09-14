@@ -40,3 +40,14 @@ test('watchlist writes are idempotent and removal is exact',()=>{
  assert.deepEqual(store.watchlist(),[]);
  store.close();
 });
+
+test('unchanged overlap preserves an executable mark and changed accounting clears it',()=>{
+ const store=new RadarStore(':memory:');store.saveLaunch(launch);store.replaceEventRange('market',100n,120n,120n,[buy]);
+ const position=store.position(buy.wallet!,launch.token)!;
+ store.savePosition({...position,currentValue:'12',openPnl:'2',totalPnl:'2',returnBps:2000,markedAtBlock:'120'});
+ store.replaceEventRange('market',108n,120n,120n,[buy]);
+ assert.equal(store.position(buy.wallet!,launch.token)?.currentValue,'12');
+ store.replaceEventRange('market',108n,120n,120n,[{...buy,quote:'11'}]);
+ assert.equal(store.position(buy.wallet!,launch.token)?.currentValue,null);
+ store.close();
+});

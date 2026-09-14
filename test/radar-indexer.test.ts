@@ -58,3 +58,12 @@ test('profiles one bounded wave per cycle so market indexing is not blocked by t
  assert.equal(indexer.status().queueDepth,2);
  await indexer.close();store.close();
 });
+
+test('marks one bounded quote wave per cycle',async()=>{
+ const buys=Array.from({length:6},(_,index)=>({...buy,id:`buy:${index}`,wallet:`0x${(index+100).toString(16).padStart(40,'0')}`}));let quotes=0;
+ const reader:RadarReader={chainId:async()=>4663,head:async()=>500n,block:async number=>({number,hash:`0x${number}`,timestamp:number}),factoryDeployment:async()=>100n,launches:async()=>[launch],trades:async()=>buys,profile:async()=>profile,quoteSell:async()=>{quotes++;return 10n;}};
+ const store=new RadarStore(':memory:'),indexer=new RadarIndexer(store,reader,{rangeBlocks:200n,pollMs:30000,profileConcurrency:2,historyStartBlock:100n});
+ await indexer.tick();
+ assert.equal(quotes,4);
+ await indexer.close();store.close();
+});
