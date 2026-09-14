@@ -12,5 +12,6 @@ data/
 *.db-*
 *.log
 work/
+.worktrees/
 .DS_Store
 Thumbs.db
