@@ -1,3 +1,4 @@
+import {runInNewContext} from 'node:vm';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import test from 'node:test';
@@ -52,4 +53,14 @@ test('terminal handles empty upstream responses and labels pending metadata hone
  assert.match(js,/'RETRY'/);
  assert.doesNotMatch(js,/item\.symbol\|\|'UNKNOWN'/);
  assert.doesNotMatch(js,/await response\.json\(\)/);
+});
+
+
+test('terminal status keeps updating and recovers after an API failure',async()=>{
+ const source=readFileSync('public/terminal.js','utf8'),fn=source.slice(source.indexOf('async function refreshRadarStatus()'),source.indexOf('void refreshRadarStatus();'));
+ const elements:Record<string,{textContent:string;title:string;className:string}>={};const callbacks:Array<()=>void>=[];let current:any={state:'ready',updatedAt:Date.now(),lastIndexedBlock:'100',workers:{collection:{state:'ready'},enrichment:{state:'ready'}},queueDepth:2,pendingProjections:0};
+ const refresh=runInNewContext(fn+';refreshRadarStatus',{get:async()=>{if(current instanceof Error)throw current;return current;},$:(id:string)=>elements[id]??=( {textContent:'',title:'',className:''}),setTimeout:(fn:()=>void,ms:number)=>{assert.equal(ms,15000);callbacks.push(fn);},Date});
+ await refresh();assert.equal(elements['radar-head']!.textContent,'100');assert.equal(callbacks.length,1);
+ current=new Error('network');await refresh();assert.equal(elements['session-status']!.textContent,'OFFLINE');assert.equal(callbacks.length,2);
+ current={state:'ready',updatedAt:Date.now(),lastIndexedBlock:'200',workers:{enrichment:{state:'error',error:'rate limit'}}};await refresh();assert.equal(elements['radar-head']!.textContent,'200');assert.equal(elements['radar-index-status']!.textContent,'DEGRADED');assert.equal(elements['session-status']!.textContent,'CONNECTED');assert.equal(elements['session-status']!.className,'');
 });

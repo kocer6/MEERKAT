@@ -166,7 +166,16 @@ for(const link of document.querySelectorAll('[data-route]'))link.addEventListene
 $('global-search').addEventListener('submit',event=>{event.preventDefault();const query=$('global-search-input').value.trim();if(query)void submitGlobalSearch(query).catch(routeError);});
 addEventListener('popstate',event=>void renderRoute(location.pathname,event.state||{}));
 void get('/healthz').then(()=>{$('session-status').textContent='CONNECTED';}).catch(()=>{$('session-status').textContent='OFFLINE';$('session-status').className='error';});
-void get('/api/radar/status').then(status=>{$('radar-index-status').textContent=status.state?.toUpperCase()||'READY';$('radar-head').textContent=status.head||status.lastIndexedBlock||'—';}).catch(()=>{$('radar-index-status').textContent='OFFLINE';});
+async function refreshRadarStatus(){
+ try{
+  const status=await get('/api/radar/status'),workers=status.workers||{},failed=Object.values(workers).some(worker=>worker.error),stale=status.updatedAt&&Date.now()-status.updatedAt>120000,label=$('radar-index-status');
+  label.textContent=stale?'STALLED':failed?'DEGRADED':status.state?.toUpperCase()||'CONNECTING';
+  label.title=`Collection: ${workers.collection?.state||status.state}. Enrichment: ${workers.enrichment?.state||'unknown'}. Pending profiles: ${status.queueDepth??'unknown'}. Pending scores: ${status.pendingProjections??'unknown'}.`;
+  $('radar-head').textContent=status.lastIndexedBlock||'\u2014';$('session-status').textContent='CONNECTED';$('session-status').className='';
+ }catch{$('radar-index-status').textContent='OFFLINE';$('session-status').textContent='OFFLINE';$('session-status').className='error';}
+ finally{setTimeout(()=>void refreshRadarStatus(),15000);}
+}
+void refreshRadarStatus();
 const initialToken=new URLSearchParams(location.search).get('token');
 if(initialToken){history.replaceState({},'',`/terminal/token/${initialToken.toLowerCase()}`);}
 void renderRoute(location.pathname,history.state||{});
