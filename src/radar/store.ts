@@ -35,6 +35,9 @@ export class RadarStore {
    CREATE TABLE IF NOT EXISTS radar_views(name TEXT PRIMARY KEY,updated_at INTEGER NOT NULL,value TEXT NOT NULL);
    CREATE INDEX IF NOT EXISTS radar_events_token_block ON radar_events(token,block,id);
    CREATE INDEX IF NOT EXISTS radar_events_wallet_block ON radar_events(wallet,block,id);
+   CREATE INDEX IF NOT EXISTS radar_events_wallet_token_block ON radar_events(wallet,token,block,id);
+   CREATE INDEX IF NOT EXISTS radar_events_block ON radar_events(block);
+   CREATE INDEX IF NOT EXISTS wallet_positions_token ON wallet_token_positions(token,wallet);
    CREATE INDEX IF NOT EXISTS radar_launches_block ON radar_launches(block,token);
    CREATE INDEX IF NOT EXISTS wallet_outcomes_closed ON wallet_outcomes(closed_at,wallet,token);
    CREATE INDEX IF NOT EXISTS radar_activity_block ON radar_activity(block,id);`);
@@ -47,7 +50,7 @@ export class RadarStore {
  saveView<T>(name:string,value:T,updatedAt=Date.now()){this.db.prepare(`INSERT INTO radar_views(name,updated_at,value) VALUES (?,?,?) ON CONFLICT(name) DO UPDATE SET updated_at=excluded.updated_at,value=excluded.value`).run(name,updatedAt,JSON.stringify(value));}
  view<T>(name:string){const row=this.db.prepare('SELECT updated_at,value FROM radar_views WHERE name=?').get(name) as {updated_at:number;value:string}|undefined;return row?{updatedAt:row.updated_at,value:JSON.parse(row.value) as T}:undefined;}
 
- private transaction(work:()=>void){
+ transaction(work:()=>void){
   this.db.exec('BEGIN IMMEDIATE');
   try{work();this.db.exec('COMMIT');}catch(error){this.db.exec('ROLLBACK');throw error;}
  }
@@ -64,7 +67,7 @@ export class RadarStore {
  }
 
  replaceLaunchRange(name:string,from:bigint,to:bigint,cursor:bigint,launches:RadarLaunch[],cursorHash:string|null=null){
-  const retained=launches.map(row=>{const incoming=this.normalizeLaunch(row),existing=this.launchByToken(incoming.token);return existing&&existing.curve===incoming.curve&&existing.profile?{...incoming,state:existing.state,profile:existing.profile,profileError:existing.profileError,updatedAt:existing.updatedAt}:incoming;});
+  const retained=launches.map(row=>{const incoming=this.normalizeLaunch(row),existing=this.launchByToken(incoming.token);return existing&&existing.curve===incoming.curve?{...incoming,state:existing.state,profile:existing.profile,profileError:existing.profileError,updatedAt:existing.updatedAt}:incoming;});
   this.transaction(()=>{
    this.db.prepare('DELETE FROM radar_launches WHERE block>=? AND block<=?').run(Number(from),Number(to));
    const insert=this.db.prepare('INSERT INTO radar_launches(token,curve,block,value) VALUES (?,?,?,?)');
@@ -94,10 +97,11 @@ export class RadarStore {
  launchByToken(token:string){return parsed<RadarLaunch>(this.db.prepare('SELECT value FROM radar_launches WHERE token=?').get(normalized(token)) as ValueRow|undefined);}
  launchByCurve(curve:string){return parsed<RadarLaunch>(this.db.prepare('SELECT value FROM radar_launches WHERE curve=?').get(normalized(curve)) as ValueRow|undefined);}
  launches(){return (this.db.prepare('SELECT value FROM radar_launches ORDER BY block DESC,token').all() as ValueRow[]).map(row=>JSON.parse(row.value) as RadarLaunch);}
- profileCandidates(limit:number){return (this.db.prepare(`SELECT launch.value FROM radar_launches launch LEFT JOIN (SELECT token,COUNT(*) AS activity FROM radar_events GROUP BY token) event ON event.token=launch.token WHERE json_extract(launch.value,'$.profile') IS NULL ORDER BY COALESCE(event.activity,0) DESC,launch.block DESC,launch.token LIMIT ?`).all(Math.max(1,Math.trunc(limit))) as ValueRow[]).map(row=>JSON.parse(row.value) as RadarLaunch);}
+ profileCandidates(limit:number){return (this.db.prepare(`SELECT launch.value FROM radar_launches launch LEFT JOIN (SELECT token,COUNT(*) AS activity FROM radar_events GROUP BY token) event ON event.token=launch.token WHERE json_extract(launch.value,'$.profile') IS NULL AND (json_extract(launch.value,'$.profileError') IS NULL OR json_extract(launch.value,'$.updatedAt')<?) ORDER BY COALESCE(event.activity,0) DESC,launch.block DESC,launch.token LIMIT ?`).all(Date.now()-300000,Math.max(1,Math.trunc(limit))) as ValueRow[]).map(row=>JSON.parse(row.value) as RadarLaunch);}
 
  eventsForToken(token:string){return (this.db.prepare('SELECT value FROM radar_events WHERE token=? ORDER BY block,id').all(normalized(token)) as ValueRow[]).map(row=>JSON.parse(row.value) as RadarEvent);}
  eventsForWallet(wallet:string){return (this.db.prepare('SELECT value FROM radar_events WHERE wallet=? ORDER BY block,id').all(normalized(wallet)) as ValueRow[]).map(row=>JSON.parse(row.value) as RadarEvent);}
+ eventsForPosition(wallet:string,token:string){return (this.db.prepare('SELECT value FROM radar_events WHERE wallet=? AND token=? ORDER BY block,id').all(normalized(wallet),normalized(token)) as ValueRow[]).map(row=>JSON.parse(row.value) as RadarEvent);}
  events(){return (this.db.prepare('SELECT value FROM radar_events ORDER BY block,id').all() as ValueRow[]).map(row=>JSON.parse(row.value) as RadarEvent);}
 
  savePosition(position:WalletTokenPosition){
@@ -111,7 +115,7 @@ export class RadarStore {
  deletePosition(wallet:string,token:string){this.db.prepare('DELETE FROM wallet_token_positions WHERE wallet=? AND token=?').run(normalized(wallet),normalized(token));}
 
  private rebuildPosition(wallet:string,token:string){
-  const previous=this.position(wallet,token),launch=this.launchByToken(token),events=this.eventsForWallet(wallet).filter(event=>event.token===token);
+  const previous=this.position(wallet,token),launch=this.launchByToken(token),events=this.eventsForPosition(wallet,token);
   if(!launch||!events.length||wallet===launch.curve||wallet===launch.token||wallet==='0x0000000000000000000000000000000000000000'){this.deletePosition(wallet,token);return;}
   let position=emptyPosition(wallet,token,launch.pairToken);
   for(const event of events)position=applyPositionEvent(position,event);

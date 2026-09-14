@@ -8,6 +8,9 @@ MEERKAT scores Pons V2 tokens and locally evidenced wallet behavior, then expose
 
 ## Completed
 
+- [x] Fix Radar metadata queue starvation: reserve half the batch for fresh launches, back off failed profiles, keep metadata patches independent of the full-view refresh clock, and refresh the open feed every ten seconds. Regression tests reproduce all three scheduler failures.
+- [x] Index wallet/token and token/position reads, batch score writes, and group leaderboard outcomes/infrastructure once per window. Local verification: 178 tests, typecheck, build; production cycle and FRESH verification follows deployment.
+
 - [x] Branded `/` landing page using the approved pixel-art desert and mascot direction.
 - [x] Public roadmap with separate Live, Building, Next, Planned, and Later statuses.
 - [x] Separate `/terminal` with explicit Token and Wallet modes.

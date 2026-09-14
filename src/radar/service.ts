@@ -75,8 +75,9 @@ export class RadarService {
  }
 
  private buildLeaderboardRows(window:RadarWindow){
-  const cutoff=window==='all'?null:Date.now()-windowMs[window],outcomes=this.store.outcomes(cutoff),wallets=[...new Set(outcomes.map(row=>row.wallet))],rows:LeaderboardRow[]=[];
-  for(const wallet of wallets){const completed=outcomes.filter(row=>row.wallet===wallet&&row.complete),positions=this.store.positionsForWallet(wallet),reasons=this.eligibilityReasons(wallet,completed,positions),realized=completed.reduce((sum,row)=>sum+BigInt(row.pnl),0n),active=positions.filter(row=>BigInt(row.tokenBalance)>0n),marked=active.every(row=>row.openPnl!==null&&row.openPnl!==undefined),open=marked?active.reduce((sum,row)=>sum+BigInt(row.openPnl!),0n):null,reputation=this.store.score(wallet,'wallet-reputation'),wins=completed.filter(row=>BigInt(row.pnl)>0n).length,losses=completed.filter(row=>BigInt(row.pnl)<0n).length;rows.push({wallet,status:reasons.length?'provisional':'eligible',eligibilityReasons:reasons,completedPositions:completed.length,wins,losses,winRate:completed.length?wins/completed.length:null,realizedPnl:realized.toString(),openPnl:open?.toString()??null,totalPnl:open===null?null:(realized+open).toString(),reputation:reputation?.value??null,confidence:reputation?.confidence??'provisional',activePositions:active.length});}
+  const cutoff=window==='all'?null:Date.now()-windowMs[window],outcomes=this.store.outcomes(cutoff),grouped=new Map<string,typeof outcomes>(),infrastructure=new Set(this.store.launches().flatMap(row=>[row.token,row.curve,row.deployer])),rows:LeaderboardRow[]=[];
+  for(const row of outcomes){const group=grouped.get(row.wallet)??[];if(row.complete)group.push(row);grouped.set(row.wallet,group);}
+  for(const [wallet,completed] of grouped){const positions=this.store.positionsForWallet(wallet),reasons=this.eligibilityReasons(wallet,completed,positions,infrastructure.has(wallet)),realized=completed.reduce((sum,row)=>sum+BigInt(row.pnl),0n),active=positions.filter(row=>BigInt(row.tokenBalance)>0n),marked=active.every(row=>row.openPnl!==null&&row.openPnl!==undefined),open=marked?active.reduce((sum,row)=>sum+BigInt(row.openPnl!),0n):null,reputation=this.store.score(wallet,'wallet-reputation'),wins=completed.filter(row=>BigInt(row.pnl)>0n).length,losses=completed.filter(row=>BigInt(row.pnl)<0n).length;rows.push({wallet,status:reasons.length?'provisional':'eligible',eligibilityReasons:reasons,completedPositions:completed.length,wins,losses,winRate:completed.length?wins/completed.length:null,realizedPnl:realized.toString(),openPnl:open?.toString()??null,totalPnl:open===null?null:(realized+open).toString(),reputation:reputation?.value??null,confidence:reputation?.confidence??'provisional',activePositions:active.length});}
   return rows;
  }
 
@@ -113,8 +114,8 @@ export class RadarService {
   return {token:launch.token,curve:launch.curve,name:launch.profile?.name??null,symbol:launch.profile?.symbol??null,state:launch.state,pairToken:launch.pairToken,launchBlock:launch.launchBlock,ageMs:Math.max(0,now-launch.updatedAt),phase:launch.profile?.phase??null,participants:wallets.size,buys:buys.length,sells:sells.length,buyFlow:sum(buys),sellFlow:sum(sells),missingInputs,updatedAt:launch.updatedAt,radarStrength:this.store.score(launch.token,'radar-strength')?.value??null};
  }
 
- private eligibilityReasons(wallet:string,outcomes:ReturnType<RadarStore['outcomesForWallet']>,positions:ReturnType<RadarStore['positionsForWallet']>){
-  const reasons:string[]=[];if(outcomes.filter(row=>row.complete).length<3)reasons.push('fewer than three completed positions');if(positions.some(row=>!row.complete))reasons.push('material transfer gap');const infrastructure=this.store.launches().some(row=>[row.token,row.curve,row.deployer].includes(wallet));if(infrastructure)reasons.push('infrastructure or deployer address');return reasons;
+ private eligibilityReasons(wallet:string,outcomes:ReturnType<RadarStore['outcomesForWallet']>,positions:ReturnType<RadarStore['positionsForWallet']>,infrastructure=this.store.launches().some(row=>[row.token,row.curve,row.deployer].includes(wallet))){
+  const reasons:string[]=[];if(outcomes.filter(row=>row.complete).length<3)reasons.push('fewer than three completed positions');if(positions.some(row=>!row.complete))reasons.push('material transfer gap');if(infrastructure)reasons.push('infrastructure or deployer address');return reasons;
  }
 
  private decodeCursor(value:string):LaunchCursor{

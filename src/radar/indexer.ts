@@ -49,6 +49,8 @@ export class RadarIndexer {
  async close(){this.stopped=true;if(this.timer){clearInterval(this.timer);this.timer=null;}await this.pending;this.snapshot={...this.snapshot,state:'stopped'};}
 
  private async runCycle(){
+  const started=Date.now();let checkpoint=started;
+  const timing=(stage:string)=>{const now=Date.now();console.info(`Radar ${stage}: ${now-checkpoint}ms`);checkpoint=now;};
   this.snapshot={...this.snapshot,state:'indexing',error:null};this.publishStatus();
   try{
    const chainId=await this.reader.chainId();if(chainId!==4663)throw new Error(`wrong chain: ${chainId}; expected 4663`);
@@ -56,15 +58,21 @@ export class RadarIndexer {
    const factoryRange=this.range('factory',head,deployment),launches=await this.reader.launches(factoryRange.from,factoryRange.to);
    const factoryBlock=await this.reader.block(factoryRange.to);
    this.store.replaceLaunchRange('factory',factoryRange.from,factoryRange.to,factoryRange.to,launches,factoryBlock.hash);
+   timing('discovery');
    const views=new RadarService(this.store,()=>this.status()),profiled=await this.profileLaunches(head);views.refreshFeedProfiles(profiled);
+   timing(`profiles (${profiled.length})`);
    const marketRange=this.range('market',head,this.options.historyStartBlock>deployment?this.options.historyStartBlock:deployment),raw=await this.reader.trades(marketRange.from,marketRange.to),events:RadarEvent[]=[];
    for(const event of raw){const launch=this.store.launchByCurve(event.curve);if(launch)events.push({...event,token:launch.token});}
    const marketBlock=marketRange.to===factoryRange.to?factoryBlock:await this.reader.block(marketRange.to);
    this.store.replaceEventRange('market',marketRange.from,marketRange.to,marketRange.to,events,marketBlock.hash);
+   timing(`market (${events.length} events)`);
    for(const token of new Set(events.map(event=>event.token))){const launch=this.store.launchByToken(token);if(launch?.profile&&launch.state==='profiled')this.store.saveLaunch({...launch,state:'tracking',updatedAt:Date.now()});}
    await this.markPositions(head,[...new Set(events.map(event=>event.token))]);
-   const changed=[...new Set([...profiled,...events.map(event=>event.token)])];this.recomputeScores(head,changed);
-   const lastView=this.store.view('feed-rows')?.updatedAt;if(!lastView||Date.now()-lastView>=(this.options.viewRefreshMs??300000))views.refreshViews();
+   timing('marks');
+   const changed=[...new Set([...profiled,...events.map(event=>event.token)])];this.store.transaction(()=>this.recomputeScores(head,changed));
+   timing('scores');
+   const lastView=this.store.view('leaderboard-all')?.updatedAt;if(!lastView||Date.now()-lastView>=(this.options.viewRefreshMs??300000))views.refreshViews();
+   timing('views');console.info(`Radar cycle: ${Date.now()-started}ms`);
    const cursor=this.store.cursor('market')!;
    this.snapshot={state:'ready',headBlock:head.toString(),lastIndexedBlock:cursor.blockNumber,lagBlocks:(head-BigInt(cursor.blockNumber)).toString(),updatedAt:Date.now(),queueDepth:this.store.launches().filter(row=>!row.profile).length,error:null};this.publishStatus();
   }catch(error){this.snapshot={...this.snapshot,state:'error',updatedAt:Date.now(),error:sanitize(error)};this.publishStatus();}
@@ -104,8 +112,9 @@ export class RadarIndexer {
  }
 
  private async profileLaunches(head:bigint){
-  const limit=this.options.profileBatchSize??this.options.profileConcurrency,preferred=[...(this.store.view<Array<{token:string;radarStrength:number|null}>>('feed-rows')?.value??[])].filter(row=>row.radarStrength!==null).sort((a,b)=>(b.radarStrength??-1)-(a.radarStrength??-1)||a.token.localeCompare(b.token)).map(row=>this.store.launchByToken(row.token)).filter((row):row is RadarLaunch=>Boolean(row&&!row.profile)),seen=new Set<string>(),queue:RadarLaunch[]=[];
-  for(const row of [...preferred,...this.store.profileCandidates(limit)])if(queue.length<limit&&!seen.has(row.token)){seen.add(row.token);queue.push(row);}
+  const limit=this.options.profileBatchSize??this.options.profileConcurrency,eligible=(row:RadarLaunch|undefined):row is RadarLaunch=>Boolean(row&&!row.profile&&(!row.profileError||Date.now()-row.updatedAt>=300000)),fresh=this.store.launches().filter(eligible).slice(0,Math.floor(limit/2)),preferred=[...(this.store.view<Array<{token:string;radarStrength:number|null}>>('feed-rows')?.value??[])].filter(row=>row.radarStrength!==null).sort((a,b)=>(b.radarStrength??-1)-(a.radarStrength??-1)||a.token.localeCompare(b.token)).map(row=>this.store.launchByToken(row.token)).filter(eligible),seen=new Set<string>(),queue:RadarLaunch[]=[];
+  const add=(rows:RadarLaunch[],capacity:number)=>{for(const row of rows)if(queue.length<capacity&&!seen.has(row.token)){seen.add(row.token);queue.push(row);}};
+  add(fresh,fresh.length);add(preferred,Math.max(1,Math.ceil(limit*0.75)));add(this.store.profileCandidates(limit),limit);add(preferred,limit);
   let cursor=0;const profiled:string[]=[];
   const worker=async()=>{while(cursor<queue.length){const row=queue[cursor++];if(!row)continue;try{const profile=await this.reader.profile(row.token,head);this.store.saveLaunch({...row,state:'profiled',profile,profileError:null,updatedAt:Date.now()});profiled.push(row.token);}catch(error){this.store.saveLaunch({...row,state:'error',profileError:sanitize(error),updatedAt:Date.now()});}}};
   await Promise.all(Array.from({length:Math.min(this.options.profileConcurrency,queue.length)},()=>worker()));

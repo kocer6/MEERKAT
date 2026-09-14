@@ -62,6 +62,16 @@ test('materialized views replace atomically and counts stay in SQL',()=>{
  store.close();
 });
 
+test('position rebuild reads only that wallet/token history and preserves other positions',()=>{
+ const store=new RadarStore(':memory:'),other={...launch,token:'0x0000000000000000000000000000000000000099',curve:'0x0000000000000000000000000000000000000088'};
+ store.saveLaunch(launch);store.saveLaunch(other);
+ store.eventsForWallet=()=>{throw new Error('Full wallet history must not be loaded to rebuild one position');};
+ store.replaceEventRange('market',100n,120n,120n,[buy,{...buy,id:'other',token:other.token,curve:other.curve,tokens:'200'}]);
+ assert.equal(store.position(buy.wallet!,launch.token)?.tokenBalance,'100');assert.equal(store.position(buy.wallet!,other.token)?.tokenBalance,'200');
+ store.replaceEventRange('market',108n,120n,120n,[{...buy,quote:'12'},{...buy,id:'other',token:other.token,curve:other.curve,tokens:'200'}]);
+ assert.equal(store.position(buy.wallet!,launch.token)?.remainingCost,'12');assert.equal(store.position(buy.wallet!,other.token)?.remainingCost,'10');store.close();
+});
+
 test('profile queue repairs scored launches whose metadata is missing',()=>{
  const store=new RadarStore(':memory:');
  store.saveLaunch({...launch,state:'scored',updatedAt:2});

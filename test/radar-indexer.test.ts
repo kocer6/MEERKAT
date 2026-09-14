@@ -12,6 +12,34 @@ const launch:RadarLaunch={token,curve,deployer:'0x000000000000000000000000000000
 const buy:RadarEvent={id:'0xtrade:1',token:'',curve,wallet,kind:'buy',tokens:'100',quote:'10',blockNumber:'470',blockHash:'0x470',txHash:'0xtrade',logIndex:1,at:1470000,complete:true};
 const profile:RadarProfile={name:'Test Token',symbol:'TEST',decimals:18,phase:0,creatorTaxBps:100,creatorFeeRecipient:wallet,totalSupply:'1000',deployerBalance:'100',holderCount:null,metadataComplete:true,profiledAtBlock:'500',profiledAt:1500000};
 
+test('fresh launches receive profile capacity even while scored metadata is backlogged',async()=>{
+ const store=new RadarStore(':memory:'),requested:string[]=[];
+ const backlog=Array.from({length:8},(_,i)=>({...launch,token:`0x${(100+i).toString(16).padStart(40,'0')}`,curve:`0x${(200+i).toString(16).padStart(40,'0')}`,launchBlock:String(100+i)}));
+ for(const row of backlog)store.saveLaunch(row);
+ store.saveView('feed-rows',backlog.map(row=>({...row,radarStrength:90,missingInputs:['token profile']})),1);
+ const reader:RadarReader={chainId:async()=>4663,head:async()=>500n,block:async number=>({number,hash:`0x${number}`,timestamp:number}),factoryDeployment:async()=>100n,launches:async()=>[launch],trades:async()=>[],profile:async token=>{requested.push(token);return profile;},quoteSell:async()=>null};
+ const indexer=new RadarIndexer(store,reader,{rangeBlocks:200n,pollMs:30000,profileConcurrency:2,profileBatchSize:4,historyStartBlock:100n});
+ await indexer.tick();assert.ok(requested.includes(token));assert.equal(requested.length,4);assert.ok(requested.some(address=>backlog.some(row=>row.token===address)));
+ await indexer.close();store.close();
+});
+
+test('metadata patches cannot postpone an overdue leaderboard refresh',async()=>{
+ const store=new RadarStore(':memory:');store.saveLaunch(launch);
+ store.saveView('feed-rows',[{token,radarStrength:80,missingInputs:['token profile']}],1);store.saveView('leaderboard-all',[],1);
+ const reader:RadarReader={chainId:async()=>4663,head:async()=>500n,block:async number=>({number,hash:`0x${number}`,timestamp:number}),factoryDeployment:async()=>100n,launches:async()=>[launch],trades:async()=>[],profile:async()=>profile,quoteSell:async()=>null};
+ const indexer=new RadarIndexer(store,reader,{rangeBlocks:200n,pollMs:30000,profileConcurrency:2,historyStartBlock:100n});await indexer.tick();
+ assert.ok(store.view('leaderboard-all')!.updatedAt>1);await indexer.close();store.close();
+});
+
+test('failed profiles cool down so the next pass can name other tokens',async()=>{
+ const store=new RadarStore(':memory:'),requested:string[]=[];
+ const broken={...launch,launchBlock:'100'},other={...launch,token:'0x0000000000000000000000000000000000000099',curve:'0x0000000000000000000000000000000000000088',launchBlock:'101'};
+ store.saveLaunch(broken);store.saveLaunch(other);store.saveView('feed-rows',[{token,radarStrength:90,missingInputs:['token profile']},{token:other.token,radarStrength:80,missingInputs:['token profile']}],Date.now());store.saveView('leaderboard-all',[],Date.now());
+ const reader:RadarReader={chainId:async()=>4663,head:async()=>500n,block:async number=>({number,hash:`0x${number}`,timestamp:number}),factoryDeployment:async()=>100n,launches:async()=>[],trades:async()=>[],profile:async address=>{requested.push(address);if(address===token)throw new Error('temporary RPC failure');return profile;},quoteSell:async()=>null};
+ const indexer=new RadarIndexer(store,reader,{rangeBlocks:200n,pollMs:30000,profileConcurrency:1,profileBatchSize:1,historyStartBlock:100n});await indexer.tick();await indexer.tick();
+ assert.deepEqual(requested,[token,other.token]);await indexer.close();store.close();
+});
+
 test('indexes verified curves, resumes with overlap, and coalesces concurrent ticks',async()=>{
  const calls:Array<[string,bigint,bigint]>=[];
  let release:()=>void=()=>{};
