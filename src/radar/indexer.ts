@@ -66,7 +66,7 @@ export class RadarIndexer {
    const changed=[...new Set([...profiled,...events.map(event=>event.token)])];this.recomputeScores(head,changed);
    const views=new RadarService(this.store,()=>this.status()),lastView=this.store.view('feed-rows')?.updatedAt;if(!lastView||Date.now()-lastView>=(this.options.viewRefreshMs??300000))views.refreshViews();
    const cursor=this.store.cursor('market')!;
-   this.snapshot={state:'ready',headBlock:head.toString(),lastIndexedBlock:cursor.blockNumber,lagBlocks:(head-BigInt(cursor.blockNumber)).toString(),updatedAt:Date.now(),queueDepth:this.store.launches().filter(row=>row.state==='discovered'||row.state==='error').length,error:null};this.publishStatus();
+   this.snapshot={state:'ready',headBlock:head.toString(),lastIndexedBlock:cursor.blockNumber,lagBlocks:(head-BigInt(cursor.blockNumber)).toString(),updatedAt:Date.now(),queueDepth:this.store.launches().filter(row=>!row.profile).length,error:null};this.publishStatus();
   }catch(error){this.snapshot={...this.snapshot,state:'error',updatedAt:Date.now(),error:sanitize(error)};this.publishStatus();}
  }
 

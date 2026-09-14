@@ -61,3 +61,10 @@ test('materialized views replace atomically and counts stay in SQL',()=>{
  assert.deepEqual(store.counts(),{launches:1,events:1});
  store.close();
 });
+
+test('profile queue repairs scored launches whose metadata is missing',()=>{
+ const store=new RadarStore(':memory:');
+ store.saveLaunch({...launch,state:'scored',updatedAt:2});
+ assert.deepEqual(store.profileCandidates(10).map(row=>row.token),[launch.token]);
+ store.close();
+});
