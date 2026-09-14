@@ -30,7 +30,7 @@ const windowMs:Record<Exclude<RadarWindow,'all'>,number>={
 };
 
 export class RadarService {
- constructor(private store:RadarStore,private indexStatus:()=>RadarIndexerStatus){}
+ constructor(private store:RadarStore,private indexStatus:()=>RadarIndexerStatus,private allowExpensiveFallback=true){}
 
  status(){return {...this.indexStatus(),...this.store.counts()};}
  launches(cursor:string|null){return this.signals({feed:'launches',window:'all',cursor});}
@@ -55,7 +55,7 @@ export class RadarService {
 
  leaderboard(query:{window:RadarWindow;sort:LeaderboardSort;status:LeaderboardStatus;cursor:string|null}){
   if(!['24h','7d','30d','all'].includes(query.window))throw new Error('Invalid leaderboard window');if(!['total-pnl','realized','open','win-rate','reputation'].includes(query.sort))throw new Error('Invalid leaderboard sort');if(!['eligible','provisional','all'].includes(query.status))throw new Error('Invalid leaderboard status');
-  const rows=this.store.view<LeaderboardRow[]>(`leaderboard-${query.window}`)?.value??this.buildLeaderboardRows(query.window);
+  const cached=this.store.view<LeaderboardRow[]>(`leaderboard-${query.window}`)?.value,rows=cached??(this.allowExpensiveFallback?this.buildLeaderboardRows(query.window):[]);
   return this.rankLeaderboard(rows,query.sort,query.status);
  }
 
@@ -85,6 +85,7 @@ export class RadarService {
   const after=query.cursor?this.decodeCursor(query.cursor):null,now=Date.now(),cutoff=query.window==='all'?null:now-windowMs[query.window];
   const cached=this.store.view<RadarFeedRow[]>('feed-rows')?.value;
   if(cached){let rows=cached.filter(row=>(cutoff===null||row.updatedAt>=cutoff)&&(!after||BigInt(row.launchBlock)<BigInt(after.block)||(row.launchBlock===after.block&&row.token>after.token)));if(query.feed==='signals')rows=rows.filter(row=>row.radarStrength!==null).sort((a,b)=>(b.radarStrength??-1)-(a.radarStrength??-1)||a.token.localeCompare(b.token));if(query.feed==='exits')rows=rows.filter(row=>row.sells>0).sort((a,b)=>Number(BigInt(b.launchBlock)-BigInt(a.launchBlock))||a.token.localeCompare(b.token));if(query.feed==='wallets')rows=rows.sort((a,b)=>b.participants-a.participants||a.token.localeCompare(b.token));const page=rows.slice(0,50),last=page.at(-1);return {items:page,nextCursor:rows.length>50&&last?Buffer.from(JSON.stringify({block:last.launchBlock,token:last.token} satisfies LaunchCursor)).toString('base64url'):null};}
+  if(!this.allowExpensiveFallback)return {items:[],nextCursor:null};
   let launches=this.store.launches().filter(row=>(cutoff===null||row.updatedAt>=cutoff)&&(!after||BigInt(row.launchBlock)<BigInt(after.block)||(row.launchBlock===after.block&&row.token>after.token)));
   if(query.feed==='signals')launches=launches.filter(row=>this.store.score(row.token,'radar-strength')?.value!==null).sort((a,b)=>(this.store.score(b.token,'radar-strength')?.value??-1)-(this.store.score(a.token,'radar-strength')?.value??-1)||a.token.localeCompare(b.token));
   if(query.feed==='exits')launches=launches.filter(row=>this.store.eventsForToken(row.token).some(event=>event.kind==='sell'&&(cutoff===null||event.at===null||event.at>=cutoff))).sort((a,b)=>Number(BigInt(b.launchBlock)-BigInt(a.launchBlock))||a.token.localeCompare(b.token));

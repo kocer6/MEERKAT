@@ -74,3 +74,11 @@ test('feed and leaderboard use materialized rows when available',()=>{
  assert.equal(service.leaderboard({window:'all',sort:'total-pnl',status:'all',cursor:null}).items[0]?.wallet,owner);
  store.close();
 });
+
+test('read-only web service never runs expensive fallback before the first view',()=>{
+ const store=new RadarStore(':memory:'),owner=wallet(92);for(let index=0;index<3;index++)store.saveOutcome(outcome(owner,index,10n));store.saveLaunch(launch);
+ const service=new RadarService(store,()=>status,false);
+ assert.deepEqual(service.signals({feed:'fresh',window:'24h',cursor:null}).items,[]);
+ assert.deepEqual(service.leaderboard({window:'all',sort:'total-pnl',status:'all',cursor:null}).items,[]);
+ store.close();
+});
