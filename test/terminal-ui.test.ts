@@ -71,3 +71,32 @@ test('market availability distinguishes unlisted tokens from a pending request',
  const render=runInNewContext(fn+';enrichedMarket',{el:(_tag:string,text?:string)=>{if(text)messages.push(text);return {append:()=>{}};},Date});
  render(null);assert.match(messages.pop()!,/Loading/);render({checkedAt:1,data:null,error:null});assert.match(messages.pop()!,/do not list a market quote/);render({checkedAt:1,data:null,error:'rate limit'});assert.match(messages.pop()!,/provider unavailable/);
 });
+
+
+test('Radar live connection receives snapshots and closes when leaving the view',async()=>{
+ const source=readFileSync('public/terminal.js','utf8');assert.match(source,/function connectRadarFeed/);
+ const fn=source.slice(source.indexOf('function connectRadarFeed('),source.indexOf('async function renderRadar('));
+ const streams:any[]=[],pages:any[]=[],statuses:string[]=[],listeners=new Map<string,Function>(),timers=new Map<number,Function>();let id=0;
+ class FakeSource{readyState=0;handlers=new Map<string,Function>();closed=false;onopen:any;onerror:any;constructor(public url:string){streams.push(this);}addEventListener(name:string,fn:Function){this.handlers.set(name,fn);}close(){this.closed=true;}emit(name:string,value:any){this.handlers.get(name)?.({data:JSON.stringify(value)});}}
+ const doc={hidden:false,addEventListener:(name:string,fn:Function)=>listeners.set(name,fn),removeEventListener:(name:string)=>listeners.delete(name)};
+ const connect=runInNewContext(fn+';connectRadarFeed',{EventSource:FakeSource,document:doc,URLSearchParams,setTimeout:(fn:Function)=>{timers.set(++id,fn);return id;},clearTimeout:(id:number)=>timers.delete(id),get:async()=>({items:[]}),addEventListener:()=>{},removeEventListener:()=>{}});
+ const stop=connect('fresh',(page:any)=>pages.push(page),(state:string)=>statuses.push(state));assert.match(streams[0].url,/feed=fresh/);
+ streams[0].readyState=1;streams[0].onopen();streams[0].emit('snapshot',{items:[{token:'one'}]});assert.equal(pages.length,1);
+ streams[0].readyState=0;streams[0].onerror();streams[0].readyState=1;streams[0].onopen();streams[0].emit('snapshot',{items:[{token:'newer'}]});await Promise.resolve();await Promise.resolve();assert.equal(pages.length,2);assert.equal(pages[1].items[0].token,'newer');
+ doc.hidden=true;listeners.get('visibilitychange')!();assert.equal(streams[0].closed,true);doc.hidden=false;listeners.get('visibilitychange')!();assert.equal(streams.length,2);
+ stop();assert.equal(streams[1].closed,true);streams[1].emit('snapshot',{items:[{token:'late'}]});assert.equal(pages.length,2);assert.equal(timers.size,0);assert.equal(listeners.size,0);
+});
+
+
+test('live table patches cells, retains buttons and holds order during interaction',()=>{
+ const source=readFileSync('public/terminal.js','utf8'),fn=source.slice(source.indexOf('function feedTable('),source.indexOf('function connectRadarFeed('));
+ class Node{children:Node[]=[];parent:Node|null=null;textContent='';className='';title='';dataset:Record<string,string>={};handlers=new Map<string,Function>();classList={add:(name:string)=>{this.className+=' '+name;}};constructor(public tag:string){}append(...nodes:Node[]){for(const node of nodes)this.insertBefore(node,null);}insertBefore(node:Node,before:Node|null){node.remove();const i=before?this.children.indexOf(before):this.children.length;this.children.splice(i,0,node);node.parent=this;}remove(){if(this.parent){this.parent.children.splice(this.parent.children.indexOf(this),1);this.parent=null;}}contains(node:Node|null):boolean{return node===this||this.children.some(child=>child.contains(node));}getBoundingClientRect(){return {top:0};}addEventListener(name:string,fn:Function){this.handlers.set(name,fn);}}
+ const pending:number[]=[],doc={activeElement:null},nav:string[]=[];
+ const create=runInNewContext(fn+';feedTable',{el:(tag:string,text?:string,cls?:string)=>{const node=new Node(tag);if(text!==undefined)node.textContent=text;node.className=cls||'';return node;},document:doc,matchMedia:()=>({matches:true}),scoreTone:(score:number)=>score>=70?'score-high':'score-low',short:(s:string)=>s,eth:(s:string)=>s,marketUsd:(v:any)=>String(v??'-'),watchButton:()=>new Node('button'),navigate:(path:string)=>nav.push(path),queueMicrotask:(fn:Function)=>fn(),window:{scrollBy:()=>{}}});
+ const item=(token:string,score=40)=>({token,symbol:token,radarStrength:score,state:'scored',participants:1,buys:1,sells:0,buyFlow:'1',sellFlow:'0',pairToken:'0x0000000000000000000000000000000000000000'});
+ const wrap=create([item('a'),item('b')],(n:number)=>pending.push(n)),body=wrap.children[0].children[1],a=body.children[0],b=body.children[1],watch=a.children[9].children[0];watch.textContent='REMOVE FROM WATCHLIST';
+ wrap.handlers.get('mouseenter')();wrap.updateRows([item('b',90),item('c'),item('a')]);assert.deepEqual(body.children,[a,b]);assert.equal(b.children[1].textContent,'90');assert.equal(pending.at(-1),1);
+ wrap.handlers.get('mouseleave')();assert.deepEqual(body.children.map((row:Node)=>row.dataset.token),['b','c','a']);assert.equal(body.children[2],a);assert.equal(a.children[9].children[0],watch);assert.equal(watch.textContent,'REMOVE FROM WATCHLIST');
+ a.children[0].children[0].handlers.get('click')();assert.equal(nav[0],'/terminal/token/a');
+ wrap.updateRows([item('a',80)]);assert.deepEqual(body.children,[a]);wrap.updateRows([]);assert.equal(body.children.length,0);assert.equal(wrap.children[0].children[1],body);
+});

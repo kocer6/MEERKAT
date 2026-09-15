@@ -10,6 +10,7 @@ const signed=value=>value===null||value===undefined?'UNKNOWN':`${BigInt(value)>=
 const transactionClass=kind=>kind==='buy'?'tx-buy':kind==='sell'?'tx-sell':kind.toLowerCase()==='transfer'?'tx-transfer':'tx-unattributed';
 function scoreTone(value){return value===null||value===undefined?'score-unknown':value>=70?'score-high':value>=40?'score-mid':'score-low';}
 const marketSummary=(wallets,pairToken)=>({buys:wallets.reduce((sum,wallet)=>sum+wallet.buys,0),sells:wallets.reduce((sum,wallet)=>sum+wallet.sells,0),participants:wallets.length,spent:wallets.reduce((sum,wallet)=>sum+BigInt(wallet.spent),0n),received:wallets.reduce((sum,wallet)=>sum+BigInt(wallet.received),0n),pairToken});
+let radarCleanup=null;
 let mode='token',activeToken=null,pollTimer=null,currentView=null,navigationHistory=[],activeDossierTab='overview',dossierToken=null,activeRadarFeed='signals',timelineState={token:null,types:new Set(),events:[],cursor:null,total:0,hasMore:false,busy:false,error:null},relationshipState={token:null,mode:'trade',tradeSide:'buy',selected:null,scale:1,panX:0,panY:0};
 
 async function responseBody(response){const text=await response.text();if(!text){if(!response.ok)throw new Error('Service temporarily unavailable. Retry in a moment.');return null;}try{return JSON.parse(text);}catch{throw new Error(response.ok?'The service returned an invalid response. Retry in a moment.':'Service temporarily unavailable. Retry in a moment.');}}
@@ -80,7 +81,7 @@ function renderRelationships(graph,token,profile,wallets){
  let drag=null;svg.addEventListener('pointerdown',event=>{if(event.target.closest?.('.relation-node'))return;drag={x:event.clientX,y:event.clientY,panX:state.panX,panY:state.panY};svg.setPointerCapture(event.pointerId);});svg.addEventListener('pointermove',event=>{if(!drag)return;state.panX=drag.panX+(event.clientX-drag.x);state.panY=drag.panY+(event.clientY-drag.y);updateTransform();});svg.addEventListener('pointerup',()=>drag=null);svg.addEventListener('pointercancel',()=>drag=null);
  renderInspector(state.selected?nodeIndex.get(state.selected):null);render();if(matchMedia('(max-width:760px)').matches)requestAnimationFrame(()=>{map.scrollLeft=Math.max(0,(map.scrollWidth-map.clientWidth)/2);});return section;
 }
-function showResult(title,badge){$('result-empty').hidden=true;$('result-content').hidden=false;$('result-content').replaceChildren();$('result-title').textContent=title;$('result-badge').textContent=badge;}
+function showResult(title,badge){if(radarCleanup){radarCleanup();radarCleanup=null;}$('result-empty').hidden=true;$('result-content').hidden=false;$('result-content').replaceChildren();$('result-title').textContent=title;$('result-badge').textContent=badge;}
 function setMode(next){mode=next;activeToken=null;if(pollTimer)clearTimeout(pollTimer);for(const button of document.querySelectorAll('[data-mode]')){const active=button.dataset.mode===mode;button.classList.toggle('active',active);button.setAttribute('aria-selected',String(active));}$('mode-status').textContent=mode.toUpperCase();$('address-label').textContent=mode==='token'?'TOKEN CONTRACT':'PUBLIC WALLET';$('address-help').textContent=mode==='token'?'Paste a Pons V2 token contract on Robinhood Chain.':'Paste a public address. The dossier uses Pons histories indexed on this installation.';$('inspect-button').firstChild.textContent=mode==='token'?'SEARCH TOKEN ':'SEARCH WALLET ';$('query-status').textContent='';$('result-empty').hidden=false;$('result-content').hidden=true;$('result-title').textContent='DOSSIER';$('result-badge').textContent='READY';}
 for(const button of document.querySelectorAll('[data-mode]'))button.addEventListener('click',()=>setMode(button.dataset.mode));
 function updateHistoryButton(){const button=$('history-back'),previous=navigationHistory.at(-1);button.hidden=!previous;if(previous)button.textContent=`← ${previous.mode.toUpperCase()} ${short(previous.address)}`;}
@@ -151,10 +152,75 @@ function captureViewState(){return {feed:activeRadarFeed,dossierTab:activeDossie
 function navState(path){const section=path.split('/')[2]||'radar';$('mode-status').textContent=section.toUpperCase();for(const link of document.querySelectorAll('[data-route]')){const active=path===link.dataset.route;link.classList.toggle('active',active);if(active)link.setAttribute('aria-current','page');else link.removeAttribute('aria-current');}}
 function navigate(path,state={}){history.replaceState({...history.state,...captureViewState()},'');history.pushState(state,'',path);void renderRoute(path,state);}
 function routeError(error){showResult('UNAVAILABLE','ERROR');const retry=el('button','RETRY','watch-action');retry.addEventListener('click',()=>void renderRoute(location.pathname,history.state||{}));$('result-content').append(el('p',error?.message||String(error),'notice error'),retry);}
-function feedTable(rows){const wrap=el('div',undefined,'table-wrap'),table=el('table',undefined,'feed-table'),head=el('tr');for(const label of ['TOKEN','SCORE','STATE','PARTICIPANTS','BUYS / SELLS','BUY FLOW','SELL FLOW','PRICE','LIQUIDITY','SAVE'])head.append(el('th',label));table.append(head);for(const item of rows){const row=el('tr'),token=el('td'),tone=scoreTone(item.radarStrength),link=el('button',`${item.symbol||'METADATA PENDING'} · ${short(item.token)}`,`entity-link ${tone}`),flow=value=>item.pairToken==='0x0000000000000000000000000000000000000000'?eth(value):`${value} RAW`;link.addEventListener('click',()=>navigate(`/terminal/token/${item.token}`));token.append(link);if(item.market?.data)token.title=`${item.market.data.source} \u00b7 ${new Date(item.market.data.fetchedAt).toLocaleString()}${Date.now()-item.market.data.fetchedAt>300000?' \u00b7 STALE':''}`;row.append(token,el('td',item.radarStrength??'—',tone),el('td',item.state.toUpperCase()),el('td',String(item.participants)),el('td',`${item.buys} / ${item.sells}`),el('td',flow(item.buyFlow),'tx-buy'),el('td',flow(item.sellFlow),'tx-sell'),el('td',marketUsd(item.market?.data?.priceUsd)),el('td',marketUsd(item.market?.data?.liquidityUsd)),el('td',undefined,'save-cell'));row.lastChild.append(watchButton('token',item.token));table.append(row);}wrap.append(table);return wrap;}
-async function renderRadar(restore={}){activeRadarFeed=restore.feed||activeRadarFeed;showResult('RADAR','LIVE INDEX');const root=$('result-content'),hero=el('section',undefined,'page-hero');hero.append(el('small','MARKET INTELLIGENCE / ROBINHOOD CHAIN','eyebrow'),el('h2','THE LIVE PONS MARKET, RANKED BY EVIDENCE.'),el('p','Discover launches, follow verified wallet activity, and open the full token dossier without rebuilding the market view.'));root.append(hero);const tabs=el('nav',undefined,'feed-tabs');for(const [value,label] of [['signals','SIGNALS'],['fresh','FRESH'],['exits','EXITS'],['launches','LAUNCHES'],['wallets','WALLETS']]){const button=el('button',label);button.classList.toggle('active',value===activeRadarFeed);button.addEventListener('click',()=>{activeRadarFeed=value;void renderRadar({feed:value});});tabs.append(button);}root.append(tabs);const stage=el('div','LOADING CACHED RADAR FEED…','feed-stage');root.append(stage);const feed=activeRadarFeed;
- const refresh=async()=>{try{const page=await get('/api/radar/signals',{feed,window:'24h'});if(!stage.isConnected)return;stage.replaceChildren();if(page.items.length)stage.append(feedTable(page.items));else stage.append(el('div',feed==='signals'?'Signals appear after launches have enough indexed evidence.':'No cached entries in this view yet.','empty-state'));}catch(error){if(stage.isConnected&&stage.textContent==='LOADING CACHED RADAR FEED…')stage.replaceChildren(el('p','Unable to load the feed. Retrying…','notice'));}finally{if(stage.isConnected)pollTimer=setTimeout(()=>void refresh(),10000);}};
- await refresh();}
+function feedTable(rows,onPending=()=>{}){
+ const wrap=el('div',undefined,'table-wrap radar-live-table'),table=el('table',undefined,'feed-table'),head=el('thead'),heading=el('tr'),body=el('tbody'),entries=new Map();
+ for(const label of ['TOKEN','SCORE','STATE','PARTICIPANTS','BUYS / SELLS','BUY FLOW','SELL FLOW','PRICE','LIQUIDITY','SAVE'])heading.append(el('th',label));head.append(heading);table.append(head,body);wrap.append(table);
+ let initialized=false,pointerInside=false,pending=null;
+ const flash=node=>{if(initialized&&!matchMedia('(prefers-reduced-motion:reduce)').matches)node.animate?.([{backgroundColor:'rgba(152,213,90,.24)'},{backgroundColor:'transparent'}],{duration:1100});};
+ const text=(node,value)=>{value=String(value);if(node.textContent!==value){node.textContent=value;flash(node);}};
+ const update=(entry,item)=>{
+  const tone=scoreTone(item.radarStrength),flow=value=>item.pairToken==='0x0000000000000000000000000000000000000000'?eth(value):`${value} RAW`;
+  text(entry.link,`${item.symbol||'METADATA PENDING'} \u00b7 ${short(item.token)}`);entry.link.className=`entity-link ${tone}`;
+  entry.cells[0].title=item.market?.data?`${item.market.data.source} \u00b7 ${new Date(item.market.data.fetchedAt).toLocaleString()}${Date.now()-item.market.data.fetchedAt>300000?' \u00b7 STALE':''}`:'';
+  const values=[item.radarStrength??'\u2014',item.state.toUpperCase(),item.participants,`${item.buys} / ${item.sells}`,flow(item.buyFlow),flow(item.sellFlow),marketUsd(item.market?.data?.priceUsd),marketUsd(item.market?.data?.liquidityUsd)];
+  values.forEach((value,i)=>text(entry.cells[i+1],value));entry.cells[1].className=tone;
+ };
+ const held=()=>pointerInside||body.contains(document.activeElement);
+ const apply=items=>{
+  // Anchor a visible retained row when the reader has scrolled into the table.
+  const wanted=new Set(items.map(item=>item.token)),anchor=table.getBoundingClientRect().top<0?[...entries].find(([token,entry])=>wanted.has(token)&&entry.row.getBoundingClientRect().top>=0)?.[1].row:null,top=anchor?.getBoundingClientRect().top;
+  for(const [token,entry] of entries)if(!wanted.has(token)){entry.row.remove();entries.delete(token);}
+  items.forEach((item,index)=>{
+   let entry=entries.get(item.token);
+   if(!entry){const row=el('tr'),cells=Array.from({length:10},()=>el('td')),link=el('button',undefined,'entity-link');row.dataset.token=item.token;link.addEventListener('click',()=>navigate(`/terminal/token/${item.token}`));cells[0].append(link);cells[5].className='tx-buy';cells[6].className='tx-sell';cells[9].className='save-cell';cells[9].append(watchButton('token',item.token));row.append(...cells);entry={row,cells,link};entries.set(item.token,entry);if(initialized)row.classList.add('radar-row-new');}
+   update(entry,item);if(body.children[index]!==entry.row)body.insertBefore(entry.row,body.children[index]||null);
+  });
+  if(anchor&&top!==undefined){const shift=anchor.getBoundingClientRect().top-top;if(shift)window.scrollBy(0,shift);}
+  initialized=true;pending=null;onPending(0,items.length);
+ };
+ wrap.updateRows=items=>{if(initialized&&held()){pending=items;for(const item of items){const entry=entries.get(item.token);if(entry)update(entry,item);}onPending(items.filter(item=>!entries.has(item.token)).length,entries.size);return;}apply(items);};
+ const release=()=>{if(pending&&!held())apply(pending);};
+ wrap.addEventListener('mouseenter',()=>{pointerInside=true;});wrap.addEventListener('mouseleave',()=>{pointerInside=false;release();});wrap.addEventListener('focusout',()=>queueMicrotask(release));
+ wrap.updateRows(rows);return wrap;
+}
+function connectRadarFeed(feed,onPage,onStatus){
+ let source=null,timer=null,watchdog=null,stopped=false,busy=false,generation=0;
+ const clear=()=>{if(timer)clearTimeout(timer);if(watchdog)clearTimeout(watchdog);timer=null;watchdog=null;};
+ const pause=()=>{generation++;clear();source?.close();source=null;};
+ const fallback=async()=>{
+  if(stopped||document.hidden)return;if(busy){timer=setTimeout(()=>void fallback(),5000);return;}busy=true;const current=generation;
+  try{const page=await get('/api/radar/signals',{feed,window:'24h'});if(!stopped&&current===generation){onPage(page);onStatus('POLLING');}}
+  catch{if(!stopped&&current===generation)onStatus('RECONNECTING');}
+  finally{busy=false;if(!stopped&&current===generation&&!document.hidden&&(!source||source.readyState!==1))timer=setTimeout(()=>void fallback(),5000);}
+ };
+ const alive=()=>{if(watchdog)clearTimeout(watchdog);watchdog=setTimeout(connect,45000);};
+ const connect=()=>{
+  if(stopped||document.hidden)return;pause();onStatus('CONNECTING');
+  if(typeof EventSource==='undefined'){void fallback();return;}
+  const stream=new EventSource('/api/radar/stream?'+new URLSearchParams({feed,window:'24h'}));source=stream;
+  const current=()=>!stopped&&source===stream;
+  stream.onopen=()=>{if(!current())return;generation++;if(timer)clearTimeout(timer);timer=null;onStatus('LIVE');alive();};
+  stream.addEventListener('snapshot',event=>{if(!current())return;try{const page=JSON.parse(event.data);if(!Array.isArray(page.items))throw new Error('Invalid feed');onPage(page);onStatus('LIVE');alive();}catch{pause();onStatus('RECONNECTING');timer=setTimeout(connect,2000);}});
+  stream.addEventListener('heartbeat',()=>{if(current())alive();});
+  stream.onerror=()=>{if(!current())return;onStatus('RECONNECTING');if(timer)clearTimeout(timer);timer=null;void fallback();alive();};
+  timer=setTimeout(()=>void fallback(),3000);alive();
+ };
+ const visibility=()=>{if(document.hidden){pause();onStatus('PAUSED');}else connect();};
+ document.addEventListener('visibilitychange',visibility);addEventListener('pagehide',pause);addEventListener('pageshow',connect);connect();
+ return ()=>{stopped=true;pause();document.removeEventListener('visibilitychange',visibility);removeEventListener('pagehide',pause);removeEventListener('pageshow',connect);};
+}
+async function renderRadar(restore={}){
+ activeRadarFeed=restore.feed||activeRadarFeed;showResult('RADAR','LIVE INDEX');const root=$('result-content'),hero=el('section',undefined,'page-hero');hero.append(el('small','MARKET INTELLIGENCE / ROBINHOOD CHAIN','eyebrow'),el('h2','THE LIVE PONS MARKET, RANKED BY EVIDENCE.'),el('p','Discover launches, follow verified wallet activity, and open the full token dossier without rebuilding the market view.'));root.append(hero);
+ const tabs=el('nav',undefined,'feed-tabs');for(const [value,label] of [['signals','SIGNALS'],['fresh','FRESH'],['exits','EXITS'],['launches','LAUNCHES'],['wallets','WALLETS']]){const button=el('button',label);button.classList.toggle('active',value===activeRadarFeed);button.addEventListener('click',()=>{activeRadarFeed=value;void renderRadar({feed:value});});tabs.append(button);}root.append(tabs);
+ const liveBar=el('div',undefined,'radar-live-bar'),live=el('span','CONNECTING','radar-live-state'),updated=el('span','Waiting for the latest indexed data'),pending=el('span',undefined,'radar-pending');live.setAttribute('role','status');pending.setAttribute('aria-live','polite');liveBar.append(live,updated,pending);root.append(liveBar);
+ const stage=el('div',undefined,'feed-stage'),empty=el('p','Loading live Radar data...','empty-state');let table=null,lastPayload=null;stage.append(empty);root.append(stage);
+ radarCleanup=connectRadarFeed(activeRadarFeed,page=>{
+  if(!stage.isConnected)return;const payload=JSON.stringify(page.items);if(payload===lastPayload)return;lastPayload=payload;
+  if(!table){table=feedTable(page.items,(count,displayed)=>{empty.hidden=displayed>0;pending.textContent=count?`${count} NEW \u00b7 rows held while you inspect`:'';});stage.append(table);if(restore.scrollY!==undefined)requestAnimationFrame(()=>{if(stage.isConnected)scrollTo(0,restore.scrollY);});}else table.updateRows(page.items);
+  empty.textContent=activeRadarFeed==='signals'?'Waiting for tokens with enough indexed evidence. New signals will appear here automatically.':'Waiting for indexed tokens. New launches will appear here automatically.';
+  updated.textContent=`Updated ${new Date().toLocaleTimeString()}`;
+ },state=>{if(!stage.isConnected)return;live.textContent=state;live.dataset.state=state;if(state==='RECONNECTING')updated.textContent='Connection interrupted; keeping the last received data';});
+}
 
 async function renderLeaderboard(){showResult('LEADERBOARD','PNL');const root=$('result-content');root.append(el('section',undefined,'page-hero'));root.firstChild.append(el('small','WALLET PERFORMANCE / EVIDENCE GATED','eyebrow'),el('h2','WALLETS RANKED BY OBSERVED PNL.'),el('p','Only chain-evidenced positions count. Incomplete histories remain provisional.'));const page=await get('/api/radar/leaderboard',{window:'all',sort:'total-pnl',status:'all'});if(!page.items.length){root.append(el('div','Leaderboard entries appear after wallets complete enough scored positions.','empty-state'));return;}const wrap=el('div',undefined,'table-wrap'),table=el('table',undefined,'feed-table'),head=el('tr');for(const label of ['#','WALLET','STATUS','REPUTATION','TRADES','W / L','WIN RATE','REALIZED P/L','TOTAL P/L'])head.append(el('th',label));table.append(head);page.items.forEach((item,index)=>{const tone=scoreTone(item.reputation),row=el('tr'),cell=el('td'),link=el('button',short(item.wallet),`entity-link ${tone}`);link.addEventListener('click',()=>navigate(`/terminal/wallet/${item.wallet}`));cell.append(link);row.append(el('td',String(index+1)),cell,el('td',item.status.toUpperCase()),el('td',item.reputation??'—',tone),el('td',item.completedPositions),el('td',`${item.wins} / ${item.losses??Math.max(0,item.completedPositions-item.wins)}`),el('td',item.winRate===null?'—':`${Math.round(item.winRate*100)}%`),el('td',signed(item.realizedPnl),BigInt(item.realizedPnl)>=0n?'tx-buy':'tx-sell'),el('td',signed(item.totalPnl),item.totalPnl!==null&&BigInt(item.totalPnl)>=0n?'tx-buy':'tx-sell'));table.append(row);});wrap.append(table);root.append(wrap);}
 async function renderWatchlist(){showResult('WATCHLIST','LOCAL');const root=$('result-content'),items=savedWatchlist();root.append(el('section',undefined,'page-hero'));root.firstChild.append(el('small','SAVED INVESTIGATIONS','eyebrow'),el('h2','TOKENS AND WALLETS YOU ARE TRACKING.'),el('p','Saved in this browser. Open any dossier from Radar to add it here.'));if(!items.length){root.append(el('div','Your watchlist is empty. Open a token or wallet dossier to start tracking it.','empty-state'));return;}const list=el('div',undefined,'watchlist-rows');for(const item of items){const row=el('article',undefined,'watchlist-row'),open=el('button',`${item.kind.toUpperCase()} · ${short(item.address)}`,'entity-link'),remove=el('button','REMOVE','watch-remove');open.addEventListener('click',()=>navigate(`/terminal/${item.kind}/${item.address}`));remove.addEventListener('click',()=>{saveWatch(item.kind,item.address);void renderWatchlist();});row.append(open,el('span',`SAVED ${when(item.createdAt)}`),remove);list.append(row);}root.append(list);}

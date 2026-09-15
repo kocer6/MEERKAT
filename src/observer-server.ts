@@ -1,3 +1,4 @@
+import {RadarStream} from './radar/stream.js';
 import {HistoryStore,TokenHistory,historyReader} from './token-history.js';
 import {buildWalletDossier} from './wallet-dossier.js';
 import {createServer,type ServerResponse} from 'node:http';
@@ -23,6 +24,7 @@ export async function startObserver(options:ObserverOptions){
  const radarStore=new RadarStore(options.database);
  const historyStore=new HistoryStore(options.database);const history=new TokenHistory(historyStore,options.historyReader??historyReader(token=>{const launch=radarStore.launchByToken(token);return launch?BigInt(launch.launchBlock):undefined;}));
  const radarIndexer=new RadarIndexer(radarStore,options.radarReader??radarReader(),{rangeBlocks:options.radarOptions?.rangeBlocks??2000n,pollMs:options.radarOptions?.pollMs??30000,profileConcurrency:options.radarOptions?.profileConcurrency??2,historyStartBlock:options.radarOptions?.historyStartBlock??0n}),radar=new RadarService(radarStore,()=>radarStore.view<ReturnType<RadarIndexer['status']>>('indexer-status')?.value??radarIndexer.status(),options.radarAutoStart!==false);
+ const radarStream=new RadarStream(radar,()=>radarStore.viewUpdatedAt('feed-rows'));
  const store=new WatchStore(options.database);const service=new WatchService(store,options.market??marketReader());
  const discovery=options.discovery??new PonsDiscovery(rpcReader(),{load:()=>store.loadDiscovery(),save:s=>store.saveDiscovery(s)});
  const monitor=new PositionMonitor(()=>store.items().map(w=>({id:w.token,source:'chain',status:'open'})),token=>service.refresh(token));
@@ -68,6 +70,7 @@ export async function startObserver(options:ObserverOptions){
     if(path==='/healthz'){send(res,historyStore.health()?200:503,{status:historyStore.health()?'ok':'unavailable'});return;}
     const asset=path.startsWith('/terminal/')?assets.get('/terminal'):assets.get(path);if(asset){res.writeHead(200,{'content-type':asset.type});res.end(asset.body);return;}
     if(path==='/api/radar/status'){send(res,200,radar.status());return;}
+    if(path==='/api/radar/stream'){radarStream.subscribe(res,{feed:feed(p.get('feed')),window:window(p.get('window')),cursor:null});return;}
     if(path==='/api/radar/signals'){send(res,200,radar.signals({feed:feed(p.get('feed')),window:window(p.get('window')),cursor:p.get('cursor')}));return;}
     if(path==='/api/radar/launches'){send(res,200,radar.launches(p.get('cursor')));return;}
     if(path==='/api/radar/activity'){send(res,200,radar.activity(p.get('cursor')));return;}
@@ -99,5 +102,5 @@ export async function startObserver(options:ObserverOptions){
  });
  await new Promise<void>((resolve,reject)=>{server.once('error',reject);server.listen(options.port,'127.0.0.1',resolve);});
  const address=server.address();if(!address||typeof address==='string')throw new Error('No server address');url=`http://127.0.0.1:${address.port}`;if(!publicMode)monitor.start();if(options.radarAutoStart)radarIndexer.start();
- return {url,radarTick:()=>radarIndexer.tick(),close:async()=>{closing=true;scannerActive=false;scannerGeneration++;if(scannerTimer)clearTimeout(scannerTimer);await monitor.stop();await discovery.settled();await radarIndexer.close();await new Promise<void>((resolve,reject)=>{server.close(e=>e?reject(e):resolve());server.closeIdleConnections();});await history.close();radarStore.close();store.close();}};
+ return {url,radarTick:()=>radarIndexer.tick(),close:async()=>{closing=true;radarStream.close();scannerActive=false;scannerGeneration++;if(scannerTimer)clearTimeout(scannerTimer);await monitor.stop();await discovery.settled();await radarIndexer.close();await new Promise<void>((resolve,reject)=>{server.close(e=>e?reject(e):resolve());server.closeIdleConnections();});await history.close();radarStore.close();store.close();}};
 }

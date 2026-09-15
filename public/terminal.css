@@ -51,3 +51,9 @@
 .token-dossier-tabs{grid-template-columns:repeat(6,minmax(0,1fr))}.token-market-strip{margin:0 0 22px;border:1px solid var(--line);background:#11120f}.token-market-strip .metric{border-bottom:0}.market-columns{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px}.market-columns .info-zone{margin-top:0;min-width:0}.market-table table{min-width:760px}.market-tape{margin-top:18px}.market-tape table{min-width:780px}.dossier-hero h2.score-low,.dossier-hero h2.score-mid,.dossier-hero h2.score-high{text-shadow:3px 3px rgba(0,0,0,.55)}
 @media(max-width:1500px){.market-columns{grid-template-columns:1fr}}
 @media(max-width:560px){.watchlist-row{grid-template-columns:1fr auto}.watchlist-row span{grid-column:1/-1;grid-row:2}.metrics{grid-template-columns:1fr 1fr}.metric{min-width:0}.dossier-hero h2{font-size:22px}.result-panel p,.result-panel li{font-size:16px}}
+
+.radar-live-bar{display:flex;align-items:center;flex-wrap:wrap;gap:12px 20px;padding:12px 14px;border:1px solid var(--line);border-top:0;font:600 12px/1.5 Arial,sans-serif;color:var(--muted)}
+.radar-live-state{display:inline-flex;align-items:center;gap:8px;color:var(--amber);font-weight:800;letter-spacing:.06em}.radar-live-state:before{content:'';width:7px;height:7px;border-radius:50%;background:currentColor}.radar-live-state[data-state="LIVE"]{color:var(--green)}.radar-live-state[data-state="RECONNECTING"]{color:var(--red)}.radar-pending{margin-left:auto;color:var(--amber)}
+.radar-live-table{overflow-anchor:none}.radar-row-new{animation:radar-row-arrive 1.8s ease-out}.feed-stage .empty-state[hidden]{display:none}
+@keyframes radar-row-arrive{from{background:rgba(152,213,90,.22);box-shadow:inset 3px 0 var(--green)}to{background:transparent;box-shadow:inset 3px 0 transparent}}
+@media(prefers-reduced-motion:reduce){.radar-row-new{animation:none}}
