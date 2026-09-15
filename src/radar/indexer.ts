@@ -33,6 +33,7 @@ export class RadarIndexer {
  private projectedScores:Map<string,ScoreSnapshot>|null=null;
  private projectedActivities:RadarActivity[]=[];
  private projectedTokens=new Set<string>();
+ private projectedDependencies=new Set<string>();
  private pending:Promise<void>|null=null;
  private timer:NodeJS.Timeout|null=null;
  private stopped=false;
@@ -73,6 +74,7 @@ export class RadarIndexer {
    this.store.replaceEventRange('market',marketRange.from,marketRange.to,marketRange.to,events,marketBlock.hash);
    timing(`market (${events.length} events)`);
    for(const token of new Set(events.map(event=>event.token))){const launch=this.store.launchByToken(token);if(launch?.profile&&launch.state==='profiled')this.store.saveLaunch({...launch,state:'tracking',updatedAt:Date.now()});}
+   if(collecting)views.refreshFeedTokens([...new Set([...launches.map(row=>row.token),...events.map(event=>event.token)])]);
    if(!collecting){
    await this.markPositions(head,[...new Set(events.map(event=>event.token))]);
    timing('marks');
@@ -92,27 +94,28 @@ export class RadarIndexer {
    const cursor=this.store.cursor('market');if(!cursor){this.snapshot={...this.snapshot,state:'idle'};this.publishStatus();return;}
    const head=BigInt(cursor.blockNumber),views=new RadarService(this.store,()=>this.status());
    if(mode==='enrich'){
-    const contracts=async()=>{if(await this.reader.chainId()!==4663)throw new Error('wrong enrichment chain; expected 4663');const results=await Promise.allSettled([this.profileLaunches(head),this.markPositions(head,[])]);const failed=results.find(result=>result.status==='rejected');if(failed?.status==='rejected')throw failed.reason;};
-    const results=await Promise.allSettled([contracts(),this.enrichMarket()]);
+    const contracts=async()=>{if(await this.reader.chainId()!==4663)throw new Error('wrong enrichment chain; expected 4663');const results=await Promise.allSettled([this.profileLaunches(head),this.markPositions(head,[])]);if(results[0].status==='fulfilled')views.refreshFeedTokens(results[0].value);const failed=results.find(result=>result.status==='rejected');if(failed?.status==='rejected')throw failed.reason;};
+    const results=await Promise.allSettled([contracts(),this.enrichMarket().then(tokens=>{if(tokens)views.refreshFeedTokens(tokens);})]);
     const failed=results.find(result=>result.status==='rejected');if(failed?.status==='rejected')throw failed.reason;
    }else{
     const jobs=this.store.pendingProjections(512);
     // Compute against a WAL read snapshot; collection and token history can keep writing.
-    this.projectedScores=new Map();this.projectedActivities=[];this.projectedTokens.clear();
+    this.projectedScores=new Map();this.projectedActivities=[];this.projectedTokens.clear();this.projectedDependencies.clear();
     let changed:string[];
     try{
      changed=this.store.readSnapshot(()=>this.recomputeScores(BigInt(this.store.cursor('market')!.blockNumber),jobs.map(job=>job.token)));
      this.store.transaction(()=>{
       for(const score of this.projectedScores!.values())this.store.saveScore(score);
       for(const activity of this.projectedActivities)this.store.saveActivity(activity);
+      for(const token of this.projectedDependencies)this.store.queueProjection(token);
       for(const token of this.projectedTokens){const launch=this.store.launchByToken(token);if(launch)this.store.saveLaunch({...launch,state:'scored',updatedAt:Date.now()});}
      });
-    }finally{this.projectedScores=null;this.projectedActivities=[];this.projectedTokens.clear();}
+    }finally{this.projectedScores=null;this.projectedActivities=[];this.projectedTokens.clear();this.projectedDependencies.clear();}
     views.refreshFeedTokens(changed);
     // A crash before publication leaves the durable jobs available for another pass.
     this.store.transaction(()=>{for(const job of jobs)this.store.finishProjection(job);});
     const last= this.store.view('leaderboard-all')?.updatedAt;
-    if(!last||Date.now()-last>=(this.options.viewRefreshMs??300000))views.refreshViews();
+    if(!last||Date.now()-last>=(this.options.viewRefreshMs??300000))views.refreshLeaderboardViews();
    }
    this.snapshot={state:'ready',headBlock:head.toString(),lastIndexedBlock:cursor.blockNumber,lagBlocks:null,updatedAt:Date.now(),queueDepth:mode==='project'?this.store.projectionCount():this.store.launches().filter(row=>!row.profile).length,error:null};
    console.info(`Radar ${mode} cycle: ${Date.now()-started}ms; pending ${this.snapshot.queueDepth}`);
@@ -122,7 +125,7 @@ export class RadarIndexer {
 
  private async enrichMarket(){
   if(!this.options.marketRead)return;const tokens=this.store.marketCandidates();if(!tokens.length)return;
-  try{const rows=await this.options.marketRead(tokens),byToken=new Map(rows.map(row=>[row.token,row]));this.store.transaction(()=>{for(const token of tokens){this.store.saveMarket(token,byToken.get(token)??null);this.store.queueProjection(token);}});}
+  try{const rows=await this.options.marketRead(tokens),byToken=new Map(rows.map(row=>[row.token,row]));this.store.transaction(()=>{for(const token of tokens){this.store.saveMarket(token,byToken.get(token)??null);this.store.queueProjection(token);}});return tokens;}
   catch(error){this.store.transaction(()=>{for(const token of tokens)this.store.saveMarket(token,null,sanitize(error));});console.warn(`Radar market deferred: ${sanitize(error)}`);}
  }
 
@@ -150,8 +153,9 @@ export class RadarIndexer {
   for(const wallet of wallets){
    const positions=this.store.positionsForWallet(wallet),outcomes=this.store.outcomesForWallet(wallet),complete=positions.filter(position=>position.complete),wins=outcomes.filter(outcome=>BigInt(outcome.pnl)>0n).length,positive=outcomes.filter(outcome=>BigInt(outcome.pnl)>0n).reduce((sum,row)=>sum+BigInt(row.pnl),0n),negative=outcomes.filter(outcome=>BigInt(outcome.pnl)<0n).reduce((sum,row)=>sum-BigInt(row.pnl),0n),coverage=positions.length?complete.length/positions.length:0;
    const walletScore=scoreWalletReputation({subject:wallet,asOfBlock:head.toString(),completed:outcomes.length,coverage,outcomeQuality:outcomes.length?wins/outcomes.length*100:null,profitQuality:outcomes.length?negative===0n?positive>0n?100:50:Math.min(100,Number(positive*100n/negative)):null,repeatability:outcomes.length?Math.min(100,outcomes.length*8):null,earlyEntry:null,exitBehavior:outcomes.length?Math.max(0,100-positions.filter(position=>position.sells>0&&position.buys===0).length*25):null,coverageIntegrity:positions.length?coverage*100:null});
+   const changed=this.store.score(wallet,'wallet-reputation')?.value!==walletScore.value;
    this.persistScore(walletScore,head);
-   for(const position of positions)tokenSet.add(position.token);
+   if(changed)for(const position of positions)if(!tokenSet.has(position.token)){if(this.projectedScores)this.projectedDependencies.add(position.token);else tokenSet.add(position.token);}
   }
   for(const token of tokenSet){
    const launch=this.store.launchByToken(token);if(!launch)continue;const events=this.store.eventsForToken(token),walletsForToken=[...new Set(events.map(event=>event.wallet).filter((wallet):wallet is string=>wallet!==null))],qualified=walletsForToken.flatMap(wallet=>{const value=this.scoreSnapshot(wallet,'wallet-reputation')?.value;return value!==null&&value!==undefined&&value>=60?[value]:[];}),buys=events.filter(event=>event.kind==='buy'),sells=events.filter(event=>event.kind==='sell'),buyFlow=buys.reduce((sum,event)=>sum+BigInt(event.quote??0),0n),sellFlow=sells.reduce((sum,event)=>sum+BigInt(event.quote??0),0n),totalFlow=buyFlow+sellFlow,launchQuality=this.scoreSnapshot(launch.token,'launch-quality');

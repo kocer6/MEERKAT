@@ -62,13 +62,20 @@ export class RadarService {
 
  refreshViews(updatedAt=Date.now()){
   const now=Date.now(),feed=this.store.launches().map(row=>this.feedRow(row,now));this.store.saveView('feed-rows',feed,updatedAt);
+  this.refreshLeaderboardViews(updatedAt);
+ }
+
+ refreshLeaderboardViews(updatedAt=Date.now()){
   for(const window of ['24h','7d','30d','all'] as const)this.store.saveView(`leaderboard-${window}`,this.buildLeaderboardRows(window),updatedAt);
  }
 
  refreshFeedTokens(tokens:string[],updatedAt=Date.now()){
+  if(!tokens.length)return;
+  this.store.transaction(()=>{
   const rows=new Map((this.store.view<RadarFeedRow[]>('feed-rows')?.value??[]).map(row=>[row.token,row]));
   for(const token of tokens){const launch=this.store.launchByToken(token);if(launch)rows.set(token,this.feedRow(launch,updatedAt));else rows.delete(token);}
   this.store.saveView('feed-rows',[...rows.values()],updatedAt);
+  });
  }
 
  refreshFeedProfiles(tokens:string[],updatedAt=Date.now()){

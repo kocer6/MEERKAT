@@ -225,3 +225,21 @@ test('enrichment defers launches newer than its captured market block without ma
  const reader:RadarReader={chainId:async()=>4663,head:async()=>500n,block:async number=>({number,hash:'0x1',timestamp:number}),factoryDeployment:async()=>0n,launches:async()=>[],trades:async()=>[],profile:async()=>{requested++;throw new Error('not registered at old block');},quoteSell:async()=>null};
  const indexer=new RadarIndexer(store,reader,{mode:'enrich',rangeBlocks:200n,pollMs:30000,profileConcurrency:2,profileBatchSize:4,historyStartBlock:0n});await indexer.tick();assert.equal(requested,0);assert.equal(store.launchByToken(token)!.profileError,null);await indexer.close();store.close();
 });
+
+test('collector publishes live feed before scoring or enrichment finishes',async()=>{
+ const store=new RadarStore(':memory:');
+ const reader:RadarReader={chainId:async()=>4663,head:async()=>500n,block:async number=>({number,hash:`0x${number}`,timestamp:number}),factoryDeployment:async()=>100n,launches:async()=>[launch],trades:async()=>[buy],profile:async()=>{throw new Error('must not enrich');},quoteSell:async()=>null};
+ const worker=new RadarIndexer(store,reader,{mode:'collect',rangeBlocks:200n,pollMs:30000,profileConcurrency:1,historyStartBlock:100n});
+ await worker.tick();const rows=store.view<any[]>('feed-rows')?.value;assert.equal(rows?.[0]?.token,token);assert.equal(rows?.[0]?.buys,1);assert.equal(store.score(token,'radar-strength'),undefined);await worker.close();store.close();
+});
+
+test('projector queues changed wallet dependencies instead of expanding the current batch',async()=>{
+ const store=new RadarStore(':memory:'),other={...launch,token:'0x0000000000000000000000000000000000000099',curve:'0x0000000000000000000000000000000000000088'};
+ store.replaceLaunchRange('factory',400n,500n,500n,[launch,other]);store.replaceEventRange('market',400n,500n,500n,[{...buy,token},{...buy,id:'other',token:other.token,curve:other.curve}]);
+ for(const job of store.pendingProjections(10))store.finishProjection(job);
+ store.queueProjection(token);store.saveView('leaderboard-all',[],Date.now());
+ const worker=new RadarIndexer(store,{} as RadarReader,{mode:'project',rangeBlocks:200n,pollMs:5000,profileConcurrency:1,historyStartBlock:100n});
+ await worker.tick();assert.equal(worker.status().state,'ready');assert.equal(store.score(other.token,'radar-strength'),undefined);assert.deepEqual(store.pendingProjections(10).map(job=>job.token),[other.token]);
+ await worker.tick();assert.ok(store.score(other.token,'radar-strength'));assert.equal(store.projectionCount(),0);
+ store.queueProjection(token);await worker.tick();assert.equal(store.projectionCount(),0);await worker.close();store.close();
+});
