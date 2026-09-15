@@ -243,3 +243,9 @@ test('projector queues changed wallet dependencies instead of expanding the curr
  await worker.tick();assert.ok(store.score(other.token,'radar-strength'));assert.equal(store.projectionCount(),0);
  store.queueProjection(token);await worker.tick();assert.equal(store.projectionCount(),0);await worker.close();store.close();
 });
+
+test('live projection reserves capacity for new launches without starving old work',()=>{
+ const store=new RadarStore(':memory:');
+ for(let i=1;i<=8;i++){const address='0x'+i.toString(16).padStart(40,'0');store.saveLaunch({...launch,token:address,curve:'0x'+(i+100).toString(16).padStart(40,'0'),launchBlock:String(i)});store.queueProjection(address);}
+ const jobs=store.liveProjectionJobs(4);assert.deepEqual(jobs.map(job=>Number(BigInt(job.token))),[8,7,1,2]);assert.equal(new Set(jobs.map(job=>job.token)).size,4);store.close();
+});

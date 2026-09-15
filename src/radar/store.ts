@@ -109,6 +109,10 @@ export class RadarStore {
 
  queueProjection(token:string){this.db.prepare('INSERT INTO radar_projection_queue(token,revision,queued_at) VALUES (?,?,?) ON CONFLICT(token) DO UPDATE SET revision=excluded.revision').run(normalized(token),randomUUID(),Date.now());}
  pendingProjections(limit:number){return this.db.prepare('SELECT token,revision FROM radar_projection_queue ORDER BY queued_at,token LIMIT ?').all(limit) as {token:string;revision:string}[];}
+ liveProjectionJobs(limit:number){
+  const fresh=this.db.prepare('SELECT q.token,q.revision FROM radar_projection_queue q JOIN radar_launches l ON l.token=q.token ORDER BY l.block DESC,q.token LIMIT ?').all(Math.floor(limit/2)) as {token:string;revision:string}[];
+  const seen=new Set(fresh.map(job=>job.token));return [...fresh,...this.pendingProjections(limit).filter(job=>!seen.has(job.token))].slice(0,limit);
+ }
  finishProjection(job:{token:string;revision:string}){this.db.prepare('DELETE FROM radar_projection_queue WHERE token=? AND revision=?').run(job.token,job.revision);}
  projectionCount(){return (this.db.prepare('SELECT COUNT(*) AS count FROM radar_projection_queue').get() as {count:number}).count;}
  staleProfiles(limit:number){return (this.db.prepare("SELECT value FROM radar_launches WHERE json_extract(value,'$.profile') IS NOT NULL AND COALESCE(json_extract(value,'$.profileAttemptAt'),json_extract(value,'$.profile.profiledAt'),0)<? ORDER BY COALESCE(json_extract(value,'$.profileAttemptAt'),json_extract(value,'$.profile.profiledAt'),0),block DESC LIMIT ?").all(Date.now()-300000,limit) as ValueRow[]).map(row=>JSON.parse(row.value) as RadarLaunch);}

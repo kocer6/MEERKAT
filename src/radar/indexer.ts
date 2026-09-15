@@ -98,7 +98,7 @@ export class RadarIndexer {
     const results=await Promise.allSettled([contracts(),this.enrichMarket().then(tokens=>{if(tokens)views.refreshFeedTokens(tokens);})]);
     const failed=results.find(result=>result.status==='rejected');if(failed?.status==='rejected')throw failed.reason;
    }else{
-    const jobs=this.store.pendingProjections(512);
+    const jobs=this.store.liveProjectionJobs(512);
     // Compute against a WAL read snapshot; collection and token history can keep writing.
     this.projectedScores=new Map();this.projectedActivities=[];this.projectedTokens.clear();this.projectedDependencies.clear();
     let changed:string[];
