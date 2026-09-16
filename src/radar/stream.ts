@@ -32,9 +32,10 @@ export class RadarStream {
  private tick(){
   try{
    const revision=this.revision(),now=Date.now();
-   for(const channel of this.channels.values()){
-    if(revision===channel.revision&&now-channel.readAt<5000)continue;
-    const payload=JSON.stringify(this.radar.signals(channel.query));
+   const due=[...this.channels.values()].filter(channel=>revision!==channel.revision||now-channel.readAt>=5000);if(!due.length)return;
+   const rows=this.radar.feedSnapshot();
+   for(const channel of due){
+    const payload=JSON.stringify(this.radar.signals(channel.query,rows));
     channel.revision=revision;channel.readAt=now;channel.payload=payload;
     const frame=`event: snapshot\ndata: ${payload}\n\n`;
     for(const res of channel.clients)this.write(res,frame);

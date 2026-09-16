@@ -103,11 +103,12 @@ export class RadarService {
  watch(item:WatchlistItem){this.store.watch(item);return item;}
  unwatch(kind:WatchKind,address:string){this.store.unwatch(kind,address);return {ok:true};}
 
- signals(query:RadarFeedQuery):Page<RadarFeedRow>{
+ feedSnapshot(){return this.store.view<RadarFeedRow[]>('feed-rows')?.value;}
+
+ signals(query:RadarFeedQuery,cached=this.feedSnapshot()):Page<RadarFeedRow>{
   if(!['signals','fresh','exits','launches','wallets'].includes(query.feed))throw new Error('Invalid radar feed');
   if(!['24h','7d','30d','all'].includes(query.window))throw new Error('Invalid radar window');
   const after=query.cursor?this.decodeCursor(query.cursor):null,now=Date.now(),cutoff=query.window==='all'?null:now-windowMs[query.window];
-  const cached=this.store.view<RadarFeedRow[]>('feed-rows')?.value;
   if(cached){let rows=cached.filter(row=>(cutoff===null||row.updatedAt>=cutoff)&&(!after||BigInt(row.launchBlock)<BigInt(after.block)||(row.launchBlock===after.block&&row.token>after.token)));if(query.feed==='fresh'||query.feed==='launches')rows.sort((a,b)=>Number(BigInt(b.launchBlock)-BigInt(a.launchBlock))||a.token.localeCompare(b.token));if(query.feed==='signals')rows=rows.filter(row=>row.radarStrength!==null).sort((a,b)=>(b.radarStrength??-1)-(a.radarStrength??-1)||a.token.localeCompare(b.token));if(query.feed==='exits')rows=rows.filter(row=>row.sells>0).sort((a,b)=>Number(BigInt(b.launchBlock)-BigInt(a.launchBlock))||a.token.localeCompare(b.token));if(query.feed==='wallets')rows=rows.sort((a,b)=>b.participants-a.participants||a.token.localeCompare(b.token));const page=rows.slice(0,50),last=page.at(-1);return {items:page,nextCursor:rows.length>50&&last?Buffer.from(JSON.stringify({block:last.launchBlock,token:last.token} satisfies LaunchCursor)).toString('base64url'):null};}
   if(!this.allowExpensiveFallback)return {items:[],nextCursor:null};
   let launches=this.store.launches().filter(row=>(cutoff===null||row.updatedAt>=cutoff)&&(!after||BigInt(row.launchBlock)<BigInt(after.block)||(row.launchBlock===after.block&&row.token>after.token)));
