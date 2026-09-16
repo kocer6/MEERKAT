@@ -19,3 +19,10 @@ if(preview){
  }
  activate('overview');
 }
+
+const copyTokenButton=document.getElementById('copy-token-contract');
+if(copyTokenButton)copyTokenButton.addEventListener('click',async()=>{
+ const address=document.getElementById('token-contract'),status=document.getElementById('token-copy-status');
+ try{await navigator.clipboard.writeText(address.value);status.textContent='Contract address copied.';}
+ catch{address.focus();address.select();status.textContent='Address selected. Copy it with Ctrl+C or your device copy menu.';}
+});

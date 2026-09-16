@@ -13,7 +13,7 @@
 <body>
   <header class="site-header">
     <a class="wordmark" href="/" aria-label="MEERKAT home"><span class="watch-dot"></span>MEERKAT</a>
-    <nav aria-label="Landing navigation"><a href="#scores">Scores</a><a href="#evidence">Evidence</a><a href="#roadmap">Roadmap</a><a href="https://github.com/kocer6/MEERKAT/tree/main/docs" target="_blank" rel="noreferrer">DOCS ↗</a><a href="https://github.com/kocer6/MEERKAT" target="_blank" rel="noreferrer">GITHUB ↗</a></nav>
+    <nav aria-label="Landing navigation"><a href="#token">Token</a><a href="#scores">Scores</a><a href="#evidence">Evidence</a><a href="#roadmap">Roadmap</a><a href="https://github.com/kocer6/MEERKAT/tree/main/docs" target="_blank" rel="noreferrer">DOCS ↗</a><a href="https://github.com/kocer6/MEERKAT" target="_blank" rel="noreferrer">GITHUB ↗</a></nav>
     <a class="network" href="https://www.ponsfamily.com/" target="_blank" rel="noreferrer">PONS V2 · RH 4663 ↗</a>
   </header>
   <main>
@@ -24,6 +24,19 @@
         <div class="hero-actions"><a class="primary" href="/terminal">OPEN TERMINAL <b>→</b></a><a href="https://github.com/kocer6/MEERKAT" target="_blank" rel="noreferrer">VIEW SOURCE ↗</a></div>
       </div>
       <div class="trust-rail"><span><b>01</b> PUBLIC CHAIN DATA</span><span><b>02</b> NO PRIVATE KEYS</span><span><b>03</b> NO SIGNER</span><span><b>04</b> LOCAL EVIDENCE</span></div>
+    </section>
+
+    <section class="token-launch" id="token" aria-labelledby="token-launch-title">
+      <img src="/assets/token-launch.png" alt="MEERKAT token is live on Robinhood Chain" width="1536" height="1024" loading="lazy">
+      <div class="token-launch-copy">
+        <p class="section-no live">TOKEN LAUNCHED / ROBINHOOD CHAIN</p>
+        <h2 id="token-launch-title">$MEERKAT IS LIVE.</h2>
+        <p>The Radar is running. Now MEERKAT has a token. Find the official contract and open its market on PONS below.</p>
+        <label for="token-contract">OFFICIAL CONTRACT ADDRESS</label>
+        <input id="token-contract" value="0x7730e0066e26a8e033a7ebbd51f6af0b94394d96" readonly spellcheck="false" aria-label="Official MEERKAT contract address">
+        <div class="token-launch-actions"><button type="button" id="copy-token-contract">COPY CA</button><a class="primary" href="https://www.ponsfamily.com/launchpad/0x7730e0066e26a8e033a7ebbd51f6af0b94394d96" target="_blank" rel="noopener noreferrer">TRADE ON PONS ↗</a></div>
+        <p id="token-copy-status" role="status" aria-live="polite"></p>
+      </div>
     </section>
 
     <section class="score-intro" id="scores">

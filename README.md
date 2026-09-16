@@ -24,7 +24,13 @@
 
 <p align="center"><sub>Developed with assistance from <a href="https://claude.ai/">Claude</a> and <a href="https://openai.com/codex/">OpenAI Codex</a>.</sub></p>
 
-> **Project status:** the public evidence terminal is live at [meerkat.my](https://meerkat.my/terminal). Transparent token scoring, installation-scoped wallet scoring, lifecycle reconstruction, fee flow and relationship views run against Robinhood Chain today. The MEERKAT token has not launched.
+## $MEERKAT is live on Robinhood Chain
+
+**Official CA:** `0x7730e0066e26a8e033a7ebbd51f6af0b94394d96`
+
+[Trade on PONS](https://www.ponsfamily.com/launchpad/0x7730e0066e26a8e033a7ebbd51f6af0b94394d96) · [View contract](https://robinhoodchain.blockscout.com/token/0x7730e0066e26a8e033a7ebbd51f6af0b94394d96) · [Open MEERKAT](https://meerkat.my/)
+
+> **Project status:** the public evidence terminal is live at [meerkat.my](https://meerkat.my/terminal). Transparent token scoring, installation-scoped wallet scoring, lifecycle reconstruction, fee flow and relationship views run against Robinhood Chain today. The MEERKAT token is live on Robinhood Chain.
 
 ## What it looks like
 

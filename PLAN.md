@@ -138,3 +138,4 @@ RPC budget follow-up: live getLogs returned Too Many Requests; batch responses m
 Provider isolation: contract enrichment can use MEERKAT_ENRICH_RPC_URLS independently of the collector; external market batches proceed even if contract chainId fails. Disable periodic fallback ranking probes to preserve anonymous-provider quotas. Production collector uses verified BlockReq with official fallback, while contract enrichment/history use the official RPC. Both public providers showed quota limits, so no unlimited-freshness claim is valid.
 
 Outage catch-up now respects rangeBlocks (2,000 production default) instead of issuing an unbounded range from the old cursor to head. A regression verifies cursor progress in bounded chunks.
+`n- [x] TOKEN-LAUNCH: add homepage launch block with canonical CA/copy/PONS link; publish CA in project and profile READMEs. PONS page identifies MEERKAT. Build, JS syntax and diff checks pass. Deployment verification follows.
