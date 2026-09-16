@@ -285,3 +285,11 @@ test('feed event scans run before acquiring the writer transaction',()=>{
  store.eventsForToken=(...args)=>{scanned=true;assert.equal(writing,false);return events(...args);};
  new RadarService(store,()=>({state:'ready',headBlock:null,lastIndexedBlock:null,lagBlocks:null,updatedAt:null,queueDepth:0,error:null})).refreshFeedTokens([token]);assert.equal(scanned,true);assert.equal(store.view<any[]>('feed-rows')?.value.length,1);store.close();
 });
+
+
+test('incremental feed writes preserve cached rows and deletion without rewriting the base',()=>{
+ const store=new RadarStore(':memory:');store.saveView('feed-rows',[{token:'a',symbol:'A'},{token:'b',symbol:'B'}],1);
+ const save=store.saveView.bind(store);store.saveView=(...args)=>{assert.notEqual(args[0],'feed-rows');return save(...args);};
+ store.transaction(()=>{store.saveFeedRow('a',{token:'a',symbol:'NEW'},2);store.saveFeedRow('c',{token:'c',symbol:'C'},3);store.saveFeedRow('b',null,4);});
+ assert.deepEqual(store.view('feed-rows'),{updatedAt:4,value:[{token:'a',symbol:'NEW'},{token:'c',symbol:'C'}]});assert.equal(store.viewUpdatedAt('feed-rows'),4);store.close();
+});

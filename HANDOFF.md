@@ -1,3 +1,5 @@
+METADATA-FAST measured fix: whole-feed publication held a write transaction for 6506 ms. Store incremental feed rows in radar_feed_updates and merge them with the existing cache on reads; publish only changed tokens with indexed revision timestamps. Existing 210 tests plus incremental merge/deletion regression and typecheck pass. Next: deploy all workers and verify no long write transactions/restarts and live metadata latency.
+
 METADATA-FAST diagnostics: still observing writer contention under production load. Add slow write transaction duration/call-site logging to identify remaining locks rather than raising RPC concurrency. Typecheck passes. Next: inspect measured lock owners and fix remaining bottleneck.
 
 METADATA-FAST publication follow-up: the feed cache is 37 MB in production. Metadata now persists token profiles only; live/API pages hydrate their 50 rows directly from profiles, avoiding whole-feed rewrites per metadata batch. Existing enrichment publishes once per profile group. 210 tests and typecheck pass. Next: redeploy web/metadata/enrichment and verify fresh names with no restarts.

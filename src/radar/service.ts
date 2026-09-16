@@ -74,9 +74,7 @@ export class RadarService {
   // Build rows under a read snapshot so expensive event scans do not hold the writer lock.
   const changes=this.store.readSnapshot(()=>tokens.map(token=>{const launch=this.store.launchByToken(token);return {token,row:launch?this.feedRow(launch,updatedAt):null};}));
   this.store.transaction(()=>{
-  const rows=new Map((this.store.view<RadarFeedRow[]>('feed-rows')?.value??[]).map(row=>[row.token,row]));
-  for(const {token,row} of changes){const latest=this.store.launchByToken(token);if(!latest){rows.delete(token);continue;}if(row){if(latest.profile){row.name=latest.profile.name;row.symbol=latest.profile.symbol;row.phase=latest.profile.phase;row.missingInputs=row.missingInputs.filter(input=>input!=='token profile');}rows.set(token,row);}}
-  this.store.saveView('feed-rows',[...rows.values()],updatedAt);
+  for(const {token,row} of changes){const latest=this.store.launchByToken(token);if(!latest){this.store.saveFeedRow(token,null,updatedAt);continue;}if(row){if(latest.profile){row.name=latest.profile.name;row.symbol=latest.profile.symbol;row.phase=latest.profile.phase;row.missingInputs=row.missingInputs.filter(input=>input!=='token profile');}this.store.saveFeedRow(token,row,updatedAt);}}
   });
  }
 

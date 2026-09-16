@@ -36,7 +36,9 @@ export class RadarStore {
    CREATE TABLE IF NOT EXISTS watchlist_items(kind TEXT NOT NULL,address TEXT NOT NULL,created_at INTEGER NOT NULL,PRIMARY KEY(kind,address));
    CREATE TABLE IF NOT EXISTS radar_market(token TEXT PRIMARY KEY,checked_at INTEGER NOT NULL,value TEXT,error TEXT);
    CREATE TABLE IF NOT EXISTS radar_projection_queue(token TEXT PRIMARY KEY,revision TEXT NOT NULL,queued_at INTEGER NOT NULL);
+   CREATE TABLE IF NOT EXISTS radar_feed_updates(token TEXT PRIMARY KEY,updated_at INTEGER NOT NULL,value TEXT);
    CREATE TABLE IF NOT EXISTS radar_views(name TEXT PRIMARY KEY,updated_at INTEGER NOT NULL,value TEXT NOT NULL);
+   CREATE INDEX IF NOT EXISTS radar_feed_updates_time ON radar_feed_updates(updated_at);
    CREATE INDEX IF NOT EXISTS radar_events_token_block ON radar_events(token,block,id);
    CREATE INDEX IF NOT EXISTS radar_events_wallet_block ON radar_events(wallet,block,id);
    CREATE INDEX IF NOT EXISTS radar_events_wallet_token_block ON radar_events(wallet,token,block,id);
@@ -52,9 +54,18 @@ export class RadarStore {
  counts(){const launches=(this.db.prepare('SELECT COUNT(*) AS count FROM radar_launches').get() as {count:number}).count,events=(this.db.prepare('SELECT COUNT(*) AS count FROM radar_events').get() as {count:number}).count;return {launches,events};}
  close(){this.db.close();}
 
- saveView<T>(name:string,value:T,updatedAt=Date.now()){this.db.prepare(`INSERT INTO radar_views(name,updated_at,value) VALUES (?,?,?) ON CONFLICT(name) DO UPDATE SET updated_at=excluded.updated_at,value=excluded.value`).run(name,updatedAt,JSON.stringify(value));}
- viewUpdatedAt(name:string){return (this.db.prepare('SELECT updated_at FROM radar_views WHERE name=?').get(name) as {updated_at:number}|undefined)?.updated_at??null;}
- view<T>(name:string){const row=this.db.prepare('SELECT updated_at,value FROM radar_views WHERE name=?').get(name) as {updated_at:number;value:string}|undefined;return row?{updatedAt:row.updated_at,value:JSON.parse(row.value) as T}:undefined;}
+ saveView<T>(name:string,value:T,updatedAt=Date.now()){if(name==='feed-rows')this.db.prepare('DELETE FROM radar_feed_updates').run();this.db.prepare(`INSERT INTO radar_views(name,updated_at,value) VALUES (?,?,?) ON CONFLICT(name) DO UPDATE SET updated_at=excluded.updated_at,value=excluded.value`).run(name,updatedAt,JSON.stringify(value));}
+ saveFeedRow(token:string,value:unknown,updatedAt:number){this.db.prepare('INSERT INTO radar_feed_updates(token,updated_at,value) VALUES (?,?,?) ON CONFLICT(token) DO UPDATE SET updated_at=excluded.updated_at,value=excluded.value').run(token,updatedAt,value===null?null:JSON.stringify(value));}
+ viewUpdatedAt(name:string){const base=(this.db.prepare('SELECT updated_at FROM radar_views WHERE name=?').get(name) as {updated_at:number}|undefined)?.updated_at??null;if(name!=='feed-rows')return base;const patch=(this.db.prepare('SELECT MAX(updated_at) AS updated_at FROM radar_feed_updates').get() as {updated_at:number|null}).updated_at;return base===null?patch:Math.max(base,patch??0);}
+ view<T>(name:string){
+  const row=this.db.prepare('SELECT updated_at,value FROM radar_views WHERE name=?').get(name) as {updated_at:number;value:string}|undefined;
+  if(name!=='feed-rows')return row?{updatedAt:row.updated_at,value:JSON.parse(row.value) as T}:undefined;
+  const patches=this.db.prepare('SELECT token,updated_at,value FROM radar_feed_updates').all() as {token:string;updated_at:number;value:string|null}[];
+  if(!row&&!patches.length)return undefined;
+  const rows=new Map<string,unknown>((row?JSON.parse(row.value):[]).map((item:{token:string})=>[item.token,item]));let updatedAt=row?.updated_at??0;
+  for(const patch of patches){updatedAt=Math.max(updatedAt,patch.updated_at);if(patch.value===null)rows.delete(patch.token);else rows.set(patch.token,JSON.parse(patch.value));}
+  return {updatedAt,value:[...rows.values()] as T};
+ }
 
  readSnapshot<T>(work:()=>T):T{this.db.exec('BEGIN');try{return work();}finally{this.db.exec('ROLLBACK');}}
 
