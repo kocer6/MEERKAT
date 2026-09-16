@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {RadarIndexer,type RadarIndexerStatus} from '../src/radar/indexer.js';
 import type {RadarReader} from '../src/radar/reader.js';
+import {RadarService} from '../src/radar/service.js';
 import {RadarStore} from '../src/radar/store.js';
 import type {RadarEvent,RadarLaunch,RadarProfile} from '../src/radar/types.js';
 
@@ -272,4 +273,13 @@ test('separate enrichment leaves missing metadata to the fast worker',async()=>{
  let calls=0;const reader={chainId:async()=>4663,profile:async()=>{calls++;return profile;}} as unknown as RadarReader;
  const worker=new RadarIndexer(store,reader,{mode:'enrich',separateMetadata:true,rangeBlocks:200n,pollMs:30000,profileConcurrency:2,historyStartBlock:100n});
  await worker.tick();assert.equal(worker.status().state,'ready');assert.equal(calls,0);assert.equal(store.launchByToken(token)?.profile,null);await worker.close();store.close();
+});
+
+
+test('feed event scans run before acquiring the writer transaction',()=>{
+ const store=new RadarStore(':memory:');store.saveLaunch(launch);let writing=false,scanned=false;
+ const transaction=store.transaction.bind(store),events=store.eventsForToken.bind(store);
+ store.transaction=work=>transaction(()=>{writing=true;try{work();}finally{writing=false;}});
+ store.eventsForToken=(...args)=>{scanned=true;assert.equal(writing,false);return events(...args);};
+ new RadarService(store,()=>({state:'ready',headBlock:null,lastIndexedBlock:null,lagBlocks:null,updatedAt:null,queueDepth:0,error:null})).refreshFeedTokens([token]);assert.equal(scanned,true);assert.equal(store.view<any[]>('feed-rows')?.value.length,1);store.close();
 });
