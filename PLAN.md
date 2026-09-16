@@ -1,3 +1,5 @@
+METADATA-FAST publication follow-up: the feed cache is 37 MB in production. Metadata now persists token profiles only; live/API pages hydrate their 50 rows directly from profiles, avoiding whole-feed rewrites per metadata batch. Existing enrichment publishes once per profile group. 210 tests and typecheck pass. Next: redeploy web/metadata/enrichment and verify fresh names with no restarts.
+
 METADATA-FAST lock follow-up: production exposed SQLite writer contention in feed reconstruction. Compute event-derived rows under a read snapshot, then merge/publish under a short write transaction, preserving metadata completed during computation. Existing 209 tests plus writer-lock regression pass; next deploy all workers and remeasure.
 
 METADATA-FAST (2026-09-16): added a dedicated five-second metadata worker with bounded 40-token/2-batch concurrency, indexed newest-first missing-profile selection, captured-head guard and immediate per-batch feed publication. Separate enrichment handles existing profiles, prices and marks. Regression reproduced delayed publication before fix; 209 tests and build pass. Next: deploy worker and measure production enrichment latency.

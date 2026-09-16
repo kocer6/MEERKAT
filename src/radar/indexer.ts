@@ -96,9 +96,9 @@ export class RadarIndexer {
    const head=BigInt(cursor.blockNumber),views=new RadarService(this.store,()=>this.status());
    if(mode==='metadata'){
     if(await this.reader.chainId()!==4663)throw new Error('wrong metadata chain; expected 4663');
-    await this.profileLaunches(head,tokens=>views.refreshFeedTokens(tokens));
+    await this.profileLaunches(head);
    }else if(mode==='enrich'){
-    const contracts=async()=>{if(await this.reader.chainId()!==4663)throw new Error('wrong enrichment chain; expected 4663');const results=await Promise.allSettled([this.profileLaunches(head,tokens=>views.refreshFeedTokens(tokens)),this.markPositions(head,[])]);const failed=results.find(result=>result.status==='rejected');if(failed?.status==='rejected')throw failed.reason;};
+    const contracts=async()=>{if(await this.reader.chainId()!==4663)throw new Error('wrong enrichment chain; expected 4663');const results=await Promise.allSettled([this.profileLaunches(head).then(tokens=>{views.refreshFeedTokens(tokens);return tokens;}),this.markPositions(head,[])]);const failed=results.find(result=>result.status==='rejected');if(failed?.status==='rejected')throw failed.reason;};
     const results=await Promise.allSettled([contracts(),this.enrichMarket().then(tokens=>{if(tokens)views.refreshFeedTokens(tokens);})]);
     const failed=results.find(result=>result.status==='rejected');if(failed?.status==='rejected')throw failed.reason;
    }else{
