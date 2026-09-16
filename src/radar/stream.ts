@@ -33,10 +33,10 @@ export class RadarStream {
   try{
    const revision=this.revision(),now=Date.now();
    for(const channel of this.channels.values()){
-    if(revision===channel.revision&&now-channel.readAt<15000)continue;
-    const payload=JSON.stringify(this.radar.signals(channel.query)),changed=payload!==channel.payload;
+    if(revision===channel.revision&&now-channel.readAt<5000)continue;
+    const payload=JSON.stringify(this.radar.signals(channel.query));
     channel.revision=revision;channel.readAt=now;channel.payload=payload;
-    const frame=changed?`event: snapshot\ndata: ${payload}\n\n`:`event: heartbeat\ndata: {}\n\n`;
+    const frame=`event: snapshot\ndata: ${payload}\n\n`;
     for(const res of channel.clients)this.write(res,frame);
    }
   }catch{

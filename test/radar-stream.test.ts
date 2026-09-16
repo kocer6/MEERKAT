@@ -21,6 +21,7 @@ test('live Radar streams new, changed and removed rows from another DB writer, r
  try{
   const response=await fetch(app.url+'/api/radar/stream?feed=fresh&window=all');assert.equal(response.status,200);assert.match(response.headers.get('content-type')??'',/text\/event-stream/);assert.equal(response.headers.get('x-accel-buffering'),'no');reader=response.body!.getReader();
   assert.deepEqual((await nextSnapshot(reader)).items.map((item:RadarFeedRow)=>item.token),[row(1).token]);
+  const repeatStarted=Date.now();assert.equal((await nextSnapshot(reader)).items[0].symbol,'T1');assert.ok(Date.now()-repeatStarted<6000);
   writer.saveView('feed-rows',[row(1,7),row(2)]);
   const second=await fetch(app.url+'/api/radar/stream?feed=fresh&window=all'),secondReader=second.body!.getReader();assert.equal((await nextSnapshot(secondReader)).items[0].symbol,'T2');await secondReader.cancel();
   const changed=await nextSnapshot(reader);assert.deepEqual(changed.items.map((item:RadarFeedRow)=>[item.symbol,item.buys]),[['T2',1],['T1',7]]);

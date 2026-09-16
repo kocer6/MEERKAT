@@ -155,7 +155,7 @@ function routeError(error){showResult('UNAVAILABLE','ERROR');const retry=el('but
 function feedTable(rows,onPending=()=>{}){
  const wrap=el('div',undefined,'table-wrap radar-live-table'),table=el('table',undefined,'feed-table'),head=el('thead'),heading=el('tr'),body=el('tbody'),entries=new Map();
  for(const label of ['TOKEN','SCORE','STATE','PARTICIPANTS','BUYS / SELLS','BUY FLOW','SELL FLOW','PRICE','LIQUIDITY','SAVE'])heading.append(el('th',label));head.append(heading);table.append(head,body);wrap.append(table);
- let initialized=false,pointerInside=false,pending=null;
+ let initialized=false;
  const flash=node=>{if(initialized&&!matchMedia('(prefers-reduced-motion:reduce)').matches)node.animate?.([{backgroundColor:'rgba(152,213,90,.24)'},{backgroundColor:'transparent'}],{duration:1100});};
  const text=(node,value)=>{value=String(value);if(node.textContent!==value){node.textContent=value;flash(node);}};
  const update=(entry,item)=>{
@@ -165,7 +165,6 @@ function feedTable(rows,onPending=()=>{}){
   const values=[item.radarStrength??'\u2014',item.state.toUpperCase(),item.participants,`${item.buys} / ${item.sells}`,flow(item.buyFlow),flow(item.sellFlow),marketUsd(item.market?.data?.priceUsd),marketUsd(item.market?.data?.liquidityUsd)];
   values.forEach((value,i)=>text(entry.cells[i+1],value));entry.cells[1].className=tone;
  };
- const held=()=>pointerInside||body.contains(document.activeElement);
  const apply=items=>{
   // Anchor a visible retained row when the reader has scrolled into the table.
   const wanted=new Set(items.map(item=>item.token)),anchor=table.getBoundingClientRect().top<0?[...entries].find(([token,entry])=>wanted.has(token)&&entry.row.getBoundingClientRect().top>=0)?.[1].row:null,top=anchor?.getBoundingClientRect().top;
@@ -176,11 +175,9 @@ function feedTable(rows,onPending=()=>{}){
    update(entry,item);if(body.children[index]!==entry.row)body.insertBefore(entry.row,body.children[index]||null);
   });
   if(anchor&&top!==undefined){const shift=anchor.getBoundingClientRect().top-top;if(shift)window.scrollBy(0,shift);}
-  initialized=true;pending=null;onPending(0,items.length);
+  initialized=true;onPending(0,items.length);
  };
- wrap.updateRows=items=>{if(initialized&&held()){pending=items;for(const item of items){const entry=entries.get(item.token);if(entry)update(entry,item);}onPending(items.filter(item=>!entries.has(item.token)).length,entries.size);return;}apply(items);};
- const release=()=>{if(pending&&!held())apply(pending);};
- wrap.addEventListener('mouseenter',()=>{pointerInside=true;});wrap.addEventListener('mouseleave',()=>{pointerInside=false;release();});wrap.addEventListener('focusout',()=>queueMicrotask(release));
+ wrap.updateRows=apply;
  wrap.updateRows(rows);return wrap;
 }
 function connectRadarFeed(feed,onPage,onStatus){
@@ -212,13 +209,12 @@ function connectRadarFeed(feed,onPage,onStatus){
 async function renderRadar(restore={}){
  activeRadarFeed=restore.feed||activeRadarFeed;showResult('RADAR','LIVE INDEX');const root=$('result-content'),hero=el('section',undefined,'page-hero');hero.append(el('small','MARKET INTELLIGENCE / ROBINHOOD CHAIN','eyebrow'),el('h2','THE LIVE PONS MARKET, RANKED BY EVIDENCE.'),el('p','Discover launches, follow verified wallet activity, and open the full token dossier without rebuilding the market view.'));root.append(hero);
  const tabs=el('nav',undefined,'feed-tabs');for(const [value,label] of [['signals','SIGNALS'],['fresh','FRESH'],['exits','EXITS'],['launches','LAUNCHES'],['wallets','WALLETS']]){const button=el('button',label);button.classList.toggle('active',value===activeRadarFeed);button.addEventListener('click',()=>{activeRadarFeed=value;void renderRadar({feed:value});});tabs.append(button);}root.append(tabs);
- const liveBar=el('div',undefined,'radar-live-bar'),live=el('span','CONNECTING','radar-live-state'),updated=el('span','Waiting for the latest indexed data'),pending=el('span',undefined,'radar-pending');live.setAttribute('role','status');pending.setAttribute('aria-live','polite');liveBar.append(live,updated,pending);root.append(liveBar);
+ const liveBar=el('div',undefined,'radar-live-bar'),live=el('span','CONNECTING','radar-live-state'),updated=el('span','Waiting for the latest indexed data');live.setAttribute('role','status');liveBar.append(live,updated);root.append(liveBar);
  const stage=el('div',undefined,'feed-stage'),empty=el('p','Loading live Radar data...','empty-state');let table=null,lastPayload=null,lastUpdated=null;stage.append(empty);root.append(stage);
  radarCleanup=connectRadarFeed(activeRadarFeed,page=>{
-  if(!stage.isConnected)return;const payload=JSON.stringify(page.items);if(payload===lastPayload)return;lastPayload=payload;
-  if(!table){table=feedTable(page.items,(count,displayed)=>{empty.hidden=displayed>0;pending.textContent=count?`${count} NEW \u00b7 rows held while you inspect`:'';});stage.append(table);if(restore.scrollY!==undefined)requestAnimationFrame(()=>{if(stage.isConnected)scrollTo(0,restore.scrollY);});}else table.updateRows(page.items);
+  if(!stage.isConnected)return;lastUpdated=`Synced ${new Date().toLocaleTimeString()} · every 5s`;updated.textContent=lastUpdated;const payload=JSON.stringify(page.items);if(payload===lastPayload)return;lastPayload=payload;
+  if(!table){table=feedTable(page.items,(_count,displayed)=>{empty.hidden=displayed>0;});stage.append(table);if(restore.scrollY!==undefined)requestAnimationFrame(()=>{if(stage.isConnected)scrollTo(0,restore.scrollY);});}else table.updateRows(page.items);
   empty.textContent=activeRadarFeed==='signals'?'Waiting for tokens with enough indexed evidence. New signals will appear here automatically.':'Waiting for indexed tokens. New launches will appear here automatically.';
-  lastUpdated=`Updated ${new Date().toLocaleTimeString()}`;updated.textContent=lastUpdated;
  },state=>{if(!stage.isConnected)return;live.textContent=state;live.dataset.state=state;if(state==='LIVE'&&lastUpdated)updated.textContent=lastUpdated;if(state==='RECONNECTING')updated.textContent='Connection interrupted; keeping the last received data';});
 }
 
