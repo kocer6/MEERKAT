@@ -1,3 +1,5 @@
+METADATA-FAST diagnostics: still observing writer contention under production load. Add slow write transaction duration/call-site logging to identify remaining locks rather than raising RPC concurrency. Typecheck passes. Next: inspect measured lock owners and fix remaining bottleneck.
+
 METADATA-FAST publication follow-up: the feed cache is 37 MB in production. Metadata now persists token profiles only; live/API pages hydrate their 50 rows directly from profiles, avoiding whole-feed rewrites per metadata batch. Existing enrichment publishes once per profile group. 210 tests and typecheck pass. Next: redeploy web/metadata/enrichment and verify fresh names with no restarts.
 
 METADATA-FAST lock follow-up: production exposed SQLite writer contention in feed reconstruction. Compute event-derived rows under a read snapshot, then merge/publish under a short write transaction, preserving metadata completed during computation. Existing 209 tests plus writer-lock regression pass; next deploy all workers and remeasure.

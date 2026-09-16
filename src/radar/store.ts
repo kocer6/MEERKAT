@@ -60,7 +60,8 @@ export class RadarStore {
 
  transaction(work:()=>void){
   this.db.exec('BEGIN IMMEDIATE');
-  try{work();this.db.exec('COMMIT');}catch(error){this.db.exec('ROLLBACK');throw error;}
+  const started=Date.now();
+  try{work();this.db.exec('COMMIT');}catch(error){this.db.exec('ROLLBACK');throw error;}finally{if(Date.now()-started>1000)console.warn(`Radar write transaction ${Date.now()-started}ms: ${new Error().stack?.split('\n').slice(2,4).join(' ')}`);}
  }
 
  private saveCursor(name:string,blockNumber:bigint,blockHash:string|null){
