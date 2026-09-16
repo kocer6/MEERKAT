@@ -8,7 +8,8 @@ import {RadarService} from './service.js';
 
 export interface RadarIndexerOptions {
  marketRead?:(tokens:string[])=>Promise<RadarMarket[]>;
- mode?:'combined'|'collect'|'enrich'|'project';
+ mode?:'combined'|'collect'|'enrich'|'project'|'metadata';
+ separateMetadata?:boolean;
  rangeBlocks:bigint;
  pollMs:number;
  profileConcurrency:number;
@@ -46,7 +47,7 @@ export class RadarIndexer {
  tick():Promise<void>{
   if(this.pending)return this.pending;
   if(this.stopped)return Promise.resolve();
-  const work=this.options.mode==='enrich'||this.options.mode==='project'?this.runDerivedCycle():this.runCycle();
+  const work=this.options.mode==='metadata'||this.options.mode==='enrich'||this.options.mode==='project'?this.runDerivedCycle():this.runCycle();
   this.pending=work.finally(()=>{this.pending=null;});
   return this.pending;
  }
@@ -84,7 +85,7 @@ export class RadarIndexer {
    timing('views');}
    console.info(`Radar cycle: ${Date.now()-started}ms`);
    const cursor=this.store.cursor('market')!;
-   this.snapshot={state:'ready',headBlock:head.toString(),lastIndexedBlock:cursor.blockNumber,lagBlocks:(head-BigInt(cursor.blockNumber)).toString(),updatedAt:Date.now(),queueDepth:this.store.launches().filter(row=>!row.profile).length,error:null};this.publishStatus();
+   this.snapshot={state:'ready',headBlock:head.toString(),lastIndexedBlock:cursor.blockNumber,lagBlocks:(head-BigInt(cursor.blockNumber)).toString(),updatedAt:Date.now(),queueDepth:this.store.pendingProfileCount(),error:null};this.publishStatus();
   }catch(error){this.snapshot={...this.snapshot,state:'error',updatedAt:Date.now(),error:sanitize(error)};this.publishStatus();}
  }
 
@@ -93,8 +94,11 @@ export class RadarIndexer {
   try{
    const cursor=this.store.cursor('market');if(!cursor){this.snapshot={...this.snapshot,state:'idle'};this.publishStatus();return;}
    const head=BigInt(cursor.blockNumber),views=new RadarService(this.store,()=>this.status());
-   if(mode==='enrich'){
-    const contracts=async()=>{if(await this.reader.chainId()!==4663)throw new Error('wrong enrichment chain; expected 4663');const results=await Promise.allSettled([this.profileLaunches(head),this.markPositions(head,[])]);if(results[0].status==='fulfilled')views.refreshFeedTokens(results[0].value);const failed=results.find(result=>result.status==='rejected');if(failed?.status==='rejected')throw failed.reason;};
+   if(mode==='metadata'){
+    if(await this.reader.chainId()!==4663)throw new Error('wrong metadata chain; expected 4663');
+    await this.profileLaunches(head,tokens=>views.refreshFeedTokens(tokens));
+   }else if(mode==='enrich'){
+    const contracts=async()=>{if(await this.reader.chainId()!==4663)throw new Error('wrong enrichment chain; expected 4663');const results=await Promise.allSettled([this.profileLaunches(head,tokens=>views.refreshFeedTokens(tokens)),this.markPositions(head,[])]);const failed=results.find(result=>result.status==='rejected');if(failed?.status==='rejected')throw failed.reason;};
     const results=await Promise.allSettled([contracts(),this.enrichMarket().then(tokens=>{if(tokens)views.refreshFeedTokens(tokens);})]);
     const failed=results.find(result=>result.status==='rejected');if(failed?.status==='rejected')throw failed.reason;
    }else{
@@ -117,7 +121,7 @@ export class RadarIndexer {
     const last= this.store.view('leaderboard-all')?.updatedAt;
     if(!last||Date.now()-last>=(this.options.viewRefreshMs??300000))views.refreshLeaderboardViews();
    }
-   this.snapshot={state:'ready',headBlock:head.toString(),lastIndexedBlock:cursor.blockNumber,lagBlocks:null,updatedAt:Date.now(),queueDepth:mode==='project'?this.store.projectionCount():this.store.launches().filter(row=>!row.profile).length,error:null};
+   this.snapshot={state:'ready',headBlock:head.toString(),lastIndexedBlock:cursor.blockNumber,lagBlocks:null,updatedAt:Date.now(),queueDepth:mode==='project'?this.store.projectionCount():this.store.pendingProfileCount(),error:null};
    console.info(`Radar ${mode} cycle: ${Date.now()-started}ms; pending ${this.snapshot.queueDepth}`);
   }catch(error){this.snapshot={...this.snapshot,state:'error',updatedAt:Date.now(),error:sanitize(error)};}
   this.publishStatus();
@@ -174,13 +178,18 @@ export class RadarIndexer {
   if(previous&&band(previous.value)!==band(score.value))this.persistActivity({id:`${score.subject}:${score.kind}:${head}:${band(score.value)}`,subject:score.subject,subjectKind:score.kind==='wallet-reputation'?'wallet':'token',kind:'score-band-change',material:true,blockNumber:head.toString(),blockHash:null,txHash:null,createdAt:Date.now(),summary:`${score.kind} changed from ${band(previous.value)} to ${band(score.value)}`});
  }
 
- private async profileLaunches(head:bigint){
+ private async profileLaunches(head:bigint,publish?:(tokens:string[])=>void){
   const limit=this.options.profileBatchSize??this.options.profileConcurrency,eligible=(row:RadarLaunch|undefined):row is RadarLaunch=>Boolean(row&&BigInt(row.launchBlock)<=head&&!row.profile&&(!row.profileError||Date.now()-(row.profileAttemptAt??row.updatedAt)>=300000));
+  const seen=new Set<string>(),queue:RadarLaunch[]=[];
+  if(this.options.mode==='metadata')queue.push(...this.store.freshProfileCandidates(head,limit));
+  else if(this.options.mode==='enrich'&&this.options.separateMetadata)queue.push(...this.store.staleProfiles(Math.max(1,Math.floor(limit/4))).filter(row=>BigInt(row.launchBlock)<=head));
+  else{
   const cached=this.store.view<Array<{token:string;launchBlock?:string;radarStrength:number|null}>>('feed-rows')?.value??[],launches=this.store.launches(),byToken=new Map(launches.map(row=>[row.token,row]));
-  const visibleFresh=cached.filter(row=>row.launchBlock!==undefined).sort((a,b)=>Number(BigInt(b.launchBlock!)-BigInt(a.launchBlock!))||a.token.localeCompare(b.token)).slice(0,50).map(row=>byToken.get(row.token)).filter(eligible),fresh=launches.filter(eligible),preferred=[...cached].filter(row=>row.radarStrength!==null).sort((a,b)=>(b.radarStrength??-1)-(a.radarStrength??-1)||a.token.localeCompare(b.token)).map(row=>byToken.get(row.token)).filter(eligible),seen=new Set<string>(),queue:RadarLaunch[]=[];
+  const visibleFresh=cached.filter(row=>row.launchBlock!==undefined).sort((a,b)=>Number(BigInt(b.launchBlock!)-BigInt(a.launchBlock!))||a.token.localeCompare(b.token)).slice(0,50).map(row=>byToken.get(row.token)).filter(eligible),fresh=launches.filter(eligible),preferred=[...cached].filter(row=>row.radarStrength!==null).sort((a,b)=>(b.radarStrength??-1)-(a.radarStrength??-1)||a.token.localeCompare(b.token)).map(row=>byToken.get(row.token)).filter(eligible);
   const add=(rows:RadarLaunch[],capacity:number)=>{for(const row of rows)if(queue.length<capacity&&BigInt(row.launchBlock)<=head&&!seen.has(row.token)){seen.add(row.token);queue.push(row);}};
   add(visibleFresh,Math.floor(limit/4));add(fresh,Math.floor(limit/2));add(preferred,Math.max(1,Math.ceil(limit*0.75)));add(this.store.profileCandidates(limit).filter(eligible),limit);add(fresh,limit);
   if(this.options.mode==='enrich')add(this.store.staleProfiles(Math.max(1,Math.floor(limit/4))),queue.length+Math.max(1,Math.floor(limit/4)));
+  }
   let cursor=0;const profiled:string[]=[];
   const save=(row:RadarLaunch,result:RadarProfile|Error)=>this.store.transaction(()=>{
    const latest=this.store.launchByToken(row.token);if(!latest||latest.curve!==row.curve||latest.txHash!==row.txHash)return;
@@ -193,6 +202,7 @@ export class RadarIndexer {
     if(this.reader.profiles){const results=await this.reader.profiles(rows,head);for(const row of rows)save(row,results.get(row.token)??new Error('Profile missing from batch response'));}
     else{const row=rows[0]!;save(row,await this.reader.profile(row.token,head));}
    }catch(error){for(const row of rows)save(row,error instanceof Error?error:new Error(String(error)));}
+   const ready=rows.filter(row=>this.store.launchByToken(row.token)?.profile).map(row=>row.token);if(ready.length)publish?.(ready);
   }};
   await Promise.all(Array.from({length:Math.min(this.options.profileConcurrency,queue.length)},()=>worker()));
   return profiled;
@@ -204,5 +214,5 @@ export class RadarIndexer {
   const overlap=this.options.rangeBlocks>64n?63n:0n,from=saved>overlap?saved-overlap:0n,start=from>floor?from:floor,end=start+this.options.rangeBlocks-1n;return {from:start,to:end<head?end:head};
  }
 
- private publishStatus(){this.store.saveView(this.options.mode==='enrich'?'enrich-status':this.options.mode==='project'?'project-status':'indexer-status',this.snapshot,this.snapshot.updatedAt??Date.now());}
+ private publishStatus(){this.store.saveView(this.options.mode==='metadata'?'metadata-status':this.options.mode==='enrich'?'enrich-status':this.options.mode==='project'?'project-status':'indexer-status',this.snapshot,this.snapshot.updatedAt??Date.now());}
 }

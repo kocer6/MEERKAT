@@ -249,3 +249,27 @@ test('live projection reserves capacity for new launches without starving old wo
  for(let i=1;i<=8;i++){const address='0x'+i.toString(16).padStart(40,'0');store.saveLaunch({...launch,token:address,curve:'0x'+(i+100).toString(16).padStart(40,'0'),launchBlock:String(i)});store.queueProjection(address);}
  const jobs=store.liveProjectionJobs(4);assert.deepEqual(jobs.map(job=>Number(BigInt(job.token))),[8,7,1,2]);assert.equal(new Set(jobs.map(job=>job.token)).size,4);store.close();
 });
+
+
+test('metadata worker publishes each batch without waiting for slow enrichment',async()=>{
+ const store=new RadarStore(':memory:');
+ const rows=Array.from({length:21},(_,i)=>({...launch,token:`0x${(100+i).toString(16).padStart(40,'0')}`,curve:`0x${(200+i).toString(16).padStart(40,'0')}`}));
+ for(const row of rows)store.saveLaunch(row);
+ store.saveLaunch({...launch,launchBlock:'501'});store.replaceEventRange('market',500n,500n,500n,[]);
+ let release!:()=>void;const gate=new Promise<void>(resolve=>{release=resolve;});let calls=0;
+ const reader={chainId:async()=>4663,profiles:async(batch:RadarLaunch[])=>{if(++calls===2)await gate;return new Map(batch.map(row=>[row.token,profile]));}} as unknown as RadarReader;
+ const worker=new RadarIndexer(store,reader,{mode:'metadata',rangeBlocks:200n,pollMs:5000,profileConcurrency:2,profileBatchSize:40,historyStartBlock:100n});
+ const work=worker.tick();
+ try{await new Promise(resolve=>setTimeout(resolve,20));assert.equal(store.view<any[]>('feed-rows')?.value.length,20);assert.equal(store.launchByToken(token)?.profile,null);}
+ finally{release();await work;}
+ assert.equal(worker.status().state,'ready');assert.equal(store.view<any[]>('feed-rows')?.value.length,21);assert.equal(store.view<any>('metadata-status')?.value.queueDepth,1);
+ await worker.close();store.close();
+});
+
+
+test('separate enrichment leaves missing metadata to the fast worker',async()=>{
+ const store=new RadarStore(':memory:');store.saveLaunch(launch);store.replaceEventRange('market',500n,500n,500n,[]);
+ let calls=0;const reader={chainId:async()=>4663,profile:async()=>{calls++;return profile;}} as unknown as RadarReader;
+ const worker=new RadarIndexer(store,reader,{mode:'enrich',separateMetadata:true,rangeBlocks:200n,pollMs:30000,profileConcurrency:2,historyStartBlock:100n});
+ await worker.tick();assert.equal(worker.status().state,'ready');assert.equal(calls,0);assert.equal(store.launchByToken(token)?.profile,null);await worker.close();store.close();
+});

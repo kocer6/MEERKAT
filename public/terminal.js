@@ -230,9 +230,9 @@ addEventListener('popstate',event=>void renderRoute(location.pathname,event.stat
 void get('/healthz').then(()=>{$('session-status').textContent='CONNECTED';}).catch(()=>{$('session-status').textContent='OFFLINE';$('session-status').className='error';});
 async function refreshRadarStatus(){
  try{
-  const status=await get('/api/radar/status'),workers=status.workers||{},failed=Object.values(workers).some(worker=>worker.error),stale=status.updatedAt&&Date.now()-status.updatedAt>120000,label=$('radar-index-status');
+  const status=await get('/api/radar/status'),workers=status.workers||{},failed=Object.values(workers).some(worker=>worker?.error),stale=status.updatedAt&&Date.now()-status.updatedAt>120000,label=$('radar-index-status');
   label.textContent=stale?'STALLED':failed?'DEGRADED':status.state?.toUpperCase()||'CONNECTING';
-  label.title=`Collection: ${workers.collection?.state||status.state}. Enrichment: ${workers.enrichment?.state||'unknown'}. Pending profiles: ${status.queueDepth??'unknown'}. Pending scores: ${status.pendingProjections??'unknown'}.`;
+  label.title=`Collection: ${workers.collection?.state||status.state}. Metadata: ${workers.metadata?.state||'unknown'}. Enrichment: ${workers.enrichment?.state||'unknown'}. Pending profiles: ${status.queueDepth??'unknown'}. Pending scores: ${status.pendingProjections??'unknown'}.`;
   $('radar-head').textContent=status.lastIndexedBlock||'\u2014';$('session-status').textContent='CONNECTED';$('session-status').className='';
  }catch{$('radar-index-status').textContent='OFFLINE';$('session-status').textContent='OFFLINE';$('session-status').className='error';}
  finally{setTimeout(()=>void refreshRadarStatus(),15000);}

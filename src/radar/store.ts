@@ -42,6 +42,7 @@ export class RadarStore {
    CREATE INDEX IF NOT EXISTS radar_events_wallet_token_block ON radar_events(wallet,token,block,id);
    CREATE INDEX IF NOT EXISTS radar_events_block ON radar_events(block);
    CREATE INDEX IF NOT EXISTS wallet_positions_token ON wallet_token_positions(token,wallet);
+   CREATE INDEX IF NOT EXISTS radar_missing_profiles ON radar_launches(block DESC,token) WHERE json_extract(value,'$.profile') IS NULL;
    CREATE INDEX IF NOT EXISTS radar_launches_block ON radar_launches(block,token);
    CREATE INDEX IF NOT EXISTS wallet_outcomes_closed ON wallet_outcomes(closed_at,wallet,token);
    CREATE INDEX IF NOT EXISTS radar_activity_block ON radar_activity(block,id);`);
@@ -129,6 +130,8 @@ export class RadarStore {
  launchByToken(token:string){return parsed<RadarLaunch>(this.db.prepare('SELECT value FROM radar_launches WHERE token=?').get(normalized(token)) as ValueRow|undefined);}
  launchByCurve(curve:string){return parsed<RadarLaunch>(this.db.prepare('SELECT value FROM radar_launches WHERE curve=?').get(normalized(curve)) as ValueRow|undefined);}
  launches(){return (this.db.prepare('SELECT value FROM radar_launches ORDER BY block DESC,token').all() as ValueRow[]).map(row=>JSON.parse(row.value) as RadarLaunch);}
+ pendingProfileCount(){return (this.db.prepare("SELECT COUNT(*) AS count FROM radar_launches WHERE json_extract(value,'$.profile') IS NULL").get() as {count:number}).count;}
+ freshProfileCandidates(head:bigint,limit:number){return (this.db.prepare("SELECT value FROM radar_launches WHERE json_extract(value,'$.profile') IS NULL AND block<=? AND (json_extract(value,'$.profileError') IS NULL OR COALESCE(json_extract(value,'$.profileAttemptAt'),json_extract(value,'$.updatedAt'))<?) ORDER BY block DESC,token LIMIT ?").all(Number(head),Date.now()-300000,limit) as ValueRow[]).map(row=>JSON.parse(row.value) as RadarLaunch);}
  profileCandidates(limit:number){return (this.db.prepare(`SELECT launch.value FROM radar_launches launch LEFT JOIN (SELECT token,COUNT(*) AS activity FROM radar_events GROUP BY token) event ON event.token=launch.token WHERE json_extract(launch.value,'$.profile') IS NULL AND (json_extract(launch.value,'$.profileError') IS NULL OR COALESCE(json_extract(launch.value,'$.profileAttemptAt'),json_extract(launch.value,'$.updatedAt'))<?) ORDER BY COALESCE(event.activity,0) DESC,launch.block DESC,launch.token LIMIT ?`).all(Date.now()-300000,Math.max(1,Math.trunc(limit))) as ValueRow[]).map(row=>JSON.parse(row.value) as RadarLaunch);}
 
  eventsForToken(token:string){return (this.db.prepare('SELECT value FROM radar_events WHERE token=? ORDER BY block,id').all(normalized(token)) as ValueRow[]).map(row=>JSON.parse(row.value) as RadarEvent);}

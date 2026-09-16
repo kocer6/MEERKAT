@@ -32,7 +32,7 @@ const windowMs:Record<Exclude<RadarWindow,'all'>,number>={
 export class RadarService {
  constructor(private store:RadarStore,private indexStatus:()=>RadarIndexerStatus,private allowExpensiveFallback=true){}
 
- status(){return {...this.indexStatus(),...this.store.counts(),workers:{collection:this.store.view('indexer-status')?.value??null,enrichment:this.store.view('enrich-status')?.value??null,projection:this.store.view('project-status')?.value??null},pendingProjections:this.store.projectionCount()};}
+ status(){return {...this.indexStatus(),...this.store.counts(),workers:{metadata:this.store.view('metadata-status')?.value??null,collection:this.store.view('indexer-status')?.value??null,enrichment:this.store.view('enrich-status')?.value??null,projection:this.store.view('project-status')?.value??null},pendingProjections:this.store.projectionCount()};}
  launches(cursor:string|null){return this.signals({feed:'launches',window:'all',cursor});}
 
  search(raw:string){
