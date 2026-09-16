@@ -22,3 +22,8 @@ Code commits: 6dab9d1, 06deadd, ee87e3f.
 ## Limits
 
 Delivery is live after stored data publication; chain collection still runs in roughly 30-second batches. Newly discovered tokens can appear before metadata and score are ready; missing evidence remains missing. The historical projection backlog is still draining (approximately 35k in the acceptance sample); this work does not claim it has cleared or that every token has price/P&L coverage. User interaction intentionally holds row reordering while existing values continue updating. The old long-running worker required the existing service stop timeout during deployment; restarted bounded workers are running.
+
+## Five-second follow-up, 2026-09-16
+
+LIVE-5S-VERIFY complete (2026-09-16): deployed 2221124. 207 VPS tests pass; local typecheck/build pass, production build succeeds. Five simultaneous public streams returned repeated snapshots: steady gaps 4.83-5.12 seconds; initial connection/warm-up gaps 5.49-6.73 seconds. Browser shows LIVE / Synced ... every 5s with 50 rows; Fresh opens without full reload. Hover/focus no longer defers incoming rows. This is browser synchronization of available stored data, not a promise that all RPC/enrichment/score computations finish every five seconds. Next task: no required five-second UI sync work remains.
+
